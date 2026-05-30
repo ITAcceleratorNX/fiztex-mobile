@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tamos Education · Print</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #ECE9E1; }
+    body {
+      font-family: 'Onest', -apple-system, system-ui, sans-serif;
+      color: #14110D;
+      -webkit-font-smoothing: antialiased;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* ── Page geometry ─────────────────────────────────────────────────── */
+    @page { size: A4 landscape; margin: 0; }
+    .page {
+      width: 297mm; height: 210mm;
+      padding: 14mm 16mm;
+      background: #F1EFE8;
+      break-after: page;
+      page-break-after: always;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .page:last-child { break-after: auto; page-break-after: auto; }
+
+    /* Screen page header */
+    .page-header {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding-bottom: 6mm; border-bottom: 1px solid rgba(20,17,13,0.08);
+    }
+    .page-header-title { font-size: 14pt; font-weight: 700; letter-spacing: -0.2px; }
+    .page-header-meta  { font-size: 9pt; font-weight: 500; color: #7B7568; letter-spacing: 0.3px; text-transform: uppercase; }
+
+    /* 2-up phone grid */
+    .phone-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14mm;
+      padding-top: 8mm;
+      align-items: flex-start;
+      justify-items: center;
+    }
+    .phone-cell {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 4mm;
+      break-inside: avoid;
+    }
+    .phone-cell-empty { visibility: hidden; }
+
+    /* Phone — scaled down: real 402×874 → printed at 0.42 = ~169×367 (mm equiv via px) */
+    .phone-frame {
+      width: 402px; height: 874px;
+      transform: scale(0.42);
+      transform-origin: top center;
+      flex-shrink: 0;
+    }
+    /* Reserve space matching the scaled size so layout doesn't overlap */
+    .phone-cell { width: 175px; }
+    .phone-cell .phone-frame-spacer {
+      width: 175px; height: 372px;
+    }
+
+    .phone-label {
+      margin-top: -510px; /* pull up under the scaled phone */
+      font-size: 10pt; font-weight: 600; color: #14110D;
+      text-align: center;
+    }
+
+    /* Cover */
+    .cover {
+      background: linear-gradient(135deg, #2A8847 0%, #1B6B36 60%, #155028 100%);
+      color: #fff;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 0;
+    }
+    .cover-inner {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 0 24mm;
+    }
+    .cover-logo { margin-bottom: 12mm; }
+    .cover-title { font-size: 56pt; font-weight: 800; letter-spacing: -1.4px; margin: 0; }
+    .cover-sub   { font-size: 16pt; font-weight: 500; opacity: 0.85; margin-top: 4mm; }
+    .cover-meta  { font-size: 11pt; font-weight: 500; opacity: 0.7; margin-top: 14mm; letter-spacing: 0.3px; text-transform: uppercase; }
+    .cover-foot  { padding: 0 24mm 16mm; font-size: 10pt; opacity: 0.7; letter-spacing: 0.3px; text-transform: uppercase; text-align: center; width: 100%; }
+
+    /* Section divider */
+    .section-divider {
+      background: #F1EFE8;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 30mm 24mm;
+    }
+    .section-divider-num {
+      font-size: 80pt; font-weight: 800; color: #2A8847;
+      line-height: 1; letter-spacing: -3px;
+    }
+    .section-divider-title {
+      font-size: 48pt; font-weight: 700; letter-spacing: -1.2px;
+      margin: 4mm 0 0;
+    }
+    .section-divider-count {
+      font-size: 11pt; font-weight: 500; color: #7B7568;
+      margin-top: 4mm; letter-spacing: 0.4px; text-transform: uppercase;
+    }
+
+    /* Hide all interactive cruft */
+    .design-canvas-shell, .tweaks-panel-root, .dc-toolbar { display: none !important; }
+
+    /* In screen, ensure phones don't overflow the printable area */
+    @media screen {
+      body { padding: 20px 0; }
+      .page { box-shadow: 0 4px 20px rgba(0,0,0,0.12); margin: 0 auto 20px; }
+    }
+  </style>
+
+  <!-- React + Babel -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Design system + state -->
+  <script type="text/babel" src="app/ds.jsx"></script>
+  <script type="text/babel" src="app/app-state.jsx"></script>
+
+  <!-- Screens -->
+  <script type="text/babel" src="app/screens-auth.jsx"></script>
+  <script type="text/babel" src="app/screens-student.jsx"></script>
+  <script type="text/babel" src="app/screens-parent.jsx"></script>
+  <script type="text/babel" src="app/screens-teacher.jsx"></script>
+
+  <!-- Need NOOP_NAV from prototype.jsx -->
+  <script type="text/babel" src="app/prototype.jsx"></script>
+
+  <!-- Print entry -->
+  <script type="text/babel" src="app/main-print.jsx"></script>
+</body>
+</html>

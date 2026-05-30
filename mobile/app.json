@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Tamos Education",
+    "slug": "tamos-education",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "tamos",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#2A8847",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "kz.tamos.education"
+    },
+    "android": {
+      "package": "kz.tamos.education",
+      "adaptiveIcon": {
+        "backgroundColor": "#2A8847"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
