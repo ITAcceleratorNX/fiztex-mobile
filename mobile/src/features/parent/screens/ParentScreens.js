@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { View, Pressable, ScrollView } from 'react-native';
-import { useTheme } from '../theme/ThemeContext';
-import { Screen } from '../components/Screen';
-import { Txt } from '../components/Txt';
-import Icon from '../components/Icon';
-import { HexBadge } from '../components/Hex';
-import { Card, Pill, Avatar, PrimaryButton, AppHeader, ScreenHeader, SectionTitle, CircleButton } from '../components/ui';
-import { GradCard, GRAD } from '../components/Grad';
-import { useAppState } from '../state/AppState';
-import { PARENT, ATTENDANCE_LOG, FEEDBACK, TODAY_SCHEDULE, SUBJECTS_DIARY } from '../data/mock';
-import { LessonRow, SubjectRow, ProfileRow, QuickAction, brandColor, softColor } from './shared';
+import { useTheme } from '@shared/theme/ThemeContext';
+import { Screen } from '@shared/components/Screen';
+import { Txt } from '@shared/components/Txt';
+import Icon from '@shared/components/Icon';
+import { HexBadge } from '@shared/components/Hex';
+import { Card, Pill, Avatar, PrimaryButton, AppHeader, ScreenHeader, SectionTitle, CircleButton } from '@shared/components/ui';
+import { GradCard, GRAD } from '@shared/components/Grad';
+import { useAppState } from '@shared/state/AppState';
+import { PARENT, ATTENDANCE_LOG, FEEDBACK, TODAY_SCHEDULE, SUBJECTS_DIARY } from '@shared/data/mock';
+import { LessonRow, SubjectRow, ProfileRow, QuickAction, brandColor, softColor } from '@shared/ui/rows';
 
 const chunk = (arr, n) => arr.reduce((rows, item, i) => {
   if (i % n === 0) rows.push([]);

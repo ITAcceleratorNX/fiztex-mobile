@@ -1,12 +1,12 @@
 import React from 'react';
 import { View } from 'react-native';
 import Svg, { Rect, G } from 'react-native-svg';
-import { useTheme } from '../theme/ThemeContext';
-import { Txt } from '../components/Txt';
-import Icon from '../components/Icon';
-import { Hex, HexBadge } from '../components/Hex';
-import { Card, Pill } from '../components/ui';
-import { SUBJECT_COLORS } from '../data/mock';
+import { useTheme } from '@shared/theme/ThemeContext';
+import { Txt } from '@shared/components/Txt';
+import Icon from '@shared/components/Icon';
+import { Hex, HexBadge } from '@shared/components/Hex';
+import { Card, Pill } from '@shared/components/ui';
+import { SUBJECT_COLORS } from '@shared/data/mock';
 
 // Resolve a Tamos colour-name to a theme hex (falls back to muted ink).
 export function brandColor(c, name) {

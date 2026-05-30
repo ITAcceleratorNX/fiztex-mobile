@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { AuthWelcome, AuthSignIn, AuthFaceID, AuthRolePicker } from '../screens/auth';
+import { AuthWelcome, AuthSignIn, AuthFaceID, AuthRolePicker } from '@features/auth';
 import { StudentApp, ParentApp, TeacherApp } from './RoleNavigators';
 
 const Root = createNativeStackNavigator();

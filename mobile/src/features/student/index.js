@@ -1,0 +1,17 @@
+export {
+  StudentHome,
+  StudentSchedule,
+  StudentLesson,
+  StudentCheckoutQR,
+  StudentDiary,
+  StudentSubject,
+  StudentClubs,
+  StudentClub,
+  StudentTest,
+  StudentAITest,
+  StudentEvents,
+  StudentAchievements,
+  StudentMap,
+  StudentShop,
+  StudentProfile,
+} from './screens/StudentScreens';

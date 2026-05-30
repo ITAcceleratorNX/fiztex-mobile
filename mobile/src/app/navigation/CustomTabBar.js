@@ -1,10 +1,10 @@
 import React from 'react';
 import { View, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../theme/ThemeContext';
-import { Txt } from '../components/Txt';
-import Icon from '../components/Icon';
-import { shadowLg } from '../components/Screen';
+import { useTheme } from '@shared/theme/ThemeContext';
+import { Txt } from '@shared/components/Txt';
+import Icon from '@shared/components/Icon';
+import { shadowLg } from '@shared/components/Screen';
 
 // Floating capsule tab bar — port of the web `BottomTabs` design.
 export function CustomTabBar({ state, descriptors, navigation }) {

@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
 import { View } from 'react-native';
-import { useTheme } from '../theme/ThemeContext';
-import { Screen } from '../components/Screen';
-import { Txt } from '../components/Txt';
-import Icon from '../components/Icon';
-import { Hex, HexBadge, TamosGlyph } from '../components/Hex';
-import { Card, PrimaryButton, ScreenHeader } from '../components/ui';
-import { GradCard, GRAD } from '../components/Grad';
+import { useTheme } from '@shared/theme/ThemeContext';
+import { Screen } from '@shared/components/Screen';
+import { Txt } from '@shared/components/Txt';
+import Icon from '@shared/components/Icon';
+import { Hex, HexBadge, TamosGlyph } from '@shared/components/Hex';
+import { Card, PrimaryButton, ScreenHeader } from '@shared/components/ui';
+import { GradCard, GRAD } from '@shared/components/Grad';
 
 // Decorative hex cluster for the welcome hero.
 function HexCluster() {

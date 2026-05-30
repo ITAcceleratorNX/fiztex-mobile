@@ -3,19 +3,20 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { CustomTabBar } from './CustomTabBar';
 import { withNav } from './withNav';
-import { NotificationsScreen } from '../screens/misc';
+import { NotificationsScreen } from '@features/notifications';
 import {
   StudentHome, StudentSchedule, StudentLesson, StudentCheckoutQR, StudentDiary, StudentSubject,
   StudentClubs, StudentClub, StudentTest, StudentAITest, StudentEvents, StudentAchievements,
-  StudentHeroes, StudentMap, StudentShop, StudentProfile,
-} from '../screens/student';
+  StudentMap, StudentShop, StudentProfile,
+} from '@features/student';
+import { StudentHeroes } from '@features/journey';
 import {
   ParentHome, ParentAttendance, ParentGrades, ParentFeedback, ParentService, ParentProfile,
-} from '../screens/parent';
+} from '@features/parent';
 import {
   TeacherHome, TeacherClass, TeacherScanner, TeacherGradeEntry, TeacherAIUpload,
   TeacherFeedbackWrite, TeacherProfile,
-} from '../screens/teacher';
+} from '@features/teacher';
 
 const tabScreenOptions = { headerShown: false };
 const stackScreenOptions = { headerShown: false };
@@ -44,7 +45,7 @@ function StudentTabs() {
     <STab.Navigator tabBar={(p) => <CustomTabBar {...p} />} screenOptions={tabScreenOptions}>
       {renderTabs(STab, [
         { name: 'home', comp: StudentHome, label: 'Главная', icon: 'home' },
-        { name: 'heroes', comp: StudentHeroes, label: 'Heroes', icon: 'heroes' },
+        { name: 'heroes', comp: StudentHeroes, label: 'Путь', icon: 'heroes' },
         { name: 'test', comp: StudentTest, label: 'Учёба', icon: 'sparkle' },
         { name: 'profile', comp: StudentProfile, label: 'Я', icon: 'user' },
       ])}

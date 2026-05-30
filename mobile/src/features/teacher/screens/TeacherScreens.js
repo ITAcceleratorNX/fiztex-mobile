@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Pressable, ScrollView, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../theme/ThemeContext';
-import { Screen } from '../components/Screen';
-import { Txt, Ink } from '../components/Txt';
-import Icon from '../components/Icon';
-import { Hex, HexBadge } from '../components/Hex';
-import { Card, Pill, Avatar, PrimaryButton, AppHeader, ScreenHeader, SectionTitle, CircleButton } from '../components/ui';
-import { GradCard, GRAD } from '../components/Grad';
-import { useAppState } from '../state/AppState';
-import { TEACHER, CLASS_ROSTER, AI_QUESTIONS } from '../data/mock';
-import { LessonRow, ProfileRow, QuickAction, brandColor } from './shared';
+import { useTheme } from '@shared/theme/ThemeContext';
+import { Screen } from '@shared/components/Screen';
+import { Txt, Ink } from '@shared/components/Txt';
+import Icon from '@shared/components/Icon';
+import { Hex, HexBadge } from '@shared/components/Hex';
+import { Card, Pill, Avatar, PrimaryButton, AppHeader, ScreenHeader, SectionTitle, CircleButton } from '@shared/components/ui';
+import { GradCard, GRAD } from '@shared/components/Grad';
+import { useAppState } from '@shared/state/AppState';
+import { TEACHER, CLASS_ROSTER, AI_QUESTIONS } from '@shared/data/mock';
+import { LessonRow, ProfileRow, QuickAction, brandColor } from '@shared/ui/rows';
 
 const chunk = (arr, n) => arr.reduce((rows, item, i) => {
   if (i % n === 0) rows.push([]);

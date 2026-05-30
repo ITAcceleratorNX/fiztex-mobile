@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { View, Pressable } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { useTheme } from '../theme/ThemeContext';
-import { Screen, shadowLg } from '../components/Screen';
-import { Txt, Ink } from '../components/Txt';
-import Icon from '../components/Icon';
-import { Hex, HexBadge, TamosGlyph } from '../components/Hex';
-import { Card, Pill, Avatar, PrimaryButton, AppHeader, ScreenHeader, SectionTitle, CircleButton } from '../components/ui';
-import { GradCard, GRAD } from '../components/Grad';
-import { useAppState } from '../state/AppState';
+import { useTheme } from '@shared/theme/ThemeContext';
+import { Screen, shadowLg } from '@shared/components/Screen';
+import { Txt, Ink } from '@shared/components/Txt';
+import Icon from '@shared/components/Icon';
+import { Hex, HexBadge, TamosGlyph } from '@shared/components/Hex';
+import { Card, Pill, Avatar, PrimaryButton, AppHeader, ScreenHeader, SectionTitle, CircleButton } from '@shared/components/ui';
+import { GradCard, GRAD } from '@shared/components/Grad';
+import { useAppState } from '@shared/state/AppState';
 import {
   STUDENT,
   SUBJECT_COLORS,
@@ -21,8 +21,8 @@ import {
   AI_TESTS_AVAILABLE,
   AI_TESTS_DONE,
   AI_QUESTIONS,
-} from '../data/mock';
-import { LessonRow, SubjectRow, ProfileRow, QRMockup, brandColor } from './shared';
+} from '@shared/data/mock';
+import { LessonRow, SubjectRow, ProfileRow, QRMockup, brandColor } from '@shared/ui/rows';
 
 const chunk = (arr, n) => arr.reduce((rows, item, i) => {
   if (i % n === 0) rows.push([]);
@@ -953,82 +953,6 @@ export function StudentAchievements() {
             ))}
           </View>
         ))}
-      </View>
-    </Screen>
-  );
-}
-
-// ═══ HEROES ═══
-export function StudentHeroes() {
-  const { c } = useTheme();
-  const heroes = [
-    { name: 'Алия', color: 'red', tag: 'Лидер', level: 5, hp: 0.8, progress: 0.7 },
-    { name: 'Бату', color: 'green', tag: 'Учёный', level: 4, hp: 0.95, progress: 0.4 },
-    { name: 'Дана', color: 'blue', tag: 'Творец', level: 3, hp: 0.6, progress: 0.2 },
-  ];
-  return (
-    <Screen>
-      <ScreenHeader title="Heroes" large sub="Твоя команда героев Tamos" />
-
-      <GradCard colors={GRAD.blueScene} vertical style={{ marginHorizontal: 16, marginBottom: 18, borderRadius: 26 }} padding={18} contentStyle={{ height: 220 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <Pill style={{ backgroundColor: 'rgba(255,255,255,0.18)', color: '#fff' }}>Команда · Сезон 3</Pill>
-          <Pill style={{ backgroundColor: 'rgba(255,255,255,0.18)', color: '#fff' }}>
-            <Icon name="star" size={11} />
-            <Txt style={{ fontSize: 12, fontWeight: '600' }}> 248</Txt>
-          </Pill>
-        </View>
-        <View style={{ position: 'absolute', bottom: 18, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-end' }}>
-          {heroes.map((h, i) => (
-            <View key={i} style={{ marginLeft: i ? -12 : 0, transform: [{ translateY: i === 1 ? -12 : 0 }] }}>
-              <HexBadge size={86} fill={brandColor(c, h.color)}>
-                <Txt style={{ color: '#fff', fontWeight: '800', fontSize: 26 }}>{h.name[0]}</Txt>
-              </HexBadge>
-              <View style={{ position: 'absolute', bottom: -4, alignSelf: 'center', backgroundColor: c.gold, borderRadius: 999, paddingVertical: 2, paddingHorizontal: 6 }}>
-                <Txt style={{ color: '#14110D', fontSize: 10, fontWeight: '800' }}>LVL {h.level}</Txt>
-              </View>
-            </View>
-          ))}
-        </View>
-      </GradCard>
-
-      <SectionTitle title="Твои герои" />
-      <View style={{ gap: 8, marginHorizontal: 16, marginBottom: 18 }}>
-        {heroes.map((h, i) => (
-          <Card key={i} style={{ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-            <HexBadge size={52} fill={brandColor(c, h.color)}>
-              <Txt style={{ color: '#fff', fontWeight: '800', fontSize: 20 }}>{h.name[0]}</Txt>
-            </HexBadge>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Txt style={{ fontSize: 15, fontWeight: '700' }}>{h.name}</Txt>
-                <Pill color={h.color}>{h.tag}</Pill>
-              </View>
-              <View style={{ marginTop: 8, height: 5, backgroundColor: c.bg2, borderRadius: 999, overflow: 'hidden' }}>
-                <View style={{ width: `${h.progress * 100}%`, height: '100%', backgroundColor: brandColor(c, h.color) }} />
-              </View>
-              <Txt style={{ fontSize: 11, color: c.ink3, marginTop: 4 }}>До уровня {h.level + 1} · {Math.round((1 - h.progress) * 100)}%</Txt>
-            </View>
-            <Icon name="chevronRight" size={18} color={c.ink3} />
-          </Card>
-        ))}
-      </View>
-
-      <SectionTitle title="Сезонные квесты" />
-      <View style={{ gap: 8, marginHorizontal: 16, marginBottom: 100 }}>
-        <Card style={{ padding: 14 }}>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <HexBadge size={44} fill={c.goldDeep} icon="target" iconColor="#fff" iconSize={20} />
-            <View style={{ flex: 1 }}>
-              <Txt style={{ fontSize: 14, fontWeight: '700' }}>Без пропусков 5 дней</Txt>
-              <Txt style={{ fontSize: 12, color: c.ink2, marginTop: 2 }}>Награда: герой получит +1 уровень</Txt>
-              <View style={{ marginTop: 8, height: 5, backgroundColor: c.bg2, borderRadius: 999, overflow: 'hidden' }}>
-                <View style={{ width: '60%', height: '100%', backgroundColor: c.goldDeep }} />
-              </View>
-              <Txt style={{ fontSize: 11, color: c.ink3, marginTop: 4 }}>3 / 5 дней</Txt>
-            </View>
-          </View>
-        </Card>
       </View>
     </Screen>
   );

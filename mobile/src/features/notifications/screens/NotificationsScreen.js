@@ -1,11 +1,11 @@
 import React from 'react';
 import { View } from 'react-native';
-import { useTheme } from '../theme/ThemeContext';
-import { Screen } from '../components/Screen';
-import { Txt } from '../components/Txt';
-import { HexBadge } from '../components/Hex';
-import { Card, ScreenHeader } from '../components/ui';
-import { useAppState } from '../state/AppState';
+import { useTheme } from '@shared/theme/ThemeContext';
+import { Screen } from '@shared/components/Screen';
+import { Txt } from '@shared/components/Txt';
+import { HexBadge } from '@shared/components/Hex';
+import { Card, ScreenHeader } from '@shared/components/ui';
+import { useAppState } from '@shared/state/AppState';
 
 // Lightweight notifications placeholder (bell target for parent/teacher).
 export function NotificationsScreen({ nav }) {
