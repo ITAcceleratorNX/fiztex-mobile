@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import Svg, { Polygon, Rect, Defs, Pattern } from 'react-native-svg';
-import { TAMOS } from '../theme/tokens';
+import { FIZTEX } from '../theme/tokens';
 import Icon from './Icon';
 
 // Pointy-top regular hexagon (viewBox 100x100). Port of web `Hex`.
@@ -23,7 +23,7 @@ export function Hex({ size = 24, fill = '#14110D', stroke, strokeWidth = 0, styl
 // web pattern of an absolutely-positioned <Icon> over a <Hex>.
 export function HexBadge({
   size = 44,
-  fill = TAMOS.green,
+  fill = FIZTEX.green,
   stroke,
   strokeWidth = 0,
   icon,
@@ -44,8 +44,8 @@ export function HexBadge({
   );
 }
 
-// Tamos identity glyph — abstracted 4-hex cluster from the logo.
-export function TamosGlyph({ size = 40, style }) {
+// Fiztex identity glyph — abstracted 4-hex cluster from the logo.
+export function FiztexGlyph({ size = 40, style }) {
   const s = size;
   const dot = s * 0.46;
   const hex = (left, top, color, key) => (
@@ -55,9 +55,9 @@ export function TamosGlyph({ size = 40, style }) {
   );
   return (
     <View style={[{ width: s, height: s }, style]}>
-      {hex(s * 0.0, s * 0.1, TAMOS.green, 'g')}
-      {hex(s * 0.4, s * 0.0, TAMOS.red, 'r')}
-      {hex(s * 0.27, s * 0.42, TAMOS.blue, 'b')}
+      {hex(s * 0.0, s * 0.1, FIZTEX.green, 'g')}
+      {hex(s * 0.4, s * 0.0, FIZTEX.red, 'r')}
+      {hex(s * 0.27, s * 0.42, FIZTEX.blue, 'b')}
       {hex(s * 0.54, s * 0.42, '#fff', 'w')}
     </View>
   );

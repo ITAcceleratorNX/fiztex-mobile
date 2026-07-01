@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "Tamos Education",
-    "slug": "tamos-education",
+    "name": "fiztex",
+    "slug": "fiztex",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "tamos",
+    "scheme": "fiztex",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -13,14 +13,22 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "kz.tamos.education"
+      "bundleIdentifier": "kz.fiztex.app"
     },
     "android": {
-      "package": "kz.tamos.education",
+      "package": "kz.fiztex.app",
       "adaptiveIcon": {
         "backgroundColor": "#2A8847"
       }
     },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Камера нужна для фото-ответов на вступительном тесте."
+        }
+      ]
+    ],
     "web": {
       "bundler": "metro"
     }

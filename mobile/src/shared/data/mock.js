@@ -1,4 +1,4 @@
-// Demo data for the Tamos prototype — ported verbatim from the web screens.
+// Demo data for the Fiztex prototype — ported verbatim from the web screens.
 
 export const STUDENT = {
   name: 'Айкоркем С.',
@@ -65,7 +65,7 @@ export const ACHIEVEMENTS = [
 
 export const EVENTS = [
   { name: 'Открытый урок: робототехника', date: '2 июня', time: '15:00', tag: 'Учебный', color: 'blue', going: true, vip: false },
-  { name: 'Зимний концерт Tamos', date: '14 июня', time: '18:00', tag: 'Концерт', color: 'red', going: false, vip: false },
+  { name: 'Зимний концерт fiztex', date: '14 июня', time: '18:00', tag: 'Концерт', color: 'red', going: false, vip: false },
   { name: 'Гала-ужин для родителей', date: '20 июня', time: '19:00', tag: 'VIP', color: 'gold', going: false, vip: true },
   { name: 'Спортивный день', date: '25 июня', time: '10:00', tag: 'Спорт', color: 'green', going: true, vip: false },
 ];

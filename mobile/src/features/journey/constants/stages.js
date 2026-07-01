@@ -161,4 +161,4 @@ export function getInitialProgress() {
   };
 }
 
-export const STORAGE_KEY = '@tamos_journey_progress';
+export const STORAGE_KEY = '@fiztex_journey_progress';

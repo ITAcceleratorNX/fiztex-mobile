@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { useTheme } from '@shared/theme/ThemeContext';
-import { TAMOS } from '@shared/theme/tokens';
+import { FIZTEX } from '@shared/theme/tokens';
 
-/** Semantic journey colours derived from the Tamos design system. */
+/** Semantic journey colours derived from the Fiztex design system. */
 export function journeyPalette(c) {
   return {
     green: c.green,
@@ -59,5 +59,5 @@ export const theme = journeyPalette({
   greenSoft: '#E5F1E6',
   blueSoft: '#E4E9F4',
   goldSoft: '#FBEFCF',
-  ...TAMOS,
+  ...FIZTEX,
 });

@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useMemo, useState } from 'react';
 import { useColorScheme } from 'react-native';
-import { TAMOS } from './tokens';
+import { FIZTEX } from './tokens';
 
 // Light + dark palettes — direct port of the CSS variables from the web `ds.jsx`
-// (`.tamos-root` / `.tamos-root.dark`). Brand colours are merged in so screens
-// can read `c.green`, `c.goldDeep`, etc., replacing `var(--tamos-*)`.
+// (`.fiztex-root` / `.fiztex-root.dark`). Brand colours are merged in so screens
+// can read `c.green`, `c.goldDeep`, etc., replacing `var(--fiztex-*)`.
 const light = {
   bg: '#F6F4EE',
   bg2: '#ECEAE2',
@@ -19,7 +19,7 @@ const light = {
   blueSoft: '#E4E9F4',
   redSoft: '#F6E3E0',
   goldSoft: '#FBEFCF',
-  ...TAMOS,
+  ...FIZTEX,
 };
 
 const dark = {
@@ -36,7 +36,7 @@ const dark = {
   blueSoft: '#1C2541',
   redSoft: '#3A1F1C',
   goldSoft: '#3A2D14',
-  ...TAMOS,
+  ...FIZTEX,
 };
 
 const ThemeCtx = createContext(null);

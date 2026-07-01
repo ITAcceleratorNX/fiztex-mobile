@@ -10,7 +10,8 @@ import { Onest_600SemiBold } from '@expo-google-fonts/onest/600SemiBold';
 import { Onest_700Bold } from '@expo-google-fonts/onest/700Bold';
 import { Onest_800ExtraBold } from '@expo-google-fonts/onest/800ExtraBold';
 import { ThemeProvider, useTheme } from '@shared/theme/ThemeContext';
-import { TamosAppStateProvider } from '@shared/state/AppState';
+import { FiztexAppStateProvider } from '@shared/state/AppState';
+import { EntranceProvider } from '@features/entrance';
 import { RootNavigator } from '@app/navigation/RootNavigator';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -30,12 +31,14 @@ function Inner() {
     },
   };
   return (
-    <TamosAppStateProvider>
-      <NavigationContainer theme={navTheme}>
-        <StatusBar style={dark ? 'light' : 'dark'} />
-        <RootNavigator />
-      </NavigationContainer>
-    </TamosAppStateProvider>
+    <FiztexAppStateProvider>
+      <EntranceProvider>
+        <NavigationContainer theme={navTheme}>
+          <StatusBar style={dark ? 'light' : 'dark'} />
+          <RootNavigator />
+        </NavigationContainer>
+      </EntranceProvider>
+    </FiztexAppStateProvider>
   );
 }
 

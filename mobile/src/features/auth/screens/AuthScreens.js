@@ -4,7 +4,7 @@ import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
-import { Hex, HexBadge, TamosGlyph } from '@shared/components/Hex';
+import { Hex, HexBadge, FiztexGlyph } from '@shared/components/Hex';
 import { Card, PrimaryButton, ScreenHeader } from '@shared/components/ui';
 import { GradCard, GRAD } from '@shared/components/Grad';
 
@@ -32,17 +32,14 @@ function HexCluster() {
   );
 }
 
-export function AuthWelcome({ onContinue }) {
+export function AuthWelcome({ onContinue, onEntrance }) {
   const { c } = useTheme();
   return (
     <Screen scroll={false}>
       <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 40 }}>
         <View style={{ alignItems: 'center', marginTop: 20 }}>
-          <TamosGlyph size={84} />
-          <Txt style={{ marginTop: 22, fontSize: 38, fontWeight: '800', letterSpacing: -1, color: c.ink }}>Tamos</Txt>
-          <Txt style={{ marginTop: 4, fontSize: 12, fontWeight: '600', letterSpacing: 4, color: c.ink3, textTransform: 'uppercase' }}>
-            education · international
-          </Txt>
+          <FiztexGlyph size={84} />
+          <Txt style={{ marginTop: 22, fontSize: 38, fontWeight: '800', letterSpacing: -1, color: c.ink }}>fiztex</Txt>
         </View>
 
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -58,6 +55,11 @@ export function AuthWelcome({ onContinue }) {
 
         <View style={{ paddingBottom: 24 }}>
           <PrimaryButton color="green" onPress={onContinue}>Войти</PrimaryButton>
+          {onEntrance ? (
+            <PrimaryButton color="blue" style={{ marginTop: 10 }} onPress={onEntrance}>
+              Вступительный тест
+            </PrimaryButton>
+          ) : null}
           <Txt style={{ marginTop: 12, fontSize: 13, color: c.ink3, textAlign: 'center' }}>
             Нет аккаунта? <Txt style={{ color: c.green, fontWeight: '600' }}>Спросите у школы</Txt>
           </Txt>

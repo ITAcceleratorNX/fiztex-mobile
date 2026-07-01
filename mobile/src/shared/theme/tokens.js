@@ -1,5 +1,5 @@
-// Tamos brand colours — from the school logo (hexagonal mosaic red/green/blue/gold).
-export const TAMOS = {
+// Fiztex brand colours — from the school logo (hexagonal mosaic red/green/blue/gold).
+export const FIZTEX = {
   green: '#2A8847',
   greenDeep: '#1B6B36',
   blue: '#2C4A9E',
@@ -19,7 +19,7 @@ export const FONT = {
   extrabold: 'Onest_800ExtraBold',
 };
 
-// Map a Tamos colour name ("green" | "blue" | "red" | "gold") to its hex.
+// Map a Fiztex colour name ("green" | "blue" | "red" | "gold") to its hex.
 export function brand(name) {
-  return TAMOS[name] || TAMOS.green;
+  return FIZTEX[name] || FIZTEX.green;
 }

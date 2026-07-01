@@ -1,6 +1,6 @@
-# Tamos Education — мобильное приложение (React Native + Expo)
+# fiztex — мобильное приложение (React Native + Expo)
 
-Перенос веб-прототипа Tamos Education на React Native. Сборщик — Metro (встроен в Expo).
+Перенос веб-прототипа fiztex на React Native. Сборщик — Metro (встроен в Expo).
 Три роли: ученик, родитель, учитель. Навигация — React Navigation (стек авторизации + вкладки по роли).
 
 ## Требования
@@ -33,14 +33,30 @@ npx expo install --fix
 mobile/
   App.js                      точка входа: шрифты + темы + состояние + навигация
   src/
-    theme/tokens.js           бренд-цвета Tamos
+    theme/tokens.js           бренд-цвета Fiztex
     theme/ThemeContext.js     light/dark палитры (замена CSS-переменных), useTheme()
     data/mock.js              демо-данные (расписание, предметы, кружки, ивенты и т.д.)
     state/AppState.js         глобальное состояние прототипа (ДЗ, кружки, звёзды, тосты)
     components/               дизайн-система (Hex, Icon, Card, Pill, Avatar, кнопки, шапки)
     navigation/               RootNavigator + вкладки и стеки по ролям
     screens/                  экраны: auth / student / parent / teacher
+    features/entrance/        вступительные тесты (код → тест → результат)
 ```
+
+## Вступительные тесты
+
+На welcome-экране кнопка **«Вступительный тест»**. Flow:
+
+1. Ввод персонального кода → `POST /api/entrance/auth`
+2. Подтверждение данных и правил → `POST /api/entrance/start`
+3. Прохождение с таймером, античит-логами, фото-ответами
+4. Экран «завершено» (результат не сразу)
+5. Просмотр результата по коду после проверки школой
+
+Бэкенд по умолчанию: `http://localhost:8080` (iOS) / `http://10.0.2.2:8080` (Android).
+Переопределение: `EXPO_PUBLIC_API_URL=http://192.168.x.x:8080`.
+
+Перед тестом запустите бэкенд: `cd fiztex-back && ./gradlew bootRun`.
 
 ## Темы
 
@@ -52,4 +68,3 @@ mobile/
 - CSS-переменные заменены палитрой темы через `useTheme()`.
 - Градиенты — `expo-linear-gradient`. Шрифт Onest — `@expo-google-fonts/onest`.
 - Кастомная стековая навигация прототипа отображена на React Navigation.
-```

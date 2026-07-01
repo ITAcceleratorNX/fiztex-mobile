@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { Card, CircleButton, Pill } from '@shared/components/ui';
-import { TamosGlyph } from '@shared/components/Hex';
+import { FiztexGlyph } from '@shared/components/Hex';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { useJourney } from '../context/JourneyContext';
 
@@ -32,11 +32,11 @@ export function JourneyHeader() {
         <View style={styles.topRow}>
           <View style={styles.brandRow}>
             <View style={[styles.glyphWrap, { backgroundColor: c.surface2, borderColor: c.border }]}>
-              <TamosGlyph size={36} />
+              <FiztexGlyph size={36} />
             </View>
             <View>
               <Txt style={{ fontSize: 11, fontWeight: '600', color: c.ink3, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                Tamos Education
+                fiztex
               </Txt>
               <Txt style={{ fontSize: 18, fontWeight: '700', letterSpacing: -0.3, marginTop: 1 }}>
                 Путь героя

@@ -8,7 +8,7 @@ import { Hex, HexBadge } from '@shared/components/Hex';
 import { Card, Pill } from '@shared/components/ui';
 import { SUBJECT_COLORS } from '@shared/data/mock';
 
-// Resolve a Tamos colour-name to a theme hex (falls back to muted ink).
+// Resolve a Fiztex colour-name to a theme hex (falls back to muted ink).
 export function brandColor(c, name) {
   return {
     green: c.green,
