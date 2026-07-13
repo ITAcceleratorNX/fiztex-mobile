@@ -1,10 +1,10 @@
 import React from 'react';
-import { View, Pressable, TextInput, Image } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+import { View, Pressable, TextInput } from 'react-native';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { Card, Pill } from '@shared/components/ui';
 import { useTheme } from '@shared/theme/ThemeContext';
+import { PhotoAnswerBlock } from './PhotoAnswerBlock';
 
 function OptionRow({ label, selected, onPress, multi }) {
   const { c } = useTheme();
@@ -42,11 +42,18 @@ function OptionRow({ label, selected, onPress, multi }) {
   );
 }
 
-export function QuestionBody({ question, value, onChange }) {
+export function QuestionBody({
+  question,
+  value,
+  onChange,
+  onPhotosChange,
+  photoProps,
+}) {
   const { c } = useTheme();
   if (!question) return null;
 
   const type = question.type;
+  const photos = value?.photos || [];
 
   if (type === 'SINGLE_CHOICE') {
     const selected = value?.selectedOptionIds?.[0];
@@ -57,9 +64,26 @@ export function QuestionBody({ question, value, onChange }) {
             key={opt.id}
             label={opt.text}
             selected={selected === opt.id}
-            onPress={() => onChange({ selectedOptionIds: [opt.id] })}
+            onPress={() =>
+              onChange({
+                selectedOptionIds: [opt.id],
+                openTextAnswer: value?.openTextAnswer || '',
+                photos,
+              })
+            }
           />
         ))}
+        {question.allowPhoto && photoProps ? (
+          <PhotoAnswerBlock
+            {...photoProps}
+            photos={photos}
+            onPhotosChange={(next) => onPhotosChange?.(next) ?? onChange({
+                selectedOptionIds: value?.selectedOptionIds || [],
+                openTextAnswer: value?.openTextAnswer || '',
+                photos: next,
+              })}
+          />
+        ) : null}
       </View>
     );
   }
@@ -68,7 +92,7 @@ export function QuestionBody({ question, value, onChange }) {
     const selected = value?.selectedOptionIds || [];
     const toggle = (id) => {
       const next = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
-      onChange({ selectedOptionIds: next });
+      onChange({ selectedOptionIds: next, openTextAnswer: value?.openTextAnswer || '', photos });
     };
     return (
       <View>
@@ -82,6 +106,17 @@ export function QuestionBody({ question, value, onChange }) {
             onPress={() => toggle(opt.id)}
           />
         ))}
+        {question.allowPhoto && photoProps ? (
+          <PhotoAnswerBlock
+            {...photoProps}
+            photos={photos}
+            onPhotosChange={(next) => onPhotosChange?.(next) ?? onChange({
+                selectedOptionIds: value?.selectedOptionIds || [],
+                openTextAnswer: value?.openTextAnswer || '',
+                photos: next,
+              })}
+          />
+        ) : null}
       </View>
     );
   }
@@ -91,7 +126,9 @@ export function QuestionBody({ question, value, onChange }) {
       <View style={{ gap: 12 }}>
         <TextInput
           value={value?.openTextAnswer || ''}
-          onChangeText={(t) => onChange({ openTextAnswer: t, photoUrl: value?.photoUrl })}
+          onChangeText={(t) =>
+            onChange({ openTextAnswer: t, selectedOptionIds: value?.selectedOptionIds || [], photos })
+          }
           placeholder="Введите развёрнутый ответ…"
           placeholderTextColor={c.ink3}
           multiline
@@ -107,56 +144,45 @@ export function QuestionBody({ question, value, onChange }) {
             textAlignVertical: 'top',
           }}
         />
-        {question.allowPhoto ? <PhotoAttach value={value} onChange={onChange} /> : null}
+        {question.allowPhoto && photoProps ? (
+          <PhotoAnswerBlock
+            {...photoProps}
+            photos={photos}
+            onPhotosChange={(next) =>
+              onPhotosChange?.(next) ??
+              onChange({
+                openTextAnswer: value?.openTextAnswer || '',
+                selectedOptionIds: value?.selectedOptionIds || [],
+                photos: next,
+              })
+            }
+          />
+        ) : null}
       </View>
     );
   }
 
   if (type === 'PHOTO') {
-    return <PhotoAttach value={value} onChange={onChange} required />;
+    if (!question.allowPhoto) {
+      return (
+        <Txt style={{ fontSize: 14, color: c.goldDeep }}>
+          Этот вопрос настроен некорректно. Обратитесь к сотруднику школы.
+        </Txt>
+      );
+    }
+    return photoProps ? (
+      <PhotoAnswerBlock
+        {...photoProps}
+        photos={photos}
+        onPhotosChange={(next) =>
+          onPhotosChange?.(next) ??
+          onChange({ selectedOptionIds: [], openTextAnswer: '', photos: next })
+        }
+      />
+    ) : null;
   }
 
   return <Txt style={{ color: c.ink2 }}>Тип вопроса не поддерживается</Txt>;
-}
-
-function PhotoAttach({ value, onChange, required }) {
-  const { c } = useTheme();
-  const pick = async () => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) return;
-    const res = await ImagePicker.launchCameraAsync({ quality: 0.7, allowsEditing: true });
-    if (!res.canceled && res.assets?.[0]) {
-      onChange({ photoUrl: res.assets[0].uri, openTextAnswer: value?.openTextAnswer || '' });
-    }
-  };
-
-  return (
-    <View style={{ gap: 12 }}>
-      {value?.photoUrl ? (
-        <Image source={{ uri: value.photoUrl }} style={{ width: '100%', height: 200, borderRadius: 16 }} resizeMode="cover" />
-      ) : null}
-      <Pressable
-        onPress={pick}
-        style={{
-          height: 54,
-          borderRadius: 16,
-          borderWidth: 1.5,
-          borderColor: c.blue,
-          borderStyle: 'dashed',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'row',
-          gap: 8,
-          backgroundColor: c.blueSoft,
-        }}
-      >
-        <Icon name="camera" size={20} color={c.blue} />
-        <Txt style={{ color: c.blue, fontWeight: '600' }}>
-          {value?.photoUrl ? 'Переснять фото' : required ? 'Сделать фото ответа *' : 'Прикрепить фото'}
-        </Txt>
-      </Pressable>
-    </View>
-  );
 }
 
 export function QuestionMeta({ question }) {
@@ -165,7 +191,28 @@ export function QuestionMeta({ question }) {
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
       {question.topic ? <Pill color="blue">{question.topic}</Pill> : null}
       {question.difficulty ? <Pill color="gray">{question.difficulty}</Pill> : null}
-      <Pill color="gold">{question.maxScore} б.</Pill>
+      {question.maxScore ? <Pill color="gold">{question.maxScore} б.</Pill> : null}
+    </View>
+  );
+}
+
+export function SaveStatusChip({ status, onRetry }) {
+  const { c } = useTheme();
+  if (status === 'idle') return null;
+  if (status === 'saving') {
+    return <Txt style={{ fontSize: 12, color: c.ink3 }}>Сохранение…</Txt>;
+  }
+  if (status === 'saved') {
+    return <Txt style={{ fontSize: 12, color: c.green, fontWeight: '600' }}>Сохранено</Txt>;
+  }
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <Txt style={{ fontSize: 12, color: c.red, fontWeight: '600' }}>Не сохранено — проверьте интернет</Txt>
+      {onRetry ? (
+        <Pressable onPress={onRetry}>
+          <Txt style={{ fontSize: 12, color: c.blue, fontWeight: '700' }}>Повторить</Txt>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
