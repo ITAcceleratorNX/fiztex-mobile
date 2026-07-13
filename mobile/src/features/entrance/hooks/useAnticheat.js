@@ -2,41 +2,33 @@ import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import * as ScreenCapture from 'expo-screen-capture';
 
-const SUSPICIOUS = {
-  APP_BACKGROUND: 'APP_BACKGROUND',
-  RE_ENTRY: 'RE_ENTRY',
-  SCREENSHOT_ATTEMPT: 'SCREENSHOT_ATTEMPT',
-  WINDOW_BLUR: 'WINDOW_BLUR',
-};
-
-export function useAnticheat({ enabled, onEvent, onPrivacy }) {
+/** Mobile anti-cheat — maps AppState to admissions event types (section 12). */
+export function useAnticheat({ enabled, attemptId, onLogEvent, onPrivacy }) {
   const appState = useRef(AppState.currentState);
   const wasBackground = useRef(false);
 
   useEffect(() => {
-    if (!enabled) return undefined;
+    if (!enabled || !attemptId) return undefined;
 
     ScreenCapture.preventScreenCaptureAsync().catch(() => {});
 
     const screenshotSub = ScreenCapture.addScreenshotListener(() => {
-      onEvent?.(SUSPICIOUS.SCREENSHOT_ATTEMPT, 'Screenshot detected');
+      onLogEvent?.('tab_switch', 'screenshot detected');
     });
 
     const sub = AppState.addEventListener('change', (next) => {
       if (appState.current.match(/active/) && next.match(/inactive|background/)) {
         wasBackground.current = true;
+        // Fire before privacy overlay; keepalive helps the request survive app backgrounding.
+        onLogEvent?.('app_background', `state:${next}`, true);
         onPrivacy?.(true);
-        onEvent?.(SUSPICIOUS.APP_BACKGROUND, `App state: ${next}`);
       }
       if (appState.current.match(/inactive|background/) && next === 'active') {
         onPrivacy?.(false);
         if (wasBackground.current) {
-          onEvent?.(SUSPICIOUS.RE_ENTRY, 'Returned to test after background');
+          onLogEvent?.('focus_returned', 'returned from background');
           wasBackground.current = false;
         }
-      }
-      if (next === 'inactive') {
-        onEvent?.(SUSPICIOUS.WINDOW_BLUR, 'App inactive');
       }
       appState.current = next;
     });
@@ -46,7 +38,5 @@ export function useAnticheat({ enabled, onEvent, onPrivacy }) {
       screenshotSub?.remove?.();
       ScreenCapture.allowScreenCaptureAsync().catch(() => {});
     };
-  }, [enabled, onEvent, onPrivacy]);
+  }, [enabled, attemptId, onLogEvent, onPrivacy]);
 }
-
-export { SUSPICIOUS };

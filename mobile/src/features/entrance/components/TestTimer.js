@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { Txt } from '@shared/components/Txt';
 import { useTheme } from '@shared/theme/ThemeContext';
@@ -6,35 +6,57 @@ import { useTheme } from '@shared/theme/ThemeContext';
 function formatTime(sec) {
   const m = Math.floor(sec / 60);
   const s = sec % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-export function TestTimer({ durationMinutes, startedAt, onExpire }) {
+/** Backend-driven timer: parent syncs deadline via remainingSeconds after each save. */
+export function TestTimer({ remainingSeconds, durationMinutes, onExpire, onLowTime }) {
   const { c } = useTheme();
-  const totalSec = (durationMinutes || 45) * 60;
-  const [left, setLeft] = useState(totalSec);
+  const deadlineRef = useRef(Date.now() + (remainingSeconds || 0) * 1000);
+  const expiredRef = useRef(false);
+  const [left, setLeft] = useState(remainingSeconds || 0);
+
+  const warnThreshold = (durationMinutes || 0) >= 10 ? 600 : 60;
+  const lowTime = left <= warnThreshold && left > 0;
 
   useEffect(() => {
-    if (!startedAt) return undefined;
+    deadlineRef.current = Date.now() + (remainingSeconds || 0) * 1000;
+    expiredRef.current = false;
+  }, [remainingSeconds]);
+
+  useEffect(() => {
+    onLowTime?.(lowTime);
+  }, [lowTime, onLowTime]);
+
+  useEffect(() => {
     const tick = () => {
-      const elapsed = Math.floor((Date.now() - startedAt) / 1000);
-      const remaining = Math.max(0, totalSec - elapsed);
-      setLeft(remaining);
-      if (remaining === 0) onExpire?.();
+      const secondsLeft = Math.max(0, Math.round((deadlineRef.current - Date.now()) / 1000));
+      setLeft(secondsLeft);
+      if (secondsLeft <= 0 && !expiredRef.current) {
+        expiredRef.current = true;
+        onExpire?.();
+      }
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [startedAt, totalSec, onExpire]);
+  }, [onExpire]);
 
-  const urgent = left < 300;
+  const totalSec = (durationMinutes || 45) * 60;
   const pct = totalSec > 0 ? (left / totalSec) * 100 : 0;
 
   return (
     <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <Txt style={{ fontSize: 13, color: c.ink2, fontWeight: '600' }}>Осталось времени</Txt>
-        <Txt style={{ fontSize: 22, fontWeight: '800', color: urgent ? c.red : c.ink, fontVariant: ['tabular-nums'] }}>
+        <Txt
+          style={{
+            fontSize: 22,
+            fontWeight: '800',
+            color: lowTime ? c.red : c.ink,
+            fontVariant: ['tabular-nums'],
+          }}
+        >
           {formatTime(left)}
         </Txt>
       </View>
@@ -43,7 +65,7 @@ export function TestTimer({ durationMinutes, startedAt, onExpire }) {
           style={{
             height: '100%',
             width: `${pct}%`,
-            backgroundColor: urgent ? c.red : c.green,
+            backgroundColor: lowTime ? c.red : c.green,
             borderRadius: 999,
           }}
         />
