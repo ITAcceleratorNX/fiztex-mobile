@@ -5,7 +5,7 @@ import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen, shadowLg } from '@shared/components/Screen';
 import { Txt, Ink } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
-import { Hex, HexBadge, FiztexGlyph } from '@shared/components/Hex';
+import { HexBadge, FiztexMark } from '@shared/components/Hex';
 import { Card, Pill, Avatar, PrimaryButton, AppHeader, ScreenHeader, SectionTitle, CircleButton } from '@shared/components/ui';
 import { GradCard, GRAD } from '@shared/components/Grad';
 import { useAppState } from '@shared/state/AppState';
@@ -291,8 +291,8 @@ export function StudentCheckoutQR({ nav }) {
 
         <View style={[{ marginTop: 24, marginBottom: 16, width: 240, height: 240, padding: 18, backgroundColor: '#fff', borderRadius: 26, alignItems: 'center', justifyContent: 'center' }, shadowLg]}>
           <QRMockup size={204} />
-          <View style={{ position: 'absolute', width: 48, height: 48 }}>
-            <FiztexGlyph size={48} />
+          <View style={{ position: 'absolute', width: 48, height: 48, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
+            <FiztexMark size={30} color={c.blue} />
           </View>
         </View>
 
@@ -554,7 +554,7 @@ function HomeworkRow({ hw, state }) {
       </Pressable>
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Hex size={18} fill={brandColor(c, hw.color)} />
+          <View style={{ width: 14, height: 14, borderRadius: 5, backgroundColor: brandColor(c, hw.color) }} />
           <Txt style={{ fontSize: 12, fontWeight: '600', color: c.ink3 }}>{hw.subject}</Txt>
         </View>
         <Txt
@@ -928,16 +928,16 @@ export function StudentAchievements() {
   return (
     <Screen>
       <ScreenHeader title="Достижения" large sub={`Уровень ${STUDENT.level} · ${STUDENT.levelTitle}`} />
-      <GradCard colors={GRAD.gold} ink="#14110D" patternColor="rgba(20,17,13,0.10)" patternSize={24} style={{ marginHorizontal: 16, marginTop: 4, marginBottom: 18 }} padding={18}>
+      <GradCard colors={GRAD.gold} ink="#0F172A" patternColor="rgba(20,17,13,0.10)" patternSize={24} style={{ marginHorizontal: 16, marginTop: 4, marginBottom: 18 }} padding={18}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
           <HexBadge size={64} fill="rgba(20,17,13,0.18)">
-            <Txt style={{ fontSize: 26, fontWeight: '800', color: '#14110D' }}>{STUDENT.level}</Txt>
+            <Txt style={{ fontSize: 26, fontWeight: '800', color: '#0F172A' }}>{STUDENT.level}</Txt>
           </HexBadge>
           <View style={{ flex: 1 }}>
             <Txt style={{ fontSize: 12, fontWeight: '600', letterSpacing: 0.3, textTransform: 'uppercase', opacity: 0.7 }}>Твой уровень</Txt>
             <Txt style={{ fontSize: 18, fontWeight: '700', marginTop: 2 }}>{STUDENT.levelTitle}</Txt>
             <View style={{ marginTop: 8, height: 8, backgroundColor: 'rgba(20,17,13,0.15)', borderRadius: 999, overflow: 'hidden' }}>
-              <View style={{ width: `${STUDENT.levelProgress * 100}%`, height: '100%', backgroundColor: '#14110D' }} />
+              <View style={{ width: `${STUDENT.levelProgress * 100}%`, height: '100%', backgroundColor: '#0F172A' }} />
             </View>
             <Txt style={{ fontSize: 11, marginTop: 4, fontWeight: '600' }}>120 ★ до уровня 8</Txt>
           </View>
@@ -989,7 +989,17 @@ export function StudentMap() {
         </Svg>
         {rooms.map((r) => (
           <View key={r.id} style={{ position: 'absolute', left: r.x, top: r.y, width: r.size, height: r.size, alignItems: 'center', justifyContent: 'center' }}>
-            <Hex size={r.size} fill={r.active ? brandColor(c, r.color) : c.surface2} stroke={r.active ? 'transparent' : brandColor(c, r.color)} strokeWidth={r.active ? 0 : 3} style={{ position: 'absolute' }} />
+            <View
+              style={{
+                position: 'absolute',
+                width: r.size,
+                height: r.size,
+                borderRadius: Math.round(r.size * 0.3),
+                backgroundColor: r.active ? brandColor(c, r.color) : c.surface2,
+                borderColor: r.active ? 'transparent' : brandColor(c, r.color),
+                borderWidth: r.active ? 0 : 3,
+              }}
+            />
             <Txt style={{ fontSize: 16, fontWeight: '800', color: r.active ? '#fff' : brandColor(c, r.color) }}>{r.id}</Txt>
             <Txt style={{ fontSize: 8, fontWeight: '600', opacity: 0.8, color: r.active ? '#fff' : brandColor(c, r.color) }}>{r.subject}</Txt>
           </View>
@@ -1095,7 +1105,7 @@ export function StudentProfile({ nav, onSignOut }) {
         <View>
           <Avatar name={STUDENT.name} size={86} color="green" />
           <View style={{ position: 'absolute', bottom: -2, right: -2, width: 28, height: 28, borderRadius: 999, backgroundColor: c.gold, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: c.bg }}>
-            <Txt style={{ color: '#14110D', fontWeight: '800', fontSize: 12 }}>{STUDENT.level}</Txt>
+            <Txt style={{ color: '#0F172A', fontWeight: '800', fontSize: 12 }}>{STUDENT.level}</Txt>
           </View>
         </View>
         <Txt style={{ fontSize: 22, fontWeight: '700', marginTop: 12, letterSpacing: -0.3 }}>{STUDENT.name}</Txt>
@@ -1107,17 +1117,17 @@ export function StudentProfile({ nav, onSignOut }) {
         </View>
       </View>
 
-      <GradCard colors={GRAD.gold} ink="#14110D" patternColor="rgba(20,17,13,0.10)" patternSize={24} style={{ marginHorizontal: 16, marginVertical: 12 }} padding={18} onPress={() => nav('achievements')}>
+      <GradCard colors={GRAD.gold} ink="#0F172A" patternColor="rgba(20,17,13,0.10)" patternSize={24} style={{ marginHorizontal: 16, marginVertical: 12 }} padding={18} onPress={() => nav('achievements')}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-          <HexBadge size={52} fill="rgba(20,17,13,0.18)" icon="trophy" iconColor="#14110D" iconSize={24} />
+          <HexBadge size={52} fill="rgba(20,17,13,0.18)" icon="trophy" iconColor="#0F172A" iconSize={24} />
           <View style={{ flex: 1 }}>
             <Txt style={{ fontSize: 12, fontWeight: '600', letterSpacing: 0.3, textTransform: 'uppercase', opacity: 0.7 }}>Достижения</Txt>
             <Txt style={{ fontSize: 17, fontWeight: '700', marginTop: 2 }}>Уровень {STUDENT.level} · {ACHIEVEMENTS.filter((a) => a.earned).length} ачивок</Txt>
             <View style={{ marginTop: 8, height: 6, backgroundColor: 'rgba(20,17,13,0.18)', borderRadius: 999, overflow: 'hidden' }}>
-              <View style={{ width: `${STUDENT.levelProgress * 100}%`, height: '100%', backgroundColor: '#14110D' }} />
+              <View style={{ width: `${STUDENT.levelProgress * 100}%`, height: '100%', backgroundColor: '#0F172A' }} />
             </View>
           </View>
-          <Icon name="chevronRight" size={20} color="#14110D" />
+          <Icon name="chevronRight" size={20} color="#0F172A" />
         </View>
       </GradCard>
 

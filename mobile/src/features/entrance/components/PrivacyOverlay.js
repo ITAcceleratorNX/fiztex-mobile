@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Modal, StyleSheet } from 'react-native';
 import { Txt } from '@shared/components/Txt';
-import { Hex } from '@shared/components/Hex';
 import { useTheme } from '@shared/theme/ThemeContext';
 
 export function PrivacyOverlay({ visible }) {
@@ -10,8 +9,8 @@ export function PrivacyOverlay({ visible }) {
 
   return (
     <Modal visible transparent animationType="fade" statusBarTranslucent>
-      <View style={[styles.overlay, { backgroundColor: dark ? '#000' : '#14110D' }]}>
-        <Hex size={72} fill={c.green} style={{ opacity: 0.35 }} />
+      <View style={[styles.overlay, { backgroundColor: dark ? '#000' : '#0F172A' }]}>
+        <View style={{ width: 72, height: 72, borderRadius: 24, backgroundColor: c.green, opacity: 0.35 }} />
         <Txt style={styles.title}>Тест приостановлен</Txt>
         <Txt style={styles.sub}>Вернитесь в приложение, чтобы продолжить</Txt>
       </View>

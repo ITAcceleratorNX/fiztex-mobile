@@ -2,11 +2,13 @@ import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import * as ScreenCapture from 'expo-screen-capture';
 
-const SUSPICIOUS = {
-  APP_BACKGROUND: 'APP_BACKGROUND',
-  RE_ENTRY: 'RE_ENTRY',
-  SCREENSHOT_ATTEMPT: 'SCREENSHOT_ATTEMPT',
-  WINDOW_BLUR: 'WINDOW_BLUR',
+// Event vocabulary matches the web admissions flow's anti-cheat events
+// (useAttemptEvents.ts) so both clients feed the same `/attempts/{id}/events` log.
+const EVENTS = {
+  FOCUS_LOST: 'focus_lost',
+  FOCUS_RETURNED: 'focus_returned',
+  RESUMED: 'resumed',
+  SCREENSHOT_ATTEMPT: 'screenshot_attempt',
 };
 
 export function useAnticheat({ enabled, onEvent, onPrivacy }) {
@@ -19,24 +21,23 @@ export function useAnticheat({ enabled, onEvent, onPrivacy }) {
     ScreenCapture.preventScreenCaptureAsync().catch(() => {});
 
     const screenshotSub = ScreenCapture.addScreenshotListener(() => {
-      onEvent?.(SUSPICIOUS.SCREENSHOT_ATTEMPT, 'Screenshot detected');
+      onEvent?.(EVENTS.SCREENSHOT_ATTEMPT, 'Screenshot detected');
     });
 
     const sub = AppState.addEventListener('change', (next) => {
       if (appState.current.match(/active/) && next.match(/inactive|background/)) {
         wasBackground.current = true;
         onPrivacy?.(true);
-        onEvent?.(SUSPICIOUS.APP_BACKGROUND, `App state: ${next}`);
+        onEvent?.(EVENTS.FOCUS_LOST, `App state: ${next}`);
       }
       if (appState.current.match(/inactive|background/) && next === 'active') {
         onPrivacy?.(false);
         if (wasBackground.current) {
-          onEvent?.(SUSPICIOUS.RE_ENTRY, 'Returned to test after background');
+          onEvent?.(EVENTS.RESUMED, 'Returned to test after background');
           wasBackground.current = false;
+        } else {
+          onEvent?.(EVENTS.FOCUS_RETURNED, 'App active again');
         }
-      }
-      if (next === 'inactive') {
-        onEvent?.(SUSPICIOUS.WINDOW_BLUR, 'App inactive');
       }
       appState.current = next;
     });
@@ -49,4 +50,4 @@ export function useAnticheat({ enabled, onEvent, onPrivacy }) {
   }, [enabled, onEvent, onPrivacy]);
 }
 
-export { SUSPICIOUS };
+export { EVENTS };

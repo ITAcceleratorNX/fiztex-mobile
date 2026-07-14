@@ -48,16 +48,16 @@ export const ALIGN_X = {
 
 /** Static light palette for module-level StyleSheet fallbacks. */
 export const theme = journeyPalette({
-  bg: '#F6F4EE',
-  bg2: '#ECEAE2',
+  bg: '#F8FAFC',
+  bg2: '#F1F5F9',
   surface: '#FFFFFF',
-  ink: '#14110D',
-  ink2: '#4A463E',
-  ink3: '#8C8678',
-  border: '#E4DFD3',
-  borderStrong: '#C9C2B0',
-  greenSoft: '#E5F1E6',
-  blueSoft: '#E4E9F4',
-  goldSoft: '#FBEFCF',
+  ink: '#0F172A',
+  ink2: '#475569',
+  ink3: '#94A3B8',
+  border: '#E2E8F0',
+  borderStrong: '#CBD5E1',
+  greenSoft: '#FFF7ED',
+  blueSoft: '#EEF1F8',
+  goldSoft: '#FEF9C3',
   ...FIZTEX,
 });

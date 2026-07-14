@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { Txt } from '@shared/components/Txt';
 import { useTheme } from '@shared/theme/ThemeContext';
@@ -9,26 +9,33 @@ function formatTime(sec) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-export function TestTimer({ durationMinutes, startedAt, onExpire }) {
+// Driven by the server's `remainingSeconds` (refreshed on every answer save, same as the
+// web flow) rather than a purely local clock — the backend stays the timing source of truth.
+export function TestTimer({ remainingSeconds, totalSeconds, onExpire }) {
   const { c } = useTheme();
-  const totalSec = (durationMinutes || 45) * 60;
-  const [left, setLeft] = useState(totalSec);
+  const [left, setLeft] = useState(remainingSeconds ?? 0);
+  const anchor = useRef({ remaining: remainingSeconds ?? 0, at: Date.now() });
 
   useEffect(() => {
-    if (!startedAt) return undefined;
+    if (typeof remainingSeconds !== 'number') return;
+    anchor.current = { remaining: remainingSeconds, at: Date.now() };
+    setLeft(remainingSeconds);
+  }, [remainingSeconds]);
+
+  useEffect(() => {
     const tick = () => {
-      const elapsed = Math.floor((Date.now() - startedAt) / 1000);
-      const remaining = Math.max(0, totalSec - elapsed);
+      const elapsed = Math.floor((Date.now() - anchor.current.at) / 1000);
+      const remaining = Math.max(0, anchor.current.remaining - elapsed);
       setLeft(remaining);
       if (remaining === 0) onExpire?.();
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [startedAt, totalSec, onExpire]);
+  }, [onExpire]);
 
   const urgent = left < 300;
-  const pct = totalSec > 0 ? (left / totalSec) * 100 : 0;
+  const pct = totalSeconds > 0 ? (left / totalSeconds) * 100 : 0;
 
   return (
     <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>

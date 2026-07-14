@@ -4,7 +4,7 @@ import Svg, { Rect, G } from 'react-native-svg';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
-import { Hex, HexBadge } from '@shared/components/Hex';
+import { HexBadge } from '@shared/components/Hex';
 import { Card, Pill } from '@shared/components/ui';
 import { SUBJECT_COLORS } from '@shared/data/mock';
 
@@ -139,7 +139,7 @@ export function QuickAction({ icon, color, label, onPress }) {
 export function QRMockup({ size = 200 }) {
   const grid = 17;
   const cell = size / grid;
-  const dark = '#14110D';
+  const dark = '#0F172A';
   const cells = [];
   const rng = (n) => ((n * 9301 + 49297) % 233280) / 233280;
   for (let y = 0; y < grid; y++) {

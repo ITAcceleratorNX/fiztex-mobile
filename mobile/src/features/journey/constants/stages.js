@@ -13,7 +13,7 @@ export const STAGES = [
     reward: { points: 20, stars: 1 },
     icon: 'flag',
     emoji: '🚀',
-    accent: '#2C4A9E',
+    accent: '#274185',
     isStart: true,
   },
   {
@@ -30,7 +30,7 @@ export const STAGES = [
     reward: { points: 30, stars: 1 },
     icon: 'school',
     emoji: '🏫',
-    accent: '#4A463E',
+    accent: '#475569',
   },
   {
     id: 'knowledge',
@@ -46,7 +46,7 @@ export const STAGES = [
     reward: { points: 40, badge: 'Knowledge Starter' },
     icon: 'library',
     emoji: '🗼',
-    accent: '#2C4A9E',
+    accent: '#274185',
   },
   {
     id: 'library',
@@ -62,7 +62,7 @@ export const STAGES = [
     reward: { points: 35, stars: 1 },
     icon: 'book',
     emoji: '📚',
-    accent: '#F2B73D',
+    accent: '#eab308',
   },
   {
     id: 'lab',
@@ -78,7 +78,7 @@ export const STAGES = [
     reward: { points: 45, badge: 'Skill Builder' },
     icon: 'flask',
     emoji: '🔬',
-    accent: '#2C4A9E',
+    accent: '#274185',
   },
   {
     id: 'team',
@@ -94,7 +94,7 @@ export const STAGES = [
     reward: { points: 40, badge: 'Team Player' },
     icon: 'people',
     emoji: '🤝',
-    accent: '#F2B73D',
+    accent: '#eab308',
   },
   {
     id: 'academy',
@@ -110,7 +110,7 @@ export const STAGES = [
     reward: { points: 60, stars: 2 },
     icon: 'ribbon',
     emoji: '🎓',
-    accent: '#D63030',
+    accent: '#dc2626',
   },
   {
     id: 'leadership',
@@ -126,7 +126,7 @@ export const STAGES = [
     reward: { points: 70, badge: 'Young Leader' },
     icon: 'trophy',
     emoji: '👑',
-    accent: '#D69A1E',
+    accent: '#a16207',
   },
   {
     id: 'mountain',
@@ -142,7 +142,7 @@ export const STAGES = [
     reward: { badge: 'Goal Achieved', special: 'Goal Achieved' },
     icon: 'mountain',
     emoji: '🏔️',
-    accent: '#2A8847',
+    accent: '#f5923b',
     isFinal: true,
   },
 ];

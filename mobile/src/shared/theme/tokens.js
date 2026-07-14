@@ -1,13 +1,17 @@
-// Fiztex brand colours — from the school logo (hexagonal mosaic red/green/blue/gold).
+// Fiztex brand colours — matches fiztex-web's tailwind brand/navy palette
+// (navy #274185 is the exact logo blue; orange #f5923b is the primary CTA colour).
+// Key names are kept ("green"/"blue"/"red"/"gold") so existing call sites
+// (`color="green"`, `c.blue`, etc.) don't need touching — only the hues change:
+// `green` is now the primary/CTA slot (orange), `blue` is the structural/brand slot (navy).
 export const FIZTEX = {
-  green: '#2A8847',
-  greenDeep: '#1B6B36',
-  blue: '#2C4A9E',
-  blueDeep: '#1F3A82',
-  red: '#D63030',
-  redDeep: '#B12626',
-  gold: '#F2B73D',
-  goldDeep: '#D69A1E',
+  green: '#f5923b',
+  greenDeep: '#c2620f',
+  blue: '#274185',
+  blueDeep: '#182a5c',
+  red: '#dc2626',
+  redDeep: '#b91c1c',
+  gold: '#eab308',
+  goldDeep: '#a16207',
 };
 
 // Font family aliases (loaded in App.js via @expo-google-fonts/onest).

@@ -124,7 +124,7 @@ export default function Icon({ name, size = 24, color, strokeWidth = 1.8 }) {
   const render = ICONS[name];
   if (!render) return null;
   const p = {
-    stroke: color || inherited || '#14110D',
+    stroke: color || inherited || '#0F172A',
     strokeWidth,
     fill: 'none',
     strokeLinecap: 'round',

@@ -123,15 +123,15 @@ export function ParentHome({ nav }) {
         ))}
       </ScrollView>
 
-      <GradCard colors={GRAD.gold} ink="#14110D" patternColor="rgba(20,17,13,0.10)" patternSize={24} style={{ marginHorizontal: 16, marginBottom: 18 }} padding={18} onPress={() => nav('feedback')}>
+      <GradCard colors={GRAD.gold} ink="#0F172A" patternColor="rgba(20,17,13,0.10)" patternSize={24} style={{ marginHorizontal: 16, marginBottom: 18 }} padding={18} onPress={() => nav('feedback')}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-          <HexBadge size={52} fill="rgba(20,17,13,0.20)" icon="chat" iconColor="#14110D" iconSize={24} />
+          <HexBadge size={52} fill="rgba(20,17,13,0.20)" icon="chat" iconColor="#0F172A" iconSize={24} />
           <View style={{ flex: 1 }}>
             <Txt style={{ fontSize: 11, fontWeight: '600', letterSpacing: 0.3, textTransform: 'uppercase', opacity: 0.7 }}>Новый отзыв</Txt>
             <Txt style={{ fontSize: 17, fontWeight: '700', marginTop: 2 }}>Фидбек за май готов</Txt>
             <Txt style={{ fontSize: 12, opacity: 0.8, marginTop: 2 }}>От {FEEDBACK.teacher}</Txt>
           </View>
-          <Icon name="chevronRight" size={20} color="#14110D" />
+          <Icon name="chevronRight" size={20} color="#0F172A" />
         </View>
       </GradCard>
 
@@ -261,7 +261,7 @@ export function ParentFeedback({ nav }) {
     <Screen>
       <ScreenHeader title="Ежемесячный фидбек" back={() => nav.back()} />
 
-      <GradCard colors={GRAD.gold} ink="#14110D" patternColor="rgba(20,17,13,0.10)" patternSize={26} style={{ marginHorizontal: 16, marginBottom: 16 }} padding={22}>
+      <GradCard colors={GRAD.gold} ink="#0F172A" patternColor="rgba(20,17,13,0.10)" patternSize={26} style={{ marginHorizontal: 16, marginBottom: 16 }} padding={22}>
         <Txt style={{ fontSize: 12, fontWeight: '600', opacity: 0.7, textTransform: 'uppercase', letterSpacing: 0.4 }}>Фидбек за</Txt>
         <Txt style={{ fontSize: 28, fontWeight: '800', marginTop: 4, letterSpacing: -0.5 }}>{FEEDBACK.month}</Txt>
         <View style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>

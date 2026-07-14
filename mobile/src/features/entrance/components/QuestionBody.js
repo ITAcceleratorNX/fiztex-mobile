@@ -1,10 +1,11 @@
-import React from 'react';
-import { View, Pressable, TextInput, Image } from 'react-native';
+import React, { useState } from 'react';
+import { View, Pressable, TextInput, Image, ActivityIndicator, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
-import { Card, Pill } from '@shared/components/ui';
+import { Card } from '@shared/components/ui';
 import { useTheme } from '@shared/theme/ThemeContext';
+import { useEntrance } from '../context/EntranceContext';
 
 function OptionRow({ label, selected, onPress, multi }) {
   const { c } = useTheme();
@@ -91,7 +92,7 @@ export function QuestionBody({ question, value, onChange }) {
       <View style={{ gap: 12 }}>
         <TextInput
           value={value?.openTextAnswer || ''}
-          onChangeText={(t) => onChange({ openTextAnswer: t, photoUrl: value?.photoUrl })}
+          onChangeText={(t) => onChange({ openTextAnswer: t })}
           placeholder="Введите развёрнутый ответ…"
           placeholderTextColor={c.ink3}
           multiline
@@ -107,65 +108,113 @@ export function QuestionBody({ question, value, onChange }) {
             textAlignVertical: 'top',
           }}
         />
-        {question.allowPhoto ? <PhotoAttach value={value} onChange={onChange} /> : null}
+        {question.allowPhoto ? (
+          <PhotoAttach question={question} photos={value?.photos || []} onPhotosChange={(photos) => onChange({ photos })} />
+        ) : null}
       </View>
     );
   }
 
   if (type === 'PHOTO') {
-    return <PhotoAttach value={value} onChange={onChange} required />;
+    return (
+      <PhotoAttach
+        question={question}
+        photos={value?.photos || []}
+        onPhotosChange={(photos) => onChange({ photos })}
+        required
+      />
+    );
   }
 
   return <Txt style={{ color: c.ink2 }}>Тип вопроса не поддерживается</Txt>;
 }
 
-function PhotoAttach({ value, onChange, required }) {
+// Photos are persisted immediately via the attempt's dedicated upload/delete endpoints
+// (not through the debounced answer save) — `onPhotosChange` only updates local UI state.
+function PhotoAttach({ question, photos, onPhotosChange, required }) {
   const { c } = useTheme();
+  const { uploadPhoto, deletePhoto } = useEntrance();
+  const [busy, setBusy] = useState(false);
+  const atLimit = question.maxPhotos ? photos.length >= question.maxPhotos : false;
+
   const pick = async () => {
+    if (atLimit || busy) return;
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) return;
     const res = await ImagePicker.launchCameraAsync({ quality: 0.7, allowsEditing: true });
-    if (!res.canceled && res.assets?.[0]) {
-      onChange({ photoUrl: res.assets[0].uri, openTextAnswer: value?.openTextAnswer || '' });
+    if (res.canceled || !res.assets?.[0]) return;
+    setBusy(true);
+    try {
+      const uploaded = await uploadPhoto(question.id, res.assets[0].uri);
+      onPhotosChange([...photos, uploaded]);
+    } catch (e) {
+      Alert.alert('Не удалось загрузить фото', e.message || 'Попробуйте ещё раз');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (photoId) => {
+    try {
+      await deletePhoto(question.id, photoId);
+      onPhotosChange(photos.filter((p) => p.id !== photoId));
+    } catch (e) {
+      Alert.alert('Не удалось удалить фото', e.message || 'Попробуйте ещё раз');
     }
   };
 
   return (
     <View style={{ gap: 12 }}>
-      {value?.photoUrl ? (
-        <Image source={{ uri: value.photoUrl }} style={{ width: '100%', height: 200, borderRadius: 16 }} resizeMode="cover" />
+      {photos.length ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {photos.map((p) => (
+            <View key={p.id} style={{ position: 'relative' }}>
+              <Image source={{ uri: p.url }} style={{ width: 96, height: 96, borderRadius: 12 }} resizeMode="cover" />
+              <Pressable
+                onPress={() => remove(p.id)}
+                style={{
+                  position: 'absolute',
+                  top: -6,
+                  right: -6,
+                  width: 24,
+                  height: 24,
+                  borderRadius: 999,
+                  backgroundColor: c.red,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon name="x" size={14} color="#fff" strokeWidth={3} />
+              </Pressable>
+            </View>
+          ))}
+        </View>
       ) : null}
-      <Pressable
-        onPress={pick}
-        style={{
-          height: 54,
-          borderRadius: 16,
-          borderWidth: 1.5,
-          borderColor: c.blue,
-          borderStyle: 'dashed',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'row',
-          gap: 8,
-          backgroundColor: c.blueSoft,
-        }}
-      >
-        <Icon name="camera" size={20} color={c.blue} />
-        <Txt style={{ color: c.blue, fontWeight: '600' }}>
-          {value?.photoUrl ? 'Переснять фото' : required ? 'Сделать фото ответа *' : 'Прикрепить фото'}
-        </Txt>
-      </Pressable>
-    </View>
-  );
-}
 
-export function QuestionMeta({ question }) {
-  const { c } = useTheme();
-  return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-      {question.topic ? <Pill color="blue">{question.topic}</Pill> : null}
-      {question.difficulty ? <Pill color="gray">{question.difficulty}</Pill> : null}
-      <Pill color="gold">{question.maxScore} б.</Pill>
+      {!atLimit ? (
+        <Pressable
+          onPress={pick}
+          disabled={busy}
+          style={{
+            height: 54,
+            borderRadius: 16,
+            borderWidth: 1.5,
+            borderColor: c.blue,
+            borderStyle: 'dashed',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexDirection: 'row',
+            gap: 8,
+            backgroundColor: c.blueSoft,
+            opacity: busy ? 0.6 : 1,
+          }}
+        >
+          {busy ? <ActivityIndicator color={c.blue} /> : <Icon name="camera" size={20} color={c.blue} />}
+          <Txt style={{ color: c.blue, fontWeight: '600' }}>
+            {photos.length ? 'Добавить ещё фото' : required ? 'Сделать фото ответа *' : 'Прикрепить фото'}
+          </Txt>
+        </Pressable>
+      ) : null}
     </View>
   );
 }

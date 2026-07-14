@@ -2,40 +2,40 @@ import React, { createContext, useContext, useMemo, useState } from 'react';
 import { useColorScheme } from 'react-native';
 import { FIZTEX } from './tokens';
 
-// Light + dark palettes — direct port of the CSS variables from the web `ds.jsx`
-// (`.fiztex-root` / `.fiztex-root.dark`). Brand colours are merged in so screens
-// can read `c.green`, `c.goldDeep`, etc., replacing `var(--fiztex-*)`.
+// Light + dark palettes — matches fiztex-web's slate-based admin/entrance UI
+// (slate-50 background, white surfaces, slate-900/500 ink, slate-200 borders).
+// Brand colours are merged in so screens can read `c.green`, `c.goldDeep`, etc.
 const light = {
-  bg: '#F6F4EE',
-  bg2: '#ECEAE2',
+  bg: '#F8FAFC',
+  bg2: '#F1F5F9',
   surface: '#FFFFFF',
-  surface2: '#F9F7F1',
-  ink: '#14110D',
-  ink2: '#4A463E',
-  ink3: '#8C8678',
-  border: '#E4DFD3',
-  borderStrong: '#C9C2B0',
-  greenSoft: '#E5F1E6',
-  blueSoft: '#E4E9F4',
-  redSoft: '#F6E3E0',
-  goldSoft: '#FBEFCF',
+  surface2: '#F8FAFC',
+  ink: '#0F172A',
+  ink2: '#475569',
+  ink3: '#94A3B8',
+  border: '#E2E8F0',
+  borderStrong: '#CBD5E1',
+  greenSoft: '#FFF7ED',
+  blueSoft: '#EEF1F8',
+  redSoft: '#FEE2E2',
+  goldSoft: '#FEF9C3',
   ...FIZTEX,
 };
 
 const dark = {
-  bg: '#0F0E0C',
-  bg2: '#19171A',
-  surface: '#1B1916',
-  surface2: '#232019',
-  ink: '#F5F2E9',
-  ink2: '#B9B3A3',
-  ink3: '#6E6A5E',
-  border: '#2C2823',
-  borderStrong: '#423D34',
-  greenSoft: '#1B3024',
-  blueSoft: '#1C2541',
-  redSoft: '#3A1F1C',
-  goldSoft: '#3A2D14',
+  bg: '#0F172A',
+  bg2: '#182338',
+  surface: '#1E293B',
+  surface2: '#243149',
+  ink: '#F1F5F9',
+  ink2: '#B6C2D6',
+  ink3: '#64748B',
+  border: '#2E3D57',
+  borderStrong: '#3E4F6D',
+  greenSoft: '#3A2412',
+  blueSoft: '#1B2745',
+  redSoft: '#3A1C1C',
+  goldSoft: '#3A2E0C',
   ...FIZTEX,
 };
 

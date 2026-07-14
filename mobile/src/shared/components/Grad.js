@@ -9,9 +9,9 @@ import { Ink } from './Txt';
 // `linear-gradient(...)` backgrounds from the web prototype.
 export const GRAD = {
   green: [FIZTEX.green, FIZTEX.greenDeep],
-  greenDeep: [FIZTEX.green, FIZTEX.greenDeep, '#155028'],
+  greenDeep: [FIZTEX.green, FIZTEX.greenDeep, '#7c3f0a'],
   blue: [FIZTEX.blue, FIZTEX.blueDeep],
-  blueScene: [FIZTEX.blue, FIZTEX.blueDeep, '#14110D'],
+  blueScene: [FIZTEX.blue, FIZTEX.blueDeep, '#0F172A'],
   red: [FIZTEX.red, FIZTEX.redDeep],
   gold: [FIZTEX.gold, FIZTEX.goldDeep],
 };

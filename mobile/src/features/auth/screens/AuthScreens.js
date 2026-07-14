@@ -4,29 +4,35 @@ import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
-import { Hex, HexBadge, FiztexGlyph } from '@shared/components/Hex';
-import { Card, PrimaryButton, ScreenHeader } from '@shared/components/ui';
+import { HexBadge, FiztexMark } from '@shared/components/Hex';
+import { Card, PrimaryButton, ScreenHeader, FiztexWordmark } from '@shared/components/ui';
 import { GradCard, GRAD } from '@shared/components/Grad';
 
-// Decorative hex cluster for the welcome hero.
-function HexCluster() {
+// Clean branded emblem for the welcome hero (replaces the old colour-hex cluster).
+function BrandEmblem() {
   const { c } = useTheme();
   return (
-    <View style={{ width: 280, height: 280 }}>
-      <View style={{ position: 'absolute', top: 90, left: 90 }}>
-        <Hex size={100} fill={c.green} />
-      </View>
-      <View style={{ position: 'absolute', top: 30, right: 50 }}>
-        <Hex size={84} fill={c.red} />
-      </View>
-      <View style={{ position: 'absolute', top: 60, left: 10 }}>
-        <Hex size={72} fill={c.blue} />
-      </View>
-      <View style={{ position: 'absolute', bottom: 30, left: 100 }}>
-        <Hex size={64} fill={c.gold} />
-      </View>
-      <View style={{ position: 'absolute', bottom: 60, right: 30 }}>
-        <Hex size={56} fill="transparent" stroke={c.borderStrong} strokeWidth={3} />
+    <View
+      style={{
+        width: 200,
+        height: 200,
+        borderRadius: 100,
+        backgroundColor: c.blueSoft,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <View
+        style={{
+          width: 128,
+          height: 128,
+          borderRadius: 40,
+          backgroundColor: c.blue,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <FiztexMark size={68} color="#fff" />
       </View>
     </View>
   );
@@ -38,12 +44,11 @@ export function AuthWelcome({ onContinue, onEntrance }) {
     <Screen scroll={false}>
       <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 40 }}>
         <View style={{ alignItems: 'center', marginTop: 20 }}>
-          <FiztexGlyph size={84} />
-          <Txt style={{ marginTop: 22, fontSize: 38, fontWeight: '800', letterSpacing: -1, color: c.ink }}>fiztex</Txt>
+          <FiztexWordmark size={40} />
         </View>
 
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <HexCluster />
+          <BrandEmblem />
         </View>
 
         <View style={{ paddingBottom: 24 }}>
@@ -150,8 +155,7 @@ export function AuthFaceID({ onSuccess, onBack }) {
       <View style={{ paddingHorizontal: 24, alignItems: 'center' }}>
         <View style={{ marginTop: 40, width: 180, height: 180, alignItems: 'center', justifyContent: 'center' }}>
           <View style={{ position: 'absolute', width: 180, height: 180, borderRadius: 999, backgroundColor: c.blueSoft }} />
-          <Hex size={180} fill={c.blue} style={{ position: 'absolute', opacity: 0.15 }} />
-          <Hex size={120} fill={c.blue} style={{ position: 'absolute' }} />
+          <View style={{ position: 'absolute', width: 120, height: 120, borderRadius: 999, backgroundColor: c.blue }} />
           <Icon name="face" size={68} color="#fff" />
         </View>
         <Txt style={{ marginTop: 28, fontSize: 17, fontWeight: '700' }}>Смотри в камеру</Txt>

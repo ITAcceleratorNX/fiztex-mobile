@@ -3,7 +3,41 @@ import { View, Pressable } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Txt, Ink, wrapStrings } from './Txt';
 import Icon from './Icon';
-import { Hex, HexBadge } from './Hex';
+import { Hex, HexBadge, FiztexMark, FiztexLogotype } from './Hex';
+
+// ─── Fiztex wordmark (exact "ΦIZTEX" logotype) ────────────────────────────────
+// The primary brand logo used in headers. `size` is the rendered height;
+// `color` defaults to the brand navy.
+export function FiztexWordmark({ size = 26, color, style }) {
+  const { c } = useTheme();
+  return <FiztexLogotype height={size} color={color || c.blue} style={style} />;
+}
+
+// Repeating faded logo watermark for gradient card headers (per the design ref).
+// Renders a wrapped grid of marks, clipped by the parent's `overflow: hidden`.
+export function LogoWatermark({ color = 'rgba(255,255,255,0.06)', mark = 30, count = 30 }) {
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        top: -mark,
+        left: -mark,
+        right: -mark,
+        bottom: -mark,
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+      }}
+    >
+      {Array.from({ length: count }).map((_, i) => (
+        <View key={i} style={{ margin: mark * 0.28 }}>
+          <FiztexMark size={mark} color={color} />
+        </View>
+      ))}
+    </View>
+  );
+}
 
 // ─── Card ───────────────────────────────────────────────────────────────────
 export function Card({ children, style, padded = true, onPress }) {
@@ -52,7 +86,14 @@ export function Pill({ children, color = 'gray', style }) {
         style,
       ]}
     >
-      <Ink color={style?.color || fg}>{wrapStrings(children, { fontSize: 12, fontWeight: '600' })}</Ink>
+      <Ink color={style?.color || fg}>
+        {wrapStrings(children, {
+          fontSize: style?.fontSize ?? 12,
+          fontWeight: style?.fontWeight ?? '600',
+          letterSpacing: style?.letterSpacing,
+          textTransform: style?.textTransform,
+        })}
+      </Ink>
     </View>
   );
 }
@@ -209,4 +250,4 @@ export function SectionTitle({ title, right }) {
   );
 }
 
-export { Hex, HexBadge };
+export { Hex, HexBadge, FiztexMark };

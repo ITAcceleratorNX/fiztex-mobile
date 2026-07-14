@@ -5,7 +5,7 @@ import { useTheme } from '../theme/ThemeContext';
 
 // Soft elevation presets — replace the web `--shadow` / `--shadow-lg` CSS vars.
 export const shadowSm = {
-  shadowColor: '#14110D',
+  shadowColor: '#0F172A',
   shadowOpacity: 0.08,
   shadowRadius: 12,
   shadowOffset: { width: 0, height: 6 },
@@ -13,7 +13,7 @@ export const shadowSm = {
 };
 
 export const shadowLg = {
-  shadowColor: '#14110D',
+  shadowColor: '#0F172A',
   shadowOpacity: 0.16,
   shadowRadius: 28,
   shadowOffset: { width: 0, height: 16 },

@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
-import { HexBadge } from '@shared/components/Hex';
 import { Pill } from '@shared/components/ui';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { useJourneyTheme } from '../constants/theme';
@@ -76,14 +75,20 @@ export function BuildingNode({
     >
       <Animated.View style={{ transform: [{ translateY: bounce }] }}>
         <View style={styles.nodeWrap}>
-          <HexBadge
-            size={size}
-            fill={fill}
-            stroke={isLocked ? c.borderStrong : '#FFFFFF88'}
-            strokeWidth={isLocked ? 2 : 3}
+          <View
+            style={{
+              width: size,
+              height: size,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: fill,
+              borderRadius: Math.round(size * 0.32),
+              borderColor: isLocked ? c.borderStrong : '#FFFFFF88',
+              borderWidth: isLocked ? 2 : 3,
+            }}
           >
             <Txt style={{ fontSize: isFinal ? 40 : 34 }}>{stage.emoji}</Txt>
-          </HexBadge>
+          </View>
 
           {isLocked ? (
             <View style={[styles.badge, { backgroundColor: c.ink3, borderColor: c.surface }]}>

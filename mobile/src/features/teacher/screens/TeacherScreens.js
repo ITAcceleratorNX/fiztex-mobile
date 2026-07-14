@@ -5,7 +5,7 @@ import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
 import { Txt, Ink } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
-import { Hex, HexBadge } from '@shared/components/Hex';
+import { HexBadge } from '@shared/components/Hex';
 import { Card, Pill, Avatar, PrimaryButton, AppHeader, ScreenHeader, SectionTitle, CircleButton } from '@shared/components/ui';
 import { GradCard, GRAD } from '@shared/components/Grad';
 import { useAppState } from '@shared/state/AppState';
@@ -350,7 +350,7 @@ export function TeacherAIUpload({ nav }) {
         <View style={{ paddingHorizontal: 16, paddingTop: 40, alignItems: 'center' }}>
           <View style={{ width: 110, height: 110, alignItems: 'center', justifyContent: 'center' }}>
             <Animated.View style={{ position: 'absolute', transform: [{ rotate }] }}>
-              <Hex size={110} fill={c.red} />
+              <View style={{ width: 110, height: 110, borderRadius: 34, backgroundColor: c.red }} />
             </Animated.View>
             <Icon name="sparkle" size={48} color="#fff" />
           </View>
