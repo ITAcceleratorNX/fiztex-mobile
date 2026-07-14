@@ -25,3 +25,8 @@ function resolveBaseUrl() {
 }
 
 export const API_BASE_URL = resolveBaseUrl();
+
+if (__DEV__) {
+  // eslint-disable-next-line no-console
+  console.log('[fiztex] admissions API:', API_BASE_URL);
+}

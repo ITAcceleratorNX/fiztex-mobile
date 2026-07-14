@@ -6,20 +6,35 @@ import {
   Alert,
   ScrollView,
   RefreshControl,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { HexBadge } from '@shared/components/Hex';
-import { Card, PrimaryButton, ScreenHeader, Pill } from '@shared/components/ui';
+import { Card, PrimaryButton, ScreenHeader, Pill, FiztexWordmark } from '@shared/components/ui';
 import { GradCard, GRAD } from '@shared/components/Grad';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { useAppState } from '@shared/state/AppState';
 import { admissionsApi } from '../api/entranceApi';
+import { API_BASE_URL } from '../config';
 import { useAnticheat } from '../hooks/useAnticheat';
 import { TestTimer } from '../components/TestTimer';
 import { PrivacyOverlay } from '../components/PrivacyOverlay';
 import { QuestionBody, QuestionMeta, SaveStatusChip } from '../components/QuestionBody';
+import { EntranceCodeBackground } from '../components/EntranceCodeBackground';
+import { shadowSm } from '@shared/components/Screen';
+
+const ENTRANCE_NAVY = '#274185';
+const ENTRANCE_ORANGE = '#FB923C';
+const ENTRANCE_INK = '#1A1F36';
+const ENTRANCE_MUTED = '#6B7280';
+const ENTRANCE_INPUT_BG = '#F9FAFB';
+const ENTRANCE_ERROR = '#EF4444';
 
 const TYPE_LABELS = {
   SINGLE_CHOICE: 'Один вариант',
@@ -84,12 +99,16 @@ function isRateLimitError(err) {
 }
 
 // ─── Code entry ───────────────────────────────────────────────────────────────
-export function EntranceCodeScreen({ onBack, onVerified }) {
-  const { c } = useTheme();
+export function EntranceCodeScreen({ onBack, onVerified, bootstrapError, onDismissBootstrapError }) {
   const { toast } = useAppState();
+  const insets = useSafeAreaInsets();
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(bootstrapError || null);
+
+  useEffect(() => {
+    if (bootstrapError) setError(bootstrapError);
+  }, [bootstrapError]);
 
   const submit = async () => {
     if (input.trim().length < 4) {
@@ -98,6 +117,7 @@ export function EntranceCodeScreen({ onBack, onVerified }) {
     }
     setLoading(true);
     setError(null);
+    onDismissBootstrapError?.();
     try {
       const data = await admissionsApi.verifyCode(input.trim().toUpperCase());
       toast?.('Код принят');
@@ -113,48 +133,180 @@ export function EntranceCodeScreen({ onBack, onVerified }) {
   };
 
   return (
-    <Screen>
-      <ScreenHeader title="Вступительный тест" back={onBack} large sub="Введите персональный код, который выдал администратор школы" />
-      <View style={{ paddingHorizontal: 20 }}>
-        <GradCard colors={GRAD.blue} padding={20} radius={20} style={{ marginBottom: 20 }}>
-          <HexBadge size={48} fill="rgba(255,255,255,0.2)" icon="qr" iconColor="#fff" iconSize={22} />
-          <Txt style={{ color: '#fff', fontSize: 17, fontWeight: '700', marginTop: 12 }}>Код поступающего</Txt>
-          <Txt style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13, marginTop: 4, lineHeight: 19 }}>
-            Один код — для прохождения теста и просмотра результата
+    <View style={{ flex: 1, backgroundColor: ENTRANCE_NAVY }}>
+      <StatusBar style="light" />
+      <EntranceCodeBackground />
+
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingTop: insets.top + 8,
+            paddingBottom: insets.bottom + 24,
+            paddingHorizontal: 24,
+          }}
+          showsVerticalScrollIndicator={false}
+        >
+          {onBack ? (
+            <Pressable
+              onPress={onBack}
+              hitSlop={12}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 999,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'rgba(255,255,255,0.12)',
+                marginBottom: 20,
+              }}
+            >
+              <Icon name="chevronLeft" size={22} color="#fff" />
+            </Pressable>
+          ) : (
+            <View style={{ height: 40, marginBottom: 20 }} />
+          )}
+
+          <View style={{ alignItems: 'center', marginBottom: 28 }}>
+            <FiztexWordmark size={36} color="#fff" />
+          </View>
+
+          <Txt
+            style={{
+              color: '#fff',
+              fontSize: 30,
+              fontWeight: '700',
+              letterSpacing: -0.6,
+              lineHeight: 36,
+              textAlign: 'center',
+              marginBottom: 12,
+            }}
+          >
+            Вступительный тест
           </Txt>
-        </GradCard>
+          <Txt
+            style={{
+              color: 'rgba(255,255,255,0.82)',
+              fontSize: 15,
+              lineHeight: 22,
+              textAlign: 'center',
+              marginBottom: 28,
+              paddingHorizontal: 8,
+            }}
+          >
+            Добро пожаловать в Fiztex — введите персональный код, который выдал администратор школы
+          </Txt>
 
-        <Txt style={{ fontSize: 13, fontWeight: '600', color: c.ink2, marginBottom: 8 }}>Персональный код</Txt>
-        <TextInput
-          value={input}
-          onChangeText={(t) => {
-            setError(null);
-            setInput(t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12));
-          }}
-          autoCapitalize="characters"
-          autoCorrect={false}
-          placeholder="Например G9CZPDGD"
-          placeholderTextColor={c.ink3}
-          style={{
-            height: 56,
-            borderWidth: 1.5,
-            borderColor: error ? c.red : c.border,
-            borderRadius: 16,
-            paddingHorizontal: 18,
-            fontSize: 20,
-            fontWeight: '700',
-            letterSpacing: 3,
-            color: c.ink,
-            backgroundColor: c.surface,
-          }}
-        />
-        {error ? <Txt style={{ color: c.red, fontSize: 13, marginTop: 8 }}>{error}</Txt> : null}
+          <View
+            style={{
+              backgroundColor: '#fff',
+              borderRadius: 24,
+              paddingHorizontal: 24,
+              paddingTop: 28,
+              paddingBottom: 24,
+              ...shadowSm,
+              shadowOpacity: 0.14,
+              shadowRadius: 28,
+              shadowOffset: { width: 0, height: 16 },
+              elevation: 10,
+            }}
+          >
+            <Txt style={{ fontSize: 15, fontWeight: '600', color: ENTRANCE_INK, marginBottom: 16 }}>
+              Код поступающего
+            </Txt>
 
-        <PrimaryButton color="green" style={{ marginTop: 24 }} onPress={submit} disabled={loading}>
-          {loading ? 'Проверяем…' : 'Продолжить'}
-        </PrimaryButton>
-      </View>
-    </Screen>
+            <TextInput
+              value={input}
+              onChangeText={(t) => {
+                setError(null);
+                onDismissBootstrapError?.();
+                setInput(t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12));
+              }}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              placeholder="Например DEMO2025"
+              placeholderTextColor="#9CA3AF"
+              style={{
+                height: 55,
+                borderWidth: 1.5,
+                borderColor: error ? ENTRANCE_ERROR : '#E5E7EB',
+                borderRadius: 12,
+                paddingHorizontal: 16,
+                fontSize: 18,
+                fontWeight: '700',
+                letterSpacing: 2,
+                color: ENTRANCE_INK,
+                backgroundColor: ENTRANCE_INPUT_BG,
+              }}
+            />
+            {error ? (
+              <Txt style={{ color: ENTRANCE_ERROR, fontSize: 13, marginTop: 10, lineHeight: 18 }}>
+                {error}
+              </Txt>
+            ) : null}
+
+            <Pressable
+              onPress={submit}
+              disabled={loading}
+              style={({ pressed }) => ({
+                marginTop: 20,
+                height: 56,
+                borderRadius: 16,
+                backgroundColor: ENTRANCE_ORANGE,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: loading ? 0.7 : pressed ? 0.92 : 1,
+                shadowColor: ENTRANCE_ORANGE,
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.28,
+                shadowRadius: 12,
+                elevation: 6,
+              })}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Txt style={{ color: '#fff', fontSize: 17, fontWeight: '700' }}>Продолжить</Txt>
+              )}
+            </Pressable>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 20, gap: 10 }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(39,65,133,0.18)' }} />
+              <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(39,65,133,0.18)' }} />
+            </View>
+            <Txt
+              style={{
+                marginTop: 16,
+                fontSize: 13,
+                lineHeight: 19,
+                color: ENTRANCE_NAVY,
+                textAlign: 'center',
+              }}
+            >
+              Если у вас нет кода — обратитесь к администратору школы
+            </Txt>
+
+            {__DEV__ ? (
+              <Txt
+                style={{
+                  marginTop: 16,
+                  fontSize: 11,
+                  lineHeight: 16,
+                  color: ENTRANCE_MUTED,
+                  textAlign: 'center',
+                }}
+              >
+                {API_BASE_URL} · demo DEMO2025
+              </Txt>
+            ) : null}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -557,6 +709,19 @@ export function EntranceTestScreen({ attempt, onFinished }) {
   const answer = answers[question?.id] ?? { selectedOptionIds: [], openTextAnswer: '', photos: [] };
   const currentSaveStatus = saveStatus[question?.id] ?? 'idle';
   const isLast = index === questions.length - 1;
+
+  if (!questions.length) {
+    return (
+      <Screen scroll={false}>
+        <View style={{ flex: 1, paddingHorizontal: 24, justifyContent: 'center', gap: 12 }}>
+          <Txt style={{ fontSize: 17, fontWeight: '700', textAlign: 'center' }}>Тест пустой</Txt>
+          <Txt style={{ fontSize: 15, color: c.ink2, textAlign: 'center', lineHeight: 22 }}>
+            В этом тесте нет вопросов. Обратитесь к администратору школы.
+          </Txt>
+        </View>
+      </Screen>
+    );
+  }
 
   if (!question) {
     return (

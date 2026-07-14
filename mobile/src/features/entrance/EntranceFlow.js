@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
-import { PrimaryButton } from '@shared/components/ui';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { useAppState } from '@shared/state/AppState';
 import {
@@ -32,6 +31,11 @@ async function resolveBootstrapScreen(loadAssignments) {
       await admissionsApi.logEvent(attemptId, 're_entry', 'mobile resume');
       return { screen: 'attempt', attempt: detail };
     }
+    if (detail.status === 'OPEN_FOR_VIEWING') {
+      await setActiveAttemptId(null);
+      const list = await loadAssignments();
+      return { screen: 'list', applicant: list.applicant, assignments: list.assignments };
+    }
     if (FINISHED_STATUSES.includes(detail.status)) {
       return { screen: 'done', attempt: detail };
     }
@@ -48,7 +52,7 @@ async function resolveBootstrapScreen(loadAssignments) {
 export function EntranceFlow({ onExit }) {
   const { c } = useTheme();
   const { toast } = useAppState();
-  const [screen, setScreen] = useState('loading');
+  const [screen, setScreen] = useState('code');
   const [applicant, setApplicant] = useState(null);
   const [assignments, setAssignments] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -59,32 +63,47 @@ export function EntranceFlow({ onExit }) {
 
   const loadAssignments = useCallback(async () => {
     const list = await admissionsApi.getAssignments();
-    setApplicant(list.applicant);
-    setAssignments(list.assignments);
+    setApplicant(list?.applicant ?? null);
+    setAssignments(list?.assignments ?? []);
     return list;
+  }, []);
+
+  const resetSession = useCallback(async () => {
+    await clearEntranceSession();
+    setApplicant(null);
+    setAssignments([]);
+    setAttempt(null);
+    setResult(null);
+    setSelected(null);
+    setBootstrapError(null);
+    setScreen('code');
   }, []);
 
   const runBootstrap = useCallback(async () => {
     setBootstrapError(null);
     const token = await getEntranceToken();
-    if (!token) {
-      setScreen('code');
-      return;
-    }
+    if (!token) return;
+
+    setScreen('loading');
     try {
       const resolved = await resolveBootstrapScreen(loadAssignments);
+      if (resolved.applicant) setApplicant(resolved.applicant);
+      if (resolved.assignments) setAssignments(resolved.assignments);
       if (resolved.attempt) setAttempt(resolved.attempt);
       setScreen(resolved.screen);
     } catch (e) {
-      if (e?.status === 401) {
-        await clearEntranceSession();
-        setScreen('code');
-        return;
-      }
-      setBootstrapError(e?.message || 'Не удалось восстановить сессию. Проверьте сеть.');
-      setScreen('resume_error');
+      await clearEntranceSession();
+      setApplicant(null);
+      setAssignments([]);
+      setAttempt(null);
+      setResult(null);
+      setSelected(null);
+      const message = e?.message || 'Не удалось восстановить сессию. Проверьте сеть.';
+      setBootstrapError(message);
+      toast?.(message);
+      setScreen('code');
     }
-  }, [loadAssignments]);
+  }, [loadAssignments, toast]);
 
   useEffect(() => {
     void runBootstrap();
@@ -114,14 +133,7 @@ export function EntranceFlow({ onExit }) {
   }
 
   async function handleExit() {
-    await clearEntranceSession();
-    setApplicant(null);
-    setAssignments([]);
-    setAttempt(null);
-    setResult(null);
-    setSelected(null);
-    setBootstrapError(null);
-    setScreen('code');
+    await resetSession();
     onExit?.();
   }
 
@@ -149,6 +161,11 @@ export function EntranceFlow({ onExit }) {
 
   async function handleContinue(item) {
     try {
+      if (item.attemptId != null) {
+        const detail = await admissionsApi.getAttempt(item.attemptId);
+        await enterAttempt(detail);
+        return;
+      }
       await beginAttempt(item.assignmentId);
     } catch (e) {
       toast?.(e.message || 'Не удалось открыть тест');
@@ -191,32 +208,23 @@ export function EntranceFlow({ onExit }) {
   if (screen === 'loading') {
     return (
       <Screen scroll={false}>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
           <ActivityIndicator color={c.green} size="large" />
-        </View>
-      </Screen>
-    );
-  }
-
-  if (screen === 'resume_error') {
-    return (
-      <Screen scroll={false}>
-        <View style={{ flex: 1, paddingHorizontal: 24, justifyContent: 'center', gap: 16 }}>
-          <Txt style={{ fontSize: 17, fontWeight: '700', textAlign: 'center' }}>Не удалось подключиться</Txt>
-          <Txt style={{ fontSize: 15, color: c.ink2, textAlign: 'center', lineHeight: 22 }}>{bootstrapError}</Txt>
-          <PrimaryButton color="green" onPress={() => { setScreen('loading'); void runBootstrap(); }}>
-            Повторить
-          </PrimaryButton>
-          <PrimaryButton color="ghost" onPress={handleExit}>
-            Ввести код заново
-          </PrimaryButton>
+          <Txt style={{ fontSize: 14, color: c.ink2 }}>Восстанавливаем сессию…</Txt>
         </View>
       </Screen>
     );
   }
 
   if (screen === 'code') {
-    return <EntranceCodeScreen onBack={onExit} onVerified={handleVerified} />;
+    return (
+      <EntranceCodeScreen
+        onBack={onExit}
+        onVerified={handleVerified}
+        bootstrapError={bootstrapError}
+        onDismissBootstrapError={() => setBootstrapError(null)}
+      />
+    );
   }
 
   if (screen === 'confirm' && applicant) {
@@ -224,7 +232,7 @@ export function EntranceFlow({ onExit }) {
       <EntranceConfirmScreen
         applicant={applicant}
         onConfirm={handleConfirmed}
-        onBack={handleExit}
+        onBack={resetSession}
         loading={busy}
       />
     );
@@ -279,5 +287,12 @@ export function EntranceFlow({ onExit }) {
     return <EntranceResultScreen result={result} onBack={handleBackToList} onExit={handleExit} />;
   }
 
-  return <EntranceCodeScreen onBack={onExit} onVerified={handleVerified} />;
+  return (
+    <EntranceCodeScreen
+      onBack={onExit}
+      onVerified={handleVerified}
+      bootstrapError={bootstrapError}
+      onDismissBootstrapError={() => setBootstrapError(null)}
+    />
+  );
 }

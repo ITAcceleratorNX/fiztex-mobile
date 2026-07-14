@@ -5,6 +5,44 @@ import {
   setEntranceToken,
 } from './entranceSession';
 
+const REQUEST_TIMEOUT_MS = 15_000;
+
+function networkError(message = 'Не удалось соединиться с сервером. Проверьте сеть и backend.') {
+  const error = new Error(message);
+  error.status = 0;
+  return error;
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+  let timer;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      reject(
+        networkError(
+          `Сервер не отвечает (${API_BASE_URL}). Проверьте сеть и что backend запущен.`,
+        ),
+      );
+    }, timeoutMs);
+  });
+
+  const controller = new AbortController();
+  const fetchPromise = fetch(url, { ...options, signal: controller.signal }).catch((e) => {
+    if (e?.name === 'AbortError') {
+      throw networkError(
+        `Сервер не отвечает (${API_BASE_URL}). Проверьте сеть и что backend запущен.`,
+      );
+    }
+    throw e;
+  });
+
+  try {
+    return await Promise.race([fetchPromise, timeoutPromise]);
+  } finally {
+    clearTimeout(timer);
+    controller.abort();
+  }
+}
+
 async function parseError(res) {
   let message = `Ошибка ${res.status}`;
   try {
@@ -26,16 +64,15 @@ async function request(path, { method = 'GET', body, keepalive = false } = {}) {
 
   let res;
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, {
+    res = await fetchWithTimeout(`${API_BASE_URL}${path}`, {
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
       keepalive,
     });
-  } catch {
-    const error = new Error('Не удалось соединиться с сервером. Проверьте сеть и backend.');
-    error.status = 0;
-    throw error;
+  } catch (e) {
+    if (e?.status === 0) throw e;
+    throw networkError();
   }
 
   if (res.status === 401) {
@@ -60,39 +97,15 @@ async function requestMultipart(path, formData) {
 
   let res;
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, {
+    res = await fetchWithTimeout(`${API_BASE_URL}${path}`, {
       method: 'POST',
       headers,
       body: formData,
     });
-  } catch {
-    const error = new Error('Не удалось соединиться с сервером. Проверьте сеть и backend.');
-    error.status = 0;
-    throw error;
+  } catch (e) {
+    if (e?.status === 0) throw e;
+    throw networkError();
   }
-
-async function requestMultipart(path, { method = 'POST', token, formData } = {}) {
-  const headers = { Accept: 'application/json' };
-  if (token) headers.Authorization = `Bearer ${token}`;
-
-  const res = await fetch(`${API_BASE_URL}${path}`, { method, headers, body: formData });
-
-  if (!res.ok) {
-    let message = `Ошибка ${res.status}`;
-    try {
-      const err = await res.json();
-      message = err.message || err.detail || message;
-    } catch {
-      /* ignore */
-    }
-    const error = new Error(message);
-    error.status = res.status;
-    throw error;
-  }
-
-  if (res.status === 204) return null;
-  return res.json();
-}
 
   if (res.status === 401) {
     await clearEntranceSession();
@@ -169,47 +182,6 @@ export const admissionsApi = {
 
 /** @deprecated Legacy `/api/entrance/*` — kept for D1, do not use in new screens. */
 export const entranceApi = {
-  verifyCode: (code) =>
-    request('/api/admissions/access-code/verify', { method: 'POST', body: { code } }),
-
-  getAssignments: (token) => request('/api/admissions/applicant/assignments', { token }),
-
-  getResult: (token, assignmentId) =>
-    request(`/api/admissions/assignments/${assignmentId}/result`, { token }),
-
-  startAttempt: (token, assignmentId) =>
-    request('/api/admissions/attempts/start', { method: 'POST', token, body: { assignmentId } }),
-
-  getAttempt: (token, attemptId) => request(`/api/admissions/attempts/${attemptId}`, { token }),
-
-  saveAnswer: (token, attemptId, payload) =>
-    request(`/api/admissions/attempts/${attemptId}/answers`, { method: 'POST', token, body: payload }),
-
-  submitAttempt: (token, attemptId) =>
-    request(`/api/admissions/attempts/${attemptId}/submit`, { method: 'POST', token, body: {} }),
-
-  logEvent: (token, attemptId, payload) =>
-    request(`/api/admissions/attempts/${attemptId}/events`, { method: 'POST', token, body: payload }).catch(
-      () => null
-    ),
-
-  uploadPhoto: (token, attemptId, questionId, fileUri) => {
-    const name = fileUri.split('/').pop() || `photo_${Date.now()}.jpg`;
-    const ext = (name.split('.').pop() || 'jpg').toLowerCase();
-    const type = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-    const formData = new FormData();
-    formData.append('file', { uri: fileUri, name, type });
-    return requestMultipart(`/api/admissions/attempts/${attemptId}/answers/${questionId}/photos`, {
-      token,
-      formData,
-    });
-  },
-
-  deletePhoto: (token, attemptId, questionId, photoId) =>
-    request(`/api/admissions/attempts/${attemptId}/answers/${questionId}/photos/${photoId}`, {
-      method: 'DELETE',
-      token,
-    }),
   auth: (code) => request('/api/entrance/auth', { method: 'POST', body: { code } }),
   start: (token) =>
     fetch(`${API_BASE_URL}/api/entrance/start`, {

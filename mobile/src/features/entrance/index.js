@@ -5,7 +5,7 @@ export {
   EntranceAssignmentsScreen,
   EntranceInstructionScreen,
   EntranceTestScreen,
-  EntranceFinishedScreen,
+  EntranceDoneScreen,
   EntranceResultScreen,
 } from './screens/EntranceScreens';
 
