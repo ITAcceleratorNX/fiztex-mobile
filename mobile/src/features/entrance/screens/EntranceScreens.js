@@ -1,32 +1,25 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   TextInput,
   ActivityIndicator,
   Alert,
   ScrollView,
-  Pressable,
-  Platform,
-  KeyboardAvoidingView,
+  RefreshControl,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Screen, shadowLg } from '@shared/components/Screen';
+import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { HexBadge } from '@shared/components/Hex';
-import { Card, PrimaryButton, ScreenHeader, Pill, FiztexWordmark, LogoWatermark } from '@shared/components/ui';
-import { Grad, GradCard, GRAD } from '@shared/components/Grad';
-
-// Card-header gradient from the design ref (navy → lighter navy, top-to-bottom).
-const CARD_HEADER = ['#274185', '#3B5998'];
-const CARD_HEADER_MUTED = ['#4B5563', '#6B7280']; // "awaiting review" variant
+import { Card, PrimaryButton, ScreenHeader, Pill } from '@shared/components/ui';
+import { GradCard, GRAD } from '@shared/components/Grad';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { useAppState } from '@shared/state/AppState';
-import { useEntrance } from '../context/EntranceContext';
+import { admissionsApi } from '../api/entranceApi';
 import { useAnticheat } from '../hooks/useAnticheat';
 import { TestTimer } from '../components/TestTimer';
 import { PrivacyOverlay } from '../components/PrivacyOverlay';
-import { QuestionBody } from '../components/QuestionBody';
+import { QuestionBody, QuestionMeta, SaveStatusChip } from '../components/QuestionBody';
 
 const TYPE_LABELS = {
   SINGLE_CHOICE: 'Один вариант',
@@ -35,513 +28,537 @@ const TYPE_LABELS = {
   PHOTO: 'Ответ с фото',
 };
 
-const STATUS_LABEL = {
-  NOT_STARTED: 'Не начат',
-  IN_PROGRESS: 'В процессе',
-  AWAITING_REVIEW: 'На проверке',
-  OPEN_FOR_VIEWING: 'Результат готов',
-  UNAVAILABLE: 'Недоступно',
+const STATUS_LABELS = {
+  NOT_STARTED: { label: 'Не начат', color: 'gray' },
+  IN_PROGRESS: { label: 'В процессе', color: 'blue' },
+  AWAITING_REVIEW: { label: 'Ожидает проверки', color: 'gold' },
+  OPEN_FOR_VIEWING: { label: 'Результат доступен', color: 'green' },
+  UNAVAILABLE: { label: 'Недоступен', color: 'gray' },
 };
 
-// In the re-themed palette the `green` token is the brand orange — used for the
-// active status pills to match the design ref's orange tint.
-const STATUS_COLOR = {
-  NOT_STARTED: 'gray',
-  IN_PROGRESS: 'green',
-  AWAITING_REVIEW: 'green',
-  OPEN_FOR_VIEWING: 'green',
-  UNAVAILABLE: 'gray',
-};
+const CONNECTION_ISSUE_THROTTLE_MS = 60_000;
+const SAVE_RETRY_DELAY_MS = 5_000;
 
-// Literal success green for the "view results" affordance (per the design ref).
-const OK_GREEN = { soft: '#D1FAE5', deep: '#059669' };
+function buildInitial(attempt) {
+  const map = {};
+  for (const q of attempt.questions) {
+    map[q.id] = { selectedOptionIds: [], openTextAnswer: '', photos: [] };
+  }
+  for (const a of attempt.answers || []) {
+    map[a.questionId] = {
+      selectedOptionIds: a.selectedOptionIds ?? [],
+      openTextAnswer: a.openTextAnswer ?? '',
+      photos: a.photos ?? [],
+    };
+  }
+  return map;
+}
 
-const ACTION_LABEL = {
-  START: 'Начать',
-  CONTINUE: 'Продолжить',
-  VIEW_RESULT: 'Результат',
-};
+function serialize(a) {
+  return JSON.stringify({
+    s: [...(a.selectedOptionIds || [])].sort((x, y) => x - y),
+    t: a.openTextAnswer || '',
+    p: [...(a.photos || []).map((photo) => photo.id)].sort((x, y) => x - y),
+  });
+}
 
-// ─── Code entry — branded navy hero + white card, matches the fiztex-web palette ──
-export function EntranceCodeScreen({ onBack, onSuccess }) {
+function isQuestionAnswered(a) {
+  if (!a) return false;
+  if ((a.photos || []).length > 0) return true;
+  if ((a.selectedOptionIds || []).length > 0) return true;
+  if ((a.openTextAnswer || '').trim().length > 0) return true;
+  return false;
+}
+
+function pluralRu(n, forms) {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 14) return forms[2];
+  if (mod10 === 1) return forms[0];
+  if (mod10 >= 2 && mod10 <= 4) return forms[1];
+  return forms[2];
+}
+
+function isRateLimitError(err) {
+  return typeof err?.message === 'string' && err.message.includes('Слишком много попыток');
+}
+
+// ─── Code entry ───────────────────────────────────────────────────────────────
+export function EntranceCodeScreen({ onBack, onVerified }) {
   const { c } = useTheme();
-  const insets = useSafeAreaInsets();
   const { toast } = useAppState();
-  const { verifyCode, loading, error, setError } = useEntrance();
   const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const submit = async () => {
     if (input.trim().length < 4) {
       setError('Введите персональный код');
       return;
     }
+    setLoading(true);
+    setError(null);
     try {
-      await verifyCode(input);
+      const data = await admissionsApi.verifyCode(input.trim().toUpperCase());
       toast?.('Код принят');
-      onSuccess?.();
-    } catch {
-      /* error surfaced from context */
+      onVerified?.(data);
+    } catch (e) {
+      const msg = isRateLimitError(e)
+        ? 'Слишком много попыток. Подождите и попробуйте снова.'
+        : e.message || 'Неверный или неактивный код';
+      setError(msg);
+    } finally {
+      setLoading(false);
     }
   };
-
-  return (
-    <Grad colors={GRAD.blue} vertical style={{ flex: 1 }}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView
-          contentContainerStyle={{
-            flexGrow: 1,
-            paddingTop: insets.top + 32,
-            paddingBottom: insets.bottom + 24,
-            paddingHorizontal: 24,
-          }}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {onBack ? (
-            <Pressable onPress={onBack} style={{ position: 'absolute', top: insets.top + 8, left: 8, padding: 8, zIndex: 1 }}>
-              <Icon name="chevronLeft" size={22} color="#fff" />
-            </Pressable>
-          ) : null}
-
-          <View style={{ alignItems: 'center', marginTop: 12 }}>
-            <FiztexWordmark size={36} color="#fff" />
-          </View>
-
-          <Txt style={{ marginTop: 24, fontSize: 25, fontWeight: '800', color: '#fff', textAlign: 'center' }}>
-            Вступительный тест
-          </Txt>
-
-          <Card style={{ marginTop: 28, padding: 22, borderWidth: 0, ...shadowLg }}>
-            <Txt style={{ fontSize: 13, fontWeight: '700', color: c.ink2 }}>Персональный код</Txt>
-            <TextInput
-              value={input}
-              onChangeText={(t) => {
-                setError(null);
-                setInput(t.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 14));
-              }}
-              autoCapitalize="characters"
-              autoCorrect={false}
-              placeholder="Например PT-4E82"
-              placeholderTextColor={c.ink3}
-              style={{
-                marginTop: 10,
-                height: 56,
-                borderWidth: 1.5,
-                borderColor: error ? c.red : c.border,
-                borderRadius: 14,
-                paddingHorizontal: 16,
-                fontSize: 18,
-                fontWeight: '700',
-                letterSpacing: 2,
-                color: c.ink,
-                backgroundColor: c.surface2,
-              }}
-            />
-            {error ? <Txt style={{ color: c.red, fontSize: 13, marginTop: 8 }}>{error}</Txt> : null}
-
-            <PrimaryButton color="green" style={{ marginTop: 20 }} onPress={submit} disabled={loading}>
-              {loading ? 'Проверяем…' : 'Войти в систему'}
-            </PrimaryButton>
-
-            <Pressable
-              onPress={() =>
-                Alert.alert(
-                  'Не получается войти?',
-                  'Обратитесь к сотруднику школы — он выдал ваш персональный код и поможет его активировать.'
-                )
-              }
-              style={{ marginTop: 16, alignItems: 'center' }}
-            >
-              <Txt style={{ color: c.blue, fontWeight: '600', fontSize: 14 }}>Не получается войти?</Txt>
-            </Pressable>
-          </Card>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </Grad>
-  );
-}
-
-// ─── Confirm identity ──────────────────────────────────────────────────────────
-export function EntranceConfirmScreen({ onBack, onConfirmed }) {
-  const { c } = useTheme();
-  const { applicant, loadAssignments, loading, error } = useEntrance();
-
-  const handleConfirm = async () => {
-    try {
-      await loadAssignments();
-      onConfirmed?.();
-    } catch {
-      /* error in context */
-    }
-  };
-
-  if (!applicant) {
-    return (
-      <Screen>
-        <ScreenHeader title="Подтверждение" back={onBack} />
-        <View style={{ padding: 20 }}>
-          <Txt style={{ color: c.ink2 }}>Сессия не найдена. Вернитесь и введите код снова.</Txt>
-        </View>
-      </Screen>
-    );
-  }
 
   return (
     <Screen>
-      <ScreenHeader title="Это вы?" back={onBack} large sub="Проверьте данные перед началом" />
-      <View style={{ paddingHorizontal: 20, gap: 12 }}>
-        <Card style={{ padding: 18 }}>
-          <Txt style={{ fontSize: 12, color: c.ink3, fontWeight: '600' }}>ПОСТУПАЮЩИЙ</Txt>
-          <Txt style={{ fontSize: 22, fontWeight: '800', marginTop: 6 }}>{applicant.fullName}</Txt>
-          {applicant.grade ? (
-            <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 4 }}>Класс поступления: {applicant.grade}</Txt>
-          ) : null}
-          {applicant.parentFullName ? (
-            <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 2 }}>Родитель: {applicant.parentFullName}</Txt>
-          ) : null}
-        </Card>
+      <ScreenHeader title="Вступительный тест" back={onBack} large sub="Введите персональный код, который выдал администратор школы" />
+      <View style={{ paddingHorizontal: 20 }}>
+        <GradCard colors={GRAD.blue} padding={20} radius={20} style={{ marginBottom: 20 }}>
+          <HexBadge size={48} fill="rgba(255,255,255,0.2)" icon="qr" iconColor="#fff" iconSize={22} />
+          <Txt style={{ color: '#fff', fontSize: 17, fontWeight: '700', marginTop: 12 }}>Код поступающего</Txt>
+          <Txt style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13, marginTop: 4, lineHeight: 19 }}>
+            Один код — для прохождения теста и просмотра результата
+          </Txt>
+        </GradCard>
 
-        {error ? <Txt style={{ color: c.red, fontSize: 13 }}>{error}</Txt> : null}
+        <Txt style={{ fontSize: 13, fontWeight: '600', color: c.ink2, marginBottom: 8 }}>Персональный код</Txt>
+        <TextInput
+          value={input}
+          onChangeText={(t) => {
+            setError(null);
+            setInput(t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12));
+          }}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          placeholder="Например G9CZPDGD"
+          placeholderTextColor={c.ink3}
+          style={{
+            height: 56,
+            borderWidth: 1.5,
+            borderColor: error ? c.red : c.border,
+            borderRadius: 16,
+            paddingHorizontal: 18,
+            fontSize: 20,
+            fontWeight: '700',
+            letterSpacing: 3,
+            color: c.ink,
+            backgroundColor: c.surface,
+          }}
+        />
+        {error ? <Txt style={{ color: c.red, fontSize: 13, marginTop: 8 }}>{error}</Txt> : null}
 
-        <PrimaryButton color="green" disabled={loading} onPress={handleConfirm} style={{ marginTop: 8 }}>
-          {loading ? 'Загрузка…' : 'Это я, продолжить'}
-        </PrimaryButton>
-        <PrimaryButton color="ghost" onPress={onBack}>
-          Данные неверные
+        <PrimaryButton color="green" style={{ marginTop: 24 }} onPress={submit} disabled={loading}>
+          {loading ? 'Проверяем…' : 'Продолжить'}
         </PrimaryButton>
       </View>
     </Screen>
   );
 }
 
-// Coloured action button matching the design ref (per availableAction).
-function CardAction({ assignment, onStart, onContinue, onResult }) {
+// ─── Confirm identity ─────────────────────────────────────────────────────────
+export function EntranceConfirmScreen({ applicant, onConfirm, onBack, loading }) {
   const { c } = useTheme();
-  const a = assignment;
-
-  const press = () => {
-    if (a.availableAction === 'START') onStart?.(a);
-    else if (a.availableAction === 'CONTINUE') onContinue?.(a);
-    else if (a.availableAction === 'VIEW_RESULT') onResult?.(a);
-  };
-
-  const base = {
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-  };
-
-  // No action available (e.g. awaiting review) → disabled placeholder.
-  if (!a.availableAction || a.availableAction === 'NONE') {
-    return (
-      <View style={[base, { backgroundColor: c.bg2 }]}>
-        <Txt style={{ fontSize: 14, fontWeight: '700', color: c.ink3 }}>Результат будет позже</Txt>
-      </View>
-    );
-  }
-
-  const styleByAction = {
-    START: { bg: c.green, fg: '#fff' },
-    CONTINUE: { bg: c.blue, fg: '#fff' },
-    VIEW_RESULT: { bg: OK_GREEN.soft, fg: OK_GREEN.deep },
-  }[a.availableAction];
-
-  return (
-    <Pressable onPress={press} style={({ pressed }) => [base, { backgroundColor: styleByAction.bg, opacity: pressed ? 0.9 : 1 }]}>
-      <Txt style={{ fontSize: 14, fontWeight: '700', color: styleByAction.fg }}>
-        {a.availableAction === 'VIEW_RESULT' ? 'Посмотреть результаты' : ACTION_LABEL[a.availableAction]}
-      </Txt>
-    </Pressable>
-  );
-}
-
-// A single test card: gradient illustration-header with faded logo watermark, then meta + action.
-function TestCard({ assignment, onStart, onContinue, onResult }) {
-  const { c } = useTheme();
-  const a = assignment;
-  const muted = a.status === 'AWAITING_REVIEW' || a.status === 'UNAVAILABLE';
-  const statusColor = STATUS_COLOR[a.status] || 'gray';
-
-  return (
-    <View style={{ backgroundColor: c.surface, borderRadius: 20, borderWidth: 1, borderColor: c.border, overflow: 'hidden' }}>
-      <View style={{ height: 72, overflow: 'hidden' }}>
-        <Grad colors={muted ? CARD_HEADER_MUTED : CARD_HEADER} vertical style={{ flex: 1 }}>
-          <LogoWatermark />
-        </Grad>
-      </View>
-
-      <View style={{ padding: 16 }}>
-        <Txt style={{ fontSize: 18, fontWeight: '700', color: c.ink }}>{a.testTitle}</Txt>
-        {a.grade ? <Txt style={{ fontSize: 13, color: c.ink2, marginTop: 2 }}>{a.grade}</Txt> : null}
-        <Txt style={{ fontSize: 12, color: c.ink3, marginTop: 2 }}>
-          {[a.subject, `${a.durationMinutes} мин`].filter(Boolean).join(' · ')}
-        </Txt>
-
-        <View style={{ marginTop: 12 }}>
-          <Pill color={statusColor} style={{ textTransform: 'uppercase', fontSize: 11, fontWeight: '700', letterSpacing: 0.3 }}>
-            {STATUS_LABEL[a.status] || a.status}
-          </Pill>
-        </View>
-
-        <CardAction assignment={a} onStart={onStart} onContinue={onContinue} onResult={onResult} />
-      </View>
-    </View>
-  );
-}
-
-// ─── Assignments list ──────────────────────────────────────────────────────────
-export function EntranceAssignmentsScreen({ onStart, onContinue, onResult, onExit }) {
-  const { c } = useTheme();
-  const insets = useSafeAreaInsets();
-  const { applicant, assignments, loadAssignments, loading, error } = useEntrance();
-
-  useEffect(() => {
-    loadAssignments().catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return (
-    <View style={{ flex: 1, backgroundColor: c.bg }}>
-      {/* Top app bar — branded wordmark on a floating white card. */}
-      <View style={{ paddingTop: insets.top + 8, paddingHorizontal: 16, paddingBottom: 4 }}>
-        <View
-          style={{
-            height: 56,
-            backgroundColor: c.surface,
-            borderRadius: 16,
-            ...shadowLg,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingHorizontal: 16,
-          }}
-        >
-          <FiztexWordmark size={24} />
-          {onExit ? (
-            <Pressable onPress={onExit} style={{ position: 'absolute', right: 12, padding: 8 }}>
-              <Icon name="x" size={18} color={c.ink3} />
-            </Pressable>
-          ) : null}
-        </View>
-      </View>
-
-      <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24, gap: 14 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={{ marginBottom: 2 }}>
-          <Txt style={{ fontSize: 24, fontWeight: '800', color: c.ink }}>Мои тесты</Txt>
-          {applicant?.fullName ? (
-            <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 4 }}>{applicant.fullName}</Txt>
-          ) : null}
-        </View>
-
-        {loading && !assignments.length ? <ActivityIndicator color={c.green} /> : null}
-        {error && !assignments.length ? <Txt style={{ color: c.red }}>{error}</Txt> : null}
-
-        {assignments.map((a) => (
-          <TestCard key={a.assignmentId} assignment={a} onStart={onStart} onContinue={onContinue} onResult={onResult} />
-        ))}
-
-        {!loading && assignments.length === 0 ? (
-          <Card style={{ padding: 20, alignItems: 'center' }}>
-            <Txt style={{ color: c.ink2, textAlign: 'center' }}>Пока нет назначенных тестов</Txt>
-          </Card>
-        ) : null}
-      </ScrollView>
-    </View>
-  );
-}
-
-// ─── Instruction before starting an attempt ────────────────────────────────────
-export function EntranceInstructionScreen({ assignment, onBack, onStart }) {
-  const { c } = useTheme();
-  const { startAttempt, loading, error } = useEntrance();
-  const [confirmed, setConfirmed] = useState(false);
-
-  const handleStart = async () => {
-    if (!confirmed || !assignment) return;
-    try {
-      const attempt = await startAttempt(assignment.assignmentId);
-      onStart?.(attempt);
-    } catch {
-      /* error in context */
-    }
-  };
-
-  if (!assignment) {
-    return (
-      <Screen>
-        <ScreenHeader title="Инструкция" back={onBack} />
-        <View style={{ padding: 20 }}>
-          <Txt style={{ color: c.ink2 }}>Тест не выбран.</Txt>
-        </View>
-      </Screen>
-    );
-  }
+  const [mismatch, setMismatch] = useState(false);
 
   return (
     <Screen>
-      <ScreenHeader title={assignment.testTitle} back={onBack} large sub={assignment.subject} />
+      <ScreenHeader title="Проверьте данные" back={onBack} large sub="Убедитесь, что это ваши данные" />
       <View style={{ paddingHorizontal: 20, gap: 12 }}>
         <Card style={{ padding: 18 }}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-            <Pill color="blue">{assignment.durationMinutes} мин</Pill>
-            {assignment.maxAttempts ? <Pill color="gray">Попыток: {assignment.maxAttempts}</Pill> : null}
-            <Pill color={assignment.allowBackNavigation ? 'green' : 'gold'}>
-              {assignment.allowBackNavigation ? 'Можно возвращаться к вопросам' : 'Без возврата к вопросам'}
-            </Pill>
+          <Txt style={{ fontSize: 12, color: c.ink3, fontWeight: '600' }}>ПОСТУПАЮЩИЙ</Txt>
+          <Txt style={{ fontSize: 22, fontWeight: '800', marginTop: 6 }}>{applicant.fullName}</Txt>
+          <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 4 }}>Класс поступления: {applicant.grade}</Txt>
+          {applicant.parentFullName ? (
+            <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 2 }}>Родитель: {applicant.parentFullName}</Txt>
+          ) : null}
+        </Card>
+
+        {mismatch ? (
+          <Card style={{ padding: 16, backgroundColor: c.goldSoft, borderColor: c.gold }}>
+            <Txt style={{ fontSize: 14, color: c.goldDeep, lineHeight: 20 }}>
+              Обратитесь к сотруднику школы.
+            </Txt>
+          </Card>
+        ) : null}
+
+        {!mismatch ? (
+          <PrimaryButton color="green" onPress={onConfirm} disabled={loading}>
+            {loading ? 'Загрузка…' : 'Это я'}
+          </PrimaryButton>
+        ) : null}
+        {!mismatch ? (
+          <PrimaryButton color="ghost" onPress={() => setMismatch(true)} disabled={loading}>
+            Данные неверные
+          </PrimaryButton>
+        ) : (
+          <PrimaryButton color="ghost" onPress={onBack} disabled={loading}>
+            Ввести другой код
+          </PrimaryButton>
+        )}
+      </View>
+    </Screen>
+  );
+}
+
+// ─── Assignments list ─────────────────────────────────────────────────────────
+export function EntranceAssignmentsScreen({
+  applicant,
+  assignments,
+  onRefresh,
+  onStart,
+  onContinue,
+  onViewResult,
+  onExit,
+}) {
+  const { c } = useTheme();
+  const [refreshing, setRefreshing] = useState(false);
+  const [busyId, setBusyId] = useState(null);
+
+  const refresh = async () => {
+    setRefreshing(true);
+    try {
+      await onRefresh?.();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const handleContinue = async (item) => {
+    setBusyId(item.assignmentId);
+    try {
+      await onContinue?.(item);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleViewResult = async (item) => {
+    setBusyId(item.assignmentId);
+    try {
+      await onViewResult?.(item);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <Screen>
+      <ScreenHeader title="Назначенные тесты" back={onExit} large sub={`${applicant.fullName} · ${applicant.grade}`} />
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={c.green} />}
+      >
+        {assignments.length === 0 ? (
+          <Card style={{ padding: 20, alignItems: 'center' }}>
+            <Txt style={{ fontSize: 15, fontWeight: '700', textAlign: 'center' }}>Нет назначенных тестов</Txt>
+            <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 8, textAlign: 'center', lineHeight: 21 }}>
+              Если вы ожидали тест — обратитесь к сотруднику школы.
+            </Txt>
+          </Card>
+        ) : (
+          assignments.map((item) => {
+            const meta = STATUS_LABELS[item.status] || STATUS_LABELS.UNAVAILABLE;
+            return (
+              <Card key={item.assignmentId} style={{ padding: 16, marginBottom: 12 }}>
+                <Txt style={{ fontSize: 17, fontWeight: '700' }}>{item.testTitle}</Txt>
+                <Txt style={{ fontSize: 13, color: c.ink2, marginTop: 4 }}>{item.subject}</Txt>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                  <Pill color="blue">{item.durationMinutes} мин</Pill>
+                  <Pill color={meta.color}>{meta.label}</Pill>
+                </View>
+                <View style={{ marginTop: 14 }}>
+                  {item.availableAction === 'START' && (
+                    <PrimaryButton color="green" onPress={() => onStart?.(item)}>
+                      Начать
+                    </PrimaryButton>
+                  )}
+                  {item.availableAction === 'CONTINUE' && (
+                    <PrimaryButton
+                      color="green"
+                      disabled={busyId === item.assignmentId}
+                      onPress={() => handleContinue(item)}
+                    >
+                      {busyId === item.assignmentId ? 'Открываем…' : 'Продолжить'}
+                    </PrimaryButton>
+                  )}
+                  {item.availableAction === 'VIEW_RESULT' && (
+                    <PrimaryButton
+                      color="blue"
+                      disabled={busyId === item.assignmentId}
+                      onPress={() => handleViewResult(item)}
+                    >
+                      Посмотреть результат
+                    </PrimaryButton>
+                  )}
+                  {item.availableAction === 'NONE' && (
+                    <PrimaryButton color="ghost" disabled>
+                      Недоступно
+                    </PrimaryButton>
+                  )}
+                </View>
+              </Card>
+            );
+          })
+        )}
+      </ScrollView>
+    </Screen>
+  );
+}
+
+// ─── Instruction before start ─────────────────────────────────────────────────
+export function EntranceInstructionScreen({ item, onBegin, onBack, loading }) {
+  const { c } = useTheme();
+
+  return (
+    <Screen>
+      <ScreenHeader title="Инструкция" back={onBack} large sub="Прочитайте правила перед началом" />
+      <View style={{ paddingHorizontal: 20, gap: 12 }}>
+        <Card style={{ padding: 18 }}>
+          <Txt style={{ fontSize: 12, color: c.ink3, fontWeight: '600' }}>ТЕСТ</Txt>
+          <Txt style={{ fontSize: 20, fontWeight: '700', marginTop: 6 }}>{item.testTitle}</Txt>
+          <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 4 }}>{item.subject}</Txt>
+          <View style={{ flexDirection: 'row', gap: 6, marginTop: 12 }}>
+            <Pill color="blue">{item.durationMinutes} мин</Pill>
           </View>
         </Card>
 
         <Card style={{ padding: 18 }}>
           <Txt style={{ fontSize: 12, color: c.ink3, fontWeight: '600' }}>ПРАВИЛА</Txt>
           <Txt style={{ fontSize: 15, lineHeight: 22, marginTop: 8, color: c.ink2 }}>
-            {assignment.rules ||
-              'Не сворачивайте приложение во время теста. Переключения фиксируются системой. Результат появится после проверки школой.'}
+            {item.rules ||
+              '• Не сворачивайте приложение во время теста\n• Скриншоты фиксируются системой\n• Результат будет доступен после проверки школой'}
           </Txt>
         </Card>
 
-        <Card
-          onPress={() => setConfirmed((v) => !v)}
-          style={{ padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}
-        >
-          <View
-            style={{
-              width: 24,
-              height: 24,
-              borderRadius: 8,
-              borderWidth: 2,
-              borderColor: confirmed ? c.green : c.borderStrong,
-              backgroundColor: confirmed ? c.green : 'transparent',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            {confirmed ? <Icon name="check" size={14} color="#fff" strokeWidth={3} /> : null}
-          </View>
-          <Txt style={{ flex: 1, fontSize: 15, lineHeight: 21 }}>Готов(а) начать тест на условиях выше</Txt>
-        </Card>
-
-        {error ? <Txt style={{ color: c.red, fontSize: 13 }}>{error}</Txt> : null}
-
-        <PrimaryButton color="green" disabled={!confirmed || loading} onPress={handleStart} style={{ marginTop: 8 }}>
-          {loading ? 'Запуск…' : 'Начать тестирование'}
+        <PrimaryButton color="green" disabled={loading} onPress={onBegin} style={{ marginTop: 8 }}>
+          {loading ? 'Запуск…' : 'Начать тест'}
         </PrimaryButton>
       </View>
     </Screen>
   );
 }
 
-function SaveStatusChip({ status }) {
-  const { c } = useTheme();
-  if (!status || status === 'idle') return null;
-  const map = {
-    saving: { label: 'Сохранение…', color: c.ink2 },
-    saved: { label: 'Сохранено', color: c.green },
-    error: { label: 'Ошибка сохранения', color: c.red },
-  };
-  const s = map[status] || map.saving;
-  return <Txt style={{ fontSize: 12, color: s.color, fontWeight: '600' }}>{s.label}</Txt>;
-}
-
 // ─── Test in progress ─────────────────────────────────────────────────────────
-export function EntranceTestScreen({ onDone }) {
+export function EntranceTestScreen({ attempt, onFinished }) {
   const { c } = useTheme();
   const { toast } = useAppState();
-  const { attempt, answers, saveAnswer, flushAnswer, logSuspicious, submitAttempt, loading } = useEntrance();
-  const [index, setIndex] = useState(0);
-  const [privacy, setPrivacy] = useState(false);
-  const [finishing, setFinishing] = useState(false);
-  const [draft, setDraft] = useState({});
-  const [saveStatus, setSaveStatus] = useState('idle');
+  const attemptId = attempt.attemptId;
+  const questions = attempt.questions || [];
+  const allowBack = attempt.allowBackNavigation;
 
-  const questions = attempt?.questions || [];
-  const question = questions[index];
-  const allowBack = attempt?.allowBackNavigation !== false;
-  const total = questions.length;
+  const warnThreshold = attempt.durationMinutes >= 10 ? 600 : 60;
+  const warnLabel = attempt.durationMinutes >= 10 ? '10 минут' : '1 минуту';
+
+  const [answers, setAnswers] = useState(() => buildInitial(attempt));
+  const [saveStatus, setSaveStatus] = useState({});
+  const [index, setIndex] = useState(0);
+  const [remaining, setRemaining] = useState(attempt.remainingSeconds);
+  const [submitting, setSubmitting] = useState(false);
+  const [privacy, setPrivacy] = useState(false);
+  const [showTimeWarning, setShowTimeWarning] = useState(false);
+
+  const answersRef = useRef(answers);
+  answersRef.current = answers;
+  const saveTimers = useRef({});
+  const retryTimers = useRef({});
+  const savedRef = useRef({});
+  const expiredRef = useRef(false);
+  const submittingRef = useRef(false);
+  const timeWarnShownRef = useRef(false);
+  const lastConnectionIssueRef = useRef(0);
+  const saveQuestionRef = useRef(async () => {});
+  const flushAllRef = useRef(async () => {});
 
   useEffect(() => {
-    if (question) setDraft(answers[question.id] || {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [question?.id]);
+    const seed = {};
+    for (const a of attempt.answers || []) {
+      seed[a.questionId] = serialize({
+        selectedOptionIds: a.selectedOptionIds ?? [],
+        openTextAnswer: a.openTextAnswer ?? '',
+        photos: a.photos ?? [],
+      });
+    }
+    savedRef.current = seed;
+  }, [attempt.attemptId]);
 
-  const onAnticheat = useCallback((type, details) => logSuspicious(type, details), [logSuspicious]);
+  useEffect(() => {
+    return () => {
+      Object.values(saveTimers.current).forEach((t) => clearTimeout(t));
+      Object.values(retryTimers.current).forEach((t) => clearTimeout(t));
+    };
+  }, []);
+
+  const logConnectionIssue = useCallback(
+    (detail = 'autosave failed') => {
+      const now = Date.now();
+      if (now - lastConnectionIssueRef.current < CONNECTION_ISSUE_THROTTLE_MS) return;
+      lastConnectionIssueRef.current = now;
+      void admissionsApi.logEvent(attemptId, 'connection_issue', detail);
+    },
+    [attemptId],
+  );
+
+  const cancelSaveRetry = useCallback((questionId) => {
+    clearTimeout(retryTimers.current[questionId]);
+  }, []);
+
+  const saveQuestion = useCallback(
+    async (questionId) => {
+      const question = questions.find((q) => q.id === questionId);
+      if (!question) return;
+      const answer = answersRef.current[questionId] ?? {
+        selectedOptionIds: [],
+        openTextAnswer: '',
+        photos: [],
+      };
+      const fingerprint = serialize(answer);
+      if (savedRef.current[questionId] === fingerprint) {
+        setSaveStatus((prev) => ({ ...prev, [questionId]: 'saved' }));
+        cancelSaveRetry(questionId);
+        return;
+      }
+      setSaveStatus((prev) => ({ ...prev, [questionId]: 'saving' }));
+      try {
+        const res = await admissionsApi.saveAnswer(attemptId, {
+          questionId,
+          selectedOptionIds: question.type === 'OPEN_TEXT' ? undefined : answer.selectedOptionIds,
+          openTextAnswer: question.type === 'OPEN_TEXT' ? answer.openTextAnswer : undefined,
+        });
+        savedRef.current[questionId] = fingerprint;
+        setSaveStatus((prev) => ({ ...prev, [questionId]: 'saved' }));
+        cancelSaveRetry(questionId);
+        setRemaining(res.remainingSeconds);
+      } catch {
+        setSaveStatus((prev) => ({ ...prev, [questionId]: 'error' }));
+        logConnectionIssue();
+        cancelSaveRetry(questionId);
+        retryTimers.current[questionId] = setTimeout(() => {
+          void saveQuestionRef.current(questionId);
+        }, SAVE_RETRY_DELAY_MS);
+      }
+    },
+    [attemptId, questions, logConnectionIssue, cancelSaveRetry],
+  );
+
+  saveQuestionRef.current = saveQuestion;
+
+  const flushAll = async () => {
+    Object.values(saveTimers.current).forEach((t) => clearTimeout(t));
+    await Promise.all(Object.keys(answersRef.current).map((k) => saveQuestion(Number(k))));
+  };
+
+  flushAllRef.current = flushAll;
+
+  const finishByTimeout = useCallback(async () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+    await flushAllRef.current();
+    await admissionsApi.logEvent(attemptId, 'time_expired', 'client timer reached zero');
+    try {
+      await admissionsApi.submitAttempt(attemptId);
+    } catch {
+      /* backend may auto-finish */
+    }
+    toast?.('Время вышло. Тест отправлен на проверку.');
+    onFinished?.();
+  }, [attemptId, onFinished, toast]);
+
+  const onLogEvent = useCallback(
+    (type, details, keepalive = false) => admissionsApi.logEvent(attemptId, type, details, keepalive),
+    [attemptId],
+  );
 
   useAnticheat({
-    enabled: !!attempt && !finishing,
-    onEvent: onAnticheat,
+    enabled: !submitting,
+    attemptId,
+    onLogEvent,
     onPrivacy: setPrivacy,
   });
 
-  const persist = async (payload) => {
-    if (!question) return;
-    setSaveStatus('saving');
-    try {
-      await saveAnswer(question.id, payload);
-      setSaveStatus('saved');
-    } catch {
-      setSaveStatus('error');
-    }
+  const handleLowTime = useCallback(
+    (low) => {
+      if (low && !timeWarnShownRef.current) {
+        timeWarnShownRef.current = true;
+        setShowTimeWarning(true);
+        Alert.alert(
+          'Мало времени',
+          `До конца теста осталось ${warnLabel}. Проверьте ответы и завершите тест вовремя.`,
+        );
+      }
+    },
+    [warnLabel],
+  );
+
+  const scheduleSave = (questionId) => {
+    cancelSaveRetry(questionId);
+    clearTimeout(saveTimers.current[questionId]);
+    saveTimers.current[questionId] = setTimeout(() => void saveQuestion(questionId), 700);
   };
 
-  const handleChange = (payload) => {
-    setDraft((prev) => ({ ...prev, ...payload }));
-    persist(payload);
+  const updateAnswer = (questionId, next) => {
+    setAnswers((prev) => ({ ...prev, [questionId]: next }));
+    scheduleSave(questionId);
   };
 
-  const goNext = async () => {
-    if (!question) return;
-    try {
-      await flushAnswer(question.id);
-    } catch {
-      toast?.('Не удалось сохранить ответ');
-    }
-    if (index < total - 1) setIndex((i) => i + 1);
-    else confirmFinish();
+  const setPhotos = (questionId, photos) => {
+    const base = answersRef.current[questionId] ?? {
+      selectedOptionIds: [],
+      openTextAnswer: '',
+      photos: [],
+    };
+    const next = { ...base, photos };
+    setAnswers((prev) => ({ ...prev, [questionId]: next }));
+    setSaveStatus((prev) => ({ ...prev, [questionId]: 'saved' }));
+    savedRef.current[questionId] = serialize(next);
   };
 
-  const goBack = async () => {
-    if (!question || !allowBack || index === 0) return;
-    try {
-      await flushAnswer(question.id);
-    } catch {
-      /* continue */
-    }
-    setIndex((i) => i - 1);
+  const goTo = async (nextIndex) => {
+    const currentId = questions[index].id;
+    clearTimeout(saveTimers.current[currentId]);
+    await saveQuestion(currentId);
+    setIndex(nextIndex);
   };
+
+  const answeredCount = questions.filter((q) => isQuestionAnswered(answers[q.id])).length;
+  const unansweredCount = questions.length - answeredCount;
 
   const confirmFinish = () => {
-    Alert.alert(
-      'Завершить тест?',
-      'После отправки изменить ответы будет нельзя. Результат появится после проверки школой.',
-      [
-        { text: 'Отмена', style: 'cancel' },
-        { text: 'Отправить', style: 'destructive', onPress: handleFinish },
-      ]
-    );
+    const base = `Отвечено на ${answeredCount} из ${questions.length} вопросов.`;
+    const warn =
+      unansweredCount > 0
+        ? `\n\nВнимание: ${unansweredCount} ${pluralRu(unansweredCount, ['вопрос', 'вопроса', 'вопросов'])} без ответа.`
+        : '';
+    Alert.alert('Завершить тест?', `${base}${warn}\n\nПосле отправки изменить ответы будет нельзя.`, [
+      { text: 'Продолжить', style: 'cancel' },
+      { text: 'Завершить', style: 'destructive', onPress: handleFinish },
+    ]);
   };
 
   const handleFinish = async () => {
-    setFinishing(true);
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+    await flushAll();
     try {
-      logSuspicious('submitted', 'Attempt submitted');
-      await submitAttempt();
-      toast?.('Тест отправлен');
-      onDone?.();
-    } catch {
-      setFinishing(false);
+      await admissionsApi.submitAttempt(attemptId);
+      onFinished?.();
+    } catch (e) {
+      toast?.(e.message || 'Не удалось завершить тест');
+      submittingRef.current = false;
+      setSubmitting(false);
     }
   };
 
-  const handleExpire = () => {
-    logSuspicious('time_expired', 'Timer reached zero');
-    Alert.alert('Время вышло', 'Тест будет автоматически отправлен.', [{ text: 'OK', onPress: handleFinish }]);
-  };
+  const question = questions[index];
+  const answer = answers[question?.id] ?? { selectedOptionIds: [], openTextAnswer: '', photos: [] };
+  const currentSaveStatus = saveStatus[question?.id] ?? 'idle';
+  const isLast = index === questions.length - 1;
 
-  if (!attempt || !question) {
+  if (!question) {
     return (
       <Screen scroll={false}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -555,82 +572,118 @@ export function EntranceTestScreen({ onDone }) {
     <Screen scroll={false}>
       <PrivacyOverlay visible={privacy} />
       <View style={{ flex: 1 }}>
-        <ScreenHeader title={`Вопрос ${index + 1} / ${total}`} right={<SaveStatusChip status={saveStatus} />} />
+        <ScreenHeader title={`${attempt.testTitle}`} sub={`Вопрос ${index + 1} / ${questions.length} · отвечено ${answeredCount}`} />
         <Txt style={{ fontSize: 13, color: c.ink2, textAlign: 'center', marginBottom: 4 }}>
           {TYPE_LABELS[question.type] || question.type}
         </Txt>
+
+        {showTimeWarning ? (
+          <View style={{ marginHorizontal: 20, marginBottom: 8, padding: 12, borderRadius: 12, backgroundColor: c.redSoft }}>
+            <Txt style={{ fontSize: 13, color: c.red, fontWeight: '600' }}>
+              До конца теста осталось {warnLabel}
+            </Txt>
+          </View>
+        ) : null}
+
         <TestTimer
-          remainingSeconds={attempt.remainingSeconds}
-          totalSeconds={(attempt.durationMinutes || 45) * 60}
-          onExpire={handleExpire}
+          remainingSeconds={remaining}
+          durationMinutes={attempt.durationMinutes}
+          onExpire={finishByTimeout}
+          onLowTime={handleLowTime}
         />
 
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 12 }}
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 12 }} showsVerticalScrollIndicator={false}>
           <Card style={{ padding: 18 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <QuestionMeta question={question} />
+              <SaveStatusChip
+                status={currentSaveStatus}
+                onRetry={currentSaveStatus === 'error' ? () => void saveQuestion(question.id) : undefined}
+              />
+            </View>
             <Txt style={{ fontSize: 18, fontWeight: '700', lineHeight: 26, marginBottom: 16 }}>{question.text}</Txt>
-            <QuestionBody question={question} value={draft} onChange={handleChange} />
+            <QuestionBody
+              question={question}
+              value={answer}
+              onChange={(next) => updateAnswer(question.id, next)}
+              onPhotosChange={(photos) => setPhotos(question.id, photos)}
+              photoProps={{
+                attemptId,
+                questionId: question.id,
+                maxPhotos: question.maxPhotos ?? 1,
+                disabled: submitting,
+                onUploadFailed: () => logConnectionIssue('photo upload failed'),
+              }}
+            />
           </Card>
+
+          {allowBack ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+              {questions.map((q, i) => {
+                const done = isQuestionAnswered(answers[q.id]);
+                return (
+                  <PrimaryButton
+                    key={q.id}
+                    color={i === index ? 'green' : done ? 'blue' : 'ghost'}
+                    full={false}
+                    style={{ minWidth: 40, paddingHorizontal: 12 }}
+                    disabled={submitting}
+                    onPress={() => goTo(i)}
+                  >
+                    {String(i + 1)}
+                  </PrimaryButton>
+                );
+              })}
+            </View>
+          ) : null}
         </ScrollView>
 
         <View style={{ paddingHorizontal: 20, paddingBottom: 24, paddingTop: 12, flexDirection: 'row', gap: 10 }}>
           {allowBack && index > 0 ? (
-            <PrimaryButton color="ghost" full={false} style={{ flex: 1 }} onPress={goBack}>
+            <PrimaryButton color="ghost" full={false} style={{ flex: 1 }} disabled={submitting} onPress={() => goTo(index - 1)}>
               Назад
             </PrimaryButton>
           ) : null}
-          <PrimaryButton color="green" style={{ flex: 2 }} disabled={loading || finishing} onPress={goNext}>
-            {index === total - 1 ? (finishing ? 'Отправка…' : 'Завершить') : 'Далее'}
-          </PrimaryButton>
+          {!isLast ? (
+            <PrimaryButton color="green" style={{ flex: 2 }} disabled={submitting} onPress={() => goTo(index + 1)}>
+              Далее
+            </PrimaryButton>
+          ) : (
+            <PrimaryButton color="green" style={{ flex: 2 }} disabled={submitting} onPress={confirmFinish}>
+              {submitting ? 'Отправка…' : 'Завершить'}
+            </PrimaryButton>
+          )}
         </View>
       </View>
     </Screen>
   );
 }
 
-// ─── Finished (sent for review, no score yet) ─────────────────────────────────
-export function EntranceFinishedScreen({ onAssignments, onHome }) {
+// ─── Done (no scores) ─────────────────────────────────────────────────────────
+export function EntranceDoneScreen({ testTitle, onBackToList, onExit }) {
   const { c } = useTheme();
-  const { applicant } = useEntrance();
 
   return (
     <Screen scroll={false}>
       <View style={{ flex: 1, paddingHorizontal: 24, justifyContent: 'center', alignItems: 'center' }}>
         <HexBadge size={88} fill={c.green} icon="check" iconColor="#fff" iconSize={40} />
-        <Txt style={{ fontSize: 28, fontWeight: '800', marginTop: 24, textAlign: 'center' }}>Тест отправлен</Txt>
+        <Txt style={{ fontSize: 28, fontWeight: '800', marginTop: 24, textAlign: 'center' }}>Тест завершён</Txt>
         <Txt style={{ fontSize: 16, color: c.ink2, marginTop: 12, textAlign: 'center', lineHeight: 24 }}>
-          Ответы переданы на проверку в школу.{'\n'}
-          {applicant?.fullName ? `${applicant.fullName}, р` : 'Р'}езультат появится после проверки администратором.
+          {testTitle ? `${testTitle}\n\n` : ''}
+          Результат будет доступен после проверки школой.
         </Txt>
         <View style={{ width: '100%', marginTop: 28, gap: 10 }}>
-          <PrimaryButton color="blue" onPress={onAssignments}>
-            К списку тестов
-          </PrimaryButton>
-          <PrimaryButton color="ghost" onPress={onHome}>
-            На главную
-          </PrimaryButton>
+          <PrimaryButton color="blue" onPress={onBackToList}>К списку тестов</PrimaryButton>
+          <PrimaryButton color="ghost" onPress={onExit}>Выйти</PrimaryButton>
         </View>
       </View>
     </Screen>
   );
 }
 
-// ─── Result view (per assignment) ─────────────────────────────────────────────
-export function EntranceResultScreen({ assignment, onBack }) {
+// ─── Result view ──────────────────────────────────────────────────────────────
+export function EntranceResultScreen({ result, onBack, onExit }) {
   const { c } = useTheme();
-  const { fetchResult, result, loading, error } = useEntrance();
-  const [checked, setChecked] = useState(false);
-
-  useEffect(() => {
-    if (assignment?.assignmentId) {
-      setChecked(true);
-      fetchResult(assignment.assignmentId).catch(() => {});
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assignment?.assignmentId]);
 
   const topics = useMemo(() => {
     if (!result?.topicBreakdown) return [];
@@ -639,74 +692,41 @@ export function EntranceResultScreen({ assignment, onBack }) {
 
   return (
     <Screen>
-      <ScreenHeader title="Результат" back={onBack} large sub={assignment?.testTitle} />
-      <View style={{ paddingHorizontal: 20 }}>
-        {!checked || (loading && !result) ? (
-          <ActivityIndicator color={c.green} />
-        ) : error && !result ? (
-          <Card style={{ padding: 20, alignItems: 'center' }}>
-            <HexBadge size={56} fill={c.goldSoft} icon="clock" iconColor={c.goldDeep} iconSize={26} />
-            <Txt style={{ fontSize: 17, fontWeight: '700', marginTop: 14, textAlign: 'center' }}>Ещё не открыт</Txt>
-            <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 8, textAlign: 'center', lineHeight: 21 }}>{error}</Txt>
+      <ScreenHeader title="Результат" back={onBack} large sub="Доступен после проверки школой" />
+      <View style={{ paddingHorizontal: 20, gap: 12 }}>
+        <GradCard colors={result.passed ? GRAD.green : GRAD.red} padding={22} radius={20}>
+          <Txt style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13 }}>Итоговый балл</Txt>
+          <Txt style={{ color: '#fff', fontSize: 40, fontWeight: '800', marginTop: 4 }}>
+            {result.totalScore}
+            <Txt style={{ fontSize: 18, fontWeight: '600' }}> ({Math.round(result.percent || 0)}%)</Txt>
+          </Txt>
+          <Txt style={{ color: 'rgba(255,255,255,0.9)', marginTop: 8 }}>
+            Порог: {result.minScore} · {result.passed ? 'Рекомендовано' : 'Ниже порога'}
+          </Txt>
+        </GradCard>
+
+        {result.schoolComment ? (
+          <Card style={{ padding: 16 }}>
+            <Txt style={{ fontSize: 12, color: c.ink3, fontWeight: '600' }}>КОММЕНТАРИЙ ШКОЛЫ</Txt>
+            <Txt style={{ fontSize: 15, lineHeight: 22, marginTop: 8 }}>{result.schoolComment}</Txt>
           </Card>
-        ) : result ? (
-          <View style={{ gap: 12 }}>
-            <GradCard colors={result.passed ? GRAD.green : GRAD.red} padding={22} radius={20}>
-              <Txt style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13 }}>Итоговый балл</Txt>
-              <Txt style={{ color: '#fff', fontSize: 40, fontWeight: '800', marginTop: 4 }}>
-                {result.totalScore}
-                <Txt style={{ fontSize: 18, fontWeight: '600' }}> ({Math.round(result.percent || 0)}%)</Txt>
-              </Txt>
-              <Txt style={{ color: 'rgba(255,255,255,0.9)', marginTop: 8 }}>
-                Порог: {result.minScore} · {result.passed ? 'Рекомендовано' : 'Ниже порога'}
-              </Txt>
-            </GradCard>
-
-            {result.schoolComment ? (
-              <Card style={{ padding: 16 }}>
-                <Txt style={{ fontSize: 12, color: c.ink3, fontWeight: '600' }}>КОММЕНТАРИЙ ШКОЛЫ</Txt>
-                <Txt style={{ fontSize: 15, lineHeight: 22, marginTop: 8 }}>{result.schoolComment}</Txt>
-              </Card>
-            ) : null}
-
-            {topics.length > 0 ? (
-              <Card style={{ padding: 16 }}>
-                <Txt style={{ fontSize: 16, fontWeight: '700', marginBottom: 12 }}>По темам</Txt>
-                {topics.map((t) => (
-                  <View key={t.name} style={{ marginBottom: 10 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <Txt style={{ fontWeight: '600' }}>{t.name}</Txt>
-                      <Txt style={{ color: c.ink2 }}>{t.earned}/{t.max}</Txt>
-                    </View>
-                    <View style={{ height: 6, borderRadius: 999, backgroundColor: c.bg2 }}>
-                      <View
-                        style={{
-                          height: '100%',
-                          width: `${Math.min(100, t.percent || 0)}%`,
-                          backgroundColor: (t.percent || 0) >= 60 ? c.green : c.red,
-                          borderRadius: 999,
-                        }}
-                      />
-                    </View>
-                  </View>
-                ))}
-              </Card>
-            ) : null}
-
-            {result.weakTopics?.length > 0 ? (
-              <Card style={{ padding: 16 }}>
-                <Txt style={{ fontSize: 16, fontWeight: '700', marginBottom: 8 }}>Слабые темы</Txt>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                  {result.weakTopics.map((t) => (
-                    <Pill key={t} color="red">
-                      {t}
-                    </Pill>
-                  ))}
-                </View>
-              </Card>
-            ) : null}
-          </View>
         ) : null}
+
+        {topics.length > 0 ? (
+          <Card style={{ padding: 16 }}>
+            <Txt style={{ fontSize: 16, fontWeight: '700', marginBottom: 12 }}>По темам</Txt>
+            {topics.map((t) => (
+              <View key={t.name} style={{ marginBottom: 10 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <Txt style={{ fontWeight: '600' }}>{t.name}</Txt>
+                  <Txt style={{ color: c.ink2 }}>{t.earned}/{t.max}</Txt>
+                </View>
+              </View>
+            ))}
+          </Card>
+        ) : null}
+
+        <PrimaryButton color="ghost" onPress={onExit}>Выйти</PrimaryButton>
       </View>
     </Screen>
   );

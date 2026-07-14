@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { entranceApi } from '../api/entranceApi';
+import React from 'react';
 
 const EntranceCtx = createContext(null);
 
@@ -9,6 +10,7 @@ const ATTEMPT_KEY = 'fiztex.admissions.attemptId';
 
 const SAVE_DEBOUNCE_MS = 700;
 
+/** Thin provider — session lives in entranceSession.js; flow state in EntranceFlow. */
 export function EntranceProvider({ children }) {
   const [token, setToken] = useState(null);
   const [applicant, setApplicant] = useState(null);
@@ -298,10 +300,9 @@ export function EntranceProvider({ children }) {
   );
 
   return <EntranceCtx.Provider value={value}>{children}</EntranceCtx.Provider>;
+  return children;
 }
 
 export function useEntrance() {
-  const ctx = useContext(EntranceCtx);
-  if (!ctx) throw new Error('useEntrance must be used within EntranceProvider');
-  return ctx;
+  throw new Error('useEntrance is deprecated — use EntranceFlow props or admissionsApi directly');
 }
