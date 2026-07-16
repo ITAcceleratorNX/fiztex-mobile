@@ -180,49 +180,4 @@ export const admissionsApi = {
     ),
 };
 
-/** @deprecated Legacy `/api/entrance/*` — kept for D1, do not use in new screens. */
-export const entranceApi = {
-  auth: (code) => request('/api/entrance/auth', { method: 'POST', body: { code } }),
-  start: (token) =>
-    fetch(`${API_BASE_URL}/api/entrance/start`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-    }).then(async (res) => {
-      if (!res.ok) throw await parseError(res);
-      return res.json();
-    }),
-  submitAnswer: (token, payload) =>
-    fetch(`${API_BASE_URL}/api/entrance/answers`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify(payload),
-    }).then(async (res) => {
-      if (!res.ok) throw await parseError(res);
-      return res.json();
-    }),
-  logSuspicious: (token, payload) =>
-    fetch(`${API_BASE_URL}/api/entrance/suspicious-activity`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify(payload),
-    }),
-  finish: (token) =>
-    fetch(`${API_BASE_URL}/api/entrance/finish`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-    }).then(async (res) => {
-      if (!res.ok) throw await parseError(res);
-      return res.json();
-    }),
-  result: (code) => request(`/api/entrance/result?code=${encodeURIComponent(code)}`),
-};
-
 export { getEntranceToken, clearEntranceSession, setActiveAttemptId, getActiveAttemptId } from './entranceSession';
