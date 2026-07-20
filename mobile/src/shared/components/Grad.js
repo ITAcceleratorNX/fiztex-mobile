@@ -1,19 +1,19 @@
 import React from 'react';
 import { View, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FIZTEX } from '../theme/tokens';
+import { PHYSTECH } from '../theme/tokens';
 import { HexPattern } from './Hex';
 import { Ink } from './Txt';
 
 // Brand gradient colour stops (constant across themes), porting the
 // `linear-gradient(...)` backgrounds from the web prototype.
 export const GRAD = {
-  green: [FIZTEX.green, FIZTEX.greenDeep],
-  greenDeep: [FIZTEX.green, FIZTEX.greenDeep, '#7c3f0a'],
-  blue: [FIZTEX.blue, FIZTEX.blueDeep],
-  blueScene: [FIZTEX.blue, FIZTEX.blueDeep, '#0F172A'],
-  red: [FIZTEX.red, FIZTEX.redDeep],
-  gold: [FIZTEX.gold, FIZTEX.goldDeep],
+  green: [PHYSTECH.green, PHYSTECH.greenDeep],
+  greenDeep: [PHYSTECH.green, PHYSTECH.greenDeep, '#7c3f0a'],
+  blue: [PHYSTECH.blue, PHYSTECH.blueDeep],
+  blueScene: [PHYSTECH.blue, PHYSTECH.blueDeep, '#0F172A'],
+  red: [PHYSTECH.red, PHYSTECH.redDeep],
+  gold: [PHYSTECH.gold, PHYSTECH.goldDeep],
 };
 
 // Diagonal (~135deg) by default; pass `vertical` for top-to-bottom (180deg).

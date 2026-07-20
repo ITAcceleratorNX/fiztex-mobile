@@ -10,7 +10,7 @@ import { Onest_600SemiBold } from '@expo-google-fonts/onest/600SemiBold';
 import { Onest_700Bold } from '@expo-google-fonts/onest/700Bold';
 import { Onest_800ExtraBold } from '@expo-google-fonts/onest/800ExtraBold';
 import { ThemeProvider, useTheme } from '@shared/theme/ThemeContext';
-import { FiztexAppStateProvider } from '@shared/state/AppState';
+import { PhysTechAppStateProvider } from '@shared/state/AppState';
 import { EntranceProvider } from '@features/entrance';
 import { RootNavigator } from '@app/navigation/RootNavigator';
 
@@ -31,14 +31,14 @@ function Inner() {
     },
   };
   return (
-    <FiztexAppStateProvider>
+    <PhysTechAppStateProvider>
       <EntranceProvider>
         <NavigationContainer theme={navTheme}>
           <StatusBar style={dark ? 'light' : 'dark'} />
           <RootNavigator />
         </NavigationContainer>
       </EntranceProvider>
-    </FiztexAppStateProvider>
+    </PhysTechAppStateProvider>
   );
 }
 

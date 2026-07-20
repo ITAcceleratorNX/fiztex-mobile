@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import Svg, { Polygon, Rect, Defs, Pattern, Path } from 'react-native-svg';
-import { FIZTEX } from '../theme/tokens';
+import { PHYSTECH } from '../theme/tokens';
 import Icon from './Icon';
 
 // Pointy-top regular hexagon (viewBox 100x100). Port of web `Hex`.
@@ -24,7 +24,7 @@ export function Hex({ size = 24, fill = '#0F172A', stroke, strokeWidth = 0, styl
 // navy/orange design language (kept the `HexBadge` name so call sites don't change).
 export function HexBadge({
   size = 44,
-  fill = FIZTEX.green,
+  fill = PHYSTECH.green,
   stroke,
   strokeWidth = 0,
   icon,
@@ -58,9 +58,8 @@ export function HexBadge({
   );
 }
 
-// Real Fiztex icon mark (swoosh/arrows forming the Ф), traced from the brand asset —
-// ported from fiztex-web's `FiztexMark` (src/components/layout/Logo.tsx).
-export function FiztexMark({ size = 40, color = '#fff', style }) {
+// Brand icon mark (swoosh/arrows forming the Ф), traced from the lockup asset.
+export function PhysTechMark({ size = 40, color = '#fff', style }) {
   return (
     <Svg width={size} height={size * (96 / 89)} viewBox="0 0 89 96" style={style}>
       <Path
@@ -83,9 +82,9 @@ export function FiztexMark({ size = 40, color = '#fff', style }) {
   );
 }
 
-// Full "ΦIZTEX" logotype — exact vector traced from the brand asset (viewBox 147×38).
+// Full logotype — exact vector traced from the brand asset (viewBox 147×38).
 // `height` sets the rendered height; width scales to preserve the aspect ratio.
-export function FiztexLogotype({ height = 30, color = '#274185', style }) {
+export function PhysTechLogotype({ height = 30, color = '#274185', style }) {
   const width = height * (147 / 38);
   const p = { fill: color, stroke: color };
   return (

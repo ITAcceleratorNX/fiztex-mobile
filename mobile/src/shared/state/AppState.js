@@ -5,10 +5,10 @@ import { Txt } from '../components/Txt';
 
 // Shared prototype state — homework done, club enrolment, event RSVPs, currency,
 // AI test progress, notifications, toast. Port of web `app-state.jsx`.
-const FiztexAppCtx = createContext(null);
+const AppCtx = createContext(null);
 
 export function useAppState() {
-  const ctx = useContext(FiztexAppCtx);
+  const ctx = useContext(AppCtx);
   return (
     ctx || {
       homework: {},
@@ -34,7 +34,7 @@ export function useAppState() {
   );
 }
 
-export function FiztexAppStateProvider({ children }) {
+export function PhysTechAppStateProvider({ children }) {
   const [homework, setHW] = useState({});
   const [clubs, setClubs] = useState({ 'Робототехника LEGO': true, 'Юный исследователь': true });
   const [events, setEvents] = useState({ 'Открытый урок: робототехника': true, 'Спортивный день': true });
@@ -77,10 +77,10 @@ export function FiztexAppStateProvider({ children }) {
   );
 
   return (
-    <FiztexAppCtx.Provider value={api}>
+    <AppCtx.Provider value={api}>
       {children}
       {toastMsg ? <AppToast msg={toastMsg} /> : null}
-    </FiztexAppCtx.Provider>
+    </AppCtx.Provider>
   );
 }
 

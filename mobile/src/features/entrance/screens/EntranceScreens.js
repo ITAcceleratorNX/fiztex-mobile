@@ -16,8 +16,9 @@ import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { HexBadge } from '@shared/components/Hex';
-import { Card, PrimaryButton, ScreenHeader, Pill, FiztexWordmark } from '@shared/components/ui';
+import { Card, PrimaryButton, ScreenHeader, Pill, PhysTechWordmark } from '@shared/components/ui';
 import { GradCard, GRAD } from '@shared/components/Grad';
+import { APP_NAME } from '@shared/branding';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { useAppState } from '@shared/state/AppState';
 import { admissionsApi } from '../api/entranceApi';
@@ -172,7 +173,7 @@ export function EntranceCodeScreen({ onBack, onVerified, bootstrapError, onDismi
           )}
 
           <View style={{ alignItems: 'center', marginBottom: 28 }}>
-            <FiztexWordmark size={36} color="#fff" />
+            <PhysTechWordmark size={36} color="#fff" />
           </View>
 
           <Txt
@@ -198,7 +199,7 @@ export function EntranceCodeScreen({ onBack, onVerified, bootstrapError, onDismi
               paddingHorizontal: 8,
             }}
           >
-            Добро пожаловать в Fiztex — введите персональный код, который выдал администратор школы
+            Добро пожаловать в {APP_NAME} — введите персональный код, который выдал администратор школы
           </Txt>
 
           <View

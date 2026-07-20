@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useMemo, useState } from 'react';
 import { useColorScheme } from 'react-native';
-import { FIZTEX } from './tokens';
+import { PHYSTECH } from './tokens';
 
-// Light + dark palettes — matches fiztex-web's slate-based admin/entrance UI
+// Light + dark palettes — matches web's slate-based admin/entrance UI
 // (slate-50 background, white surfaces, slate-900/500 ink, slate-200 borders).
 // Brand colours are merged in so screens can read `c.green`, `c.goldDeep`, etc.
 const light = {
@@ -19,7 +19,7 @@ const light = {
   blueSoft: '#EEF1F8',
   redSoft: '#FEE2E2',
   goldSoft: '#FEF9C3',
-  ...FIZTEX,
+  ...PHYSTECH,
 };
 
 const dark = {
@@ -36,7 +36,7 @@ const dark = {
   blueSoft: '#1B2745',
   redSoft: '#3A1C1C',
   goldSoft: '#3A2E0C',
-  ...FIZTEX,
+  ...PHYSTECH,
 };
 
 const ThemeCtx = createContext(null);
