@@ -905,6 +905,11 @@ export function EntranceTestScreen({ attempt, onFinished }) {
   const saveQuestionRef = useRef(async () => {});
   const flushAllRef = useRef(async () => {});
 
+  // Current question id, kept in a ref so anti-cheat / autosave events can tag the question
+  // the applicant was on (TZ §4) without re-creating callbacks on every navigation.
+  const currentQuestionIdRef = useRef(null);
+  currentQuestionIdRef.current = questions[index]?.id ?? null;
+
   useEffect(() => {
     const seed = {};
     for (const a of attempt.answers || []) {
@@ -933,7 +938,9 @@ export function EntranceTestScreen({ attempt, onFinished }) {
       const now = Date.now();
       if (now - lastConnectionIssueRef.current < CONNECTION_ISSUE_THROTTLE_MS) return;
       lastConnectionIssueRef.current = now;
-      void admissionsApi.logEvent(attemptId, 'connection_issue', detail);
+      void admissionsApi.logEvent(attemptId, 'connection_issue', detail, {
+        questionId: currentQuestionIdRef.current,
+      });
     },
     [attemptId],
   );
@@ -995,7 +1002,9 @@ export function EntranceTestScreen({ attempt, onFinished }) {
     setSubmitting(true);
     setFinishOpen(false);
     await flushAllRef.current();
-    await admissionsApi.logEvent(attemptId, 'time_expired', 'client timer reached zero');
+    await admissionsApi.logEvent(attemptId, 'time_expired', 'client timer reached zero', {
+      questionId: currentQuestionIdRef.current,
+    });
     try {
       await admissionsApi.submitAttempt(attemptId);
     } catch {
@@ -1006,7 +1015,11 @@ export function EntranceTestScreen({ attempt, onFinished }) {
   }, [attemptId, onFinished, toast]);
 
   const onLogEvent = useCallback(
-    (type, details, keepalive = false) => admissionsApi.logEvent(attemptId, type, details, keepalive),
+    (type, details, keepalive = false) =>
+      admissionsApi.logEvent(attemptId, type, details, {
+        questionId: currentQuestionIdRef.current,
+        keepalive,
+      }),
     [attemptId],
   );
 

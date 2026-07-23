@@ -150,12 +150,12 @@ export const admissionsApi = {
   submitAttempt: (attemptId) =>
     request(`/api/admissions/attempts/${attemptId}/submit`, { method: 'POST', body: {} }),
 
-  logEvent: async (attemptId, type, details, keepalive = false) => {
+  logEvent: async (attemptId, type, details, opts = {}) => {
     try {
       await request(`/api/admissions/attempts/${attemptId}/events`, {
         method: 'POST',
-        body: { type, details },
-        keepalive,
+        body: { type, details, questionId: opts.questionId ?? null },
+        keepalive: opts.keepalive,
       });
     } catch {
       /* best-effort */
