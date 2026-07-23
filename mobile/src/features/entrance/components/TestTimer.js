@@ -3,14 +3,14 @@ import { View } from 'react-native';
 import { Txt } from '@shared/components/Txt';
 import { useTheme } from '@shared/theme/ThemeContext';
 
-function formatTime(sec) {
+export function formatTime(sec) {
   const m = Math.floor(sec / 60);
   const s = sec % 60;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
 /** Backend-driven timer: parent syncs deadline via remainingSeconds after each save. */
-export function TestTimer({ remainingSeconds, durationMinutes, onExpire, onLowTime }) {
+export function TestTimer({ remainingSeconds, durationMinutes, onExpire, onLowTime, onTick, hidden }) {
   const { c } = useTheme();
   const deadlineRef = useRef(Date.now() + (remainingSeconds || 0) * 1000);
   const expiredRef = useRef(false);
@@ -32,6 +32,7 @@ export function TestTimer({ remainingSeconds, durationMinutes, onExpire, onLowTi
     const tick = () => {
       const secondsLeft = Math.max(0, Math.round((deadlineRef.current - Date.now()) / 1000));
       setLeft(secondsLeft);
+      onTick?.(secondsLeft);
       if (secondsLeft <= 0 && !expiredRef.current) {
         expiredRef.current = true;
         onExpire?.();
@@ -40,7 +41,9 @@ export function TestTimer({ remainingSeconds, durationMinutes, onExpire, onLowTi
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [onExpire]);
+  }, [onExpire, onTick]);
+
+  if (hidden) return null;
 
   const totalSec = (durationMinutes || 45) * 60;
   const pct = totalSec > 0 ? (left / totalSec) * 100 : 0;

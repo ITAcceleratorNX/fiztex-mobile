@@ -2,42 +2,63 @@ import React from 'react';
 import { View, Pressable, TextInput } from 'react-native';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
-import { Card, Pill } from '@shared/components/ui';
+import { Pill } from '@shared/components/ui';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { PhotoAnswerBlock } from './PhotoAnswerBlock';
 
+const NAVY = '#274185';
+const SELECTED_BG = '#EFF6FF';
+const BORDER = '#E2E8F0';
+const INK = '#1E293B';
+const MUTED = '#64748B';
+const GREEN = '#22C55E';
+
 function OptionRow({ label, selected, onPress, multi }) {
-  const { c } = useTheme();
   return (
     <Pressable onPress={onPress}>
-      <Card
-        padded
+      <View
         style={{
-          marginBottom: 8,
-          borderColor: selected ? c.green : c.border,
+          marginBottom: 12,
+          minHeight: 64,
+          borderRadius: 16,
           borderWidth: selected ? 2 : 1,
-          backgroundColor: selected ? c.greenSoft : c.surface,
+          borderColor: selected ? NAVY : BORDER,
+          backgroundColor: selected ? SELECTED_BG : '#fff',
           flexDirection: 'row',
           alignItems: 'center',
+          paddingHorizontal: 20,
           gap: 12,
         }}
       >
         <View
           style={{
-            width: 22,
-            height: 22,
-            borderRadius: multi ? 6 : 999,
+            width: 24,
+            height: 24,
+            borderRadius: multi ? 6 : 12,
             borderWidth: 2,
-            borderColor: selected ? c.green : c.borderStrong,
-            backgroundColor: selected ? c.green : 'transparent',
+            borderColor: selected ? NAVY : BORDER,
+            backgroundColor: multi && selected ? NAVY : 'transparent',
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          {selected ? <Icon name="check" size={12} color="#fff" strokeWidth={3} /> : null}
+          {selected && !multi ? (
+            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: NAVY }} />
+          ) : null}
+          {selected && multi ? <Icon name="check" size={12} color="#fff" strokeWidth={3} /> : null}
         </View>
-        <Txt style={{ flex: 1, fontSize: 16, lineHeight: 22 }}>{label}</Txt>
-      </Card>
+        <Txt
+          style={{
+            flex: 1,
+            fontSize: 17,
+            lineHeight: 22,
+            fontWeight: selected ? '700' : '500',
+            color: INK,
+          }}
+        >
+          {label}
+        </Txt>
+      </View>
     </Pressable>
   );
 }
@@ -96,7 +117,7 @@ export function QuestionBody({
     };
     return (
       <View>
-        <Txt style={{ fontSize: 13, color: c.ink2, marginBottom: 10 }}>Можно выбрать несколько вариантов</Txt>
+        <Txt style={{ fontSize: 13, color: MUTED, marginBottom: 10 }}>Можно выбрать несколько вариантов</Txt>
         {(question.options || []).map((opt) => (
           <OptionRow
             key={opt.id}
@@ -130,17 +151,17 @@ export function QuestionBody({
             onChange({ openTextAnswer: t, selectedOptionIds: value?.selectedOptionIds || [], photos })
           }
           placeholder="Введите развёрнутый ответ…"
-          placeholderTextColor={c.ink3}
+          placeholderTextColor={MUTED}
           multiline
           style={{
             minHeight: 140,
             borderWidth: 1,
-            borderColor: c.border,
+            borderColor: BORDER,
             borderRadius: 16,
             padding: 16,
             fontSize: 16,
-            color: c.ink,
-            backgroundColor: c.surface,
+            color: INK,
+            backgroundColor: '#fff',
             textAlignVertical: 'top',
           }}
         />
@@ -182,7 +203,7 @@ export function QuestionBody({
     ) : null;
   }
 
-  return <Txt style={{ color: c.ink2 }}>Тип вопроса не поддерживается</Txt>;
+  return <Txt style={{ color: MUTED }}>Тип вопроса не поддерживается</Txt>;
 }
 
 export function QuestionMeta({ question }) {
@@ -197,20 +218,29 @@ export function QuestionMeta({ question }) {
 }
 
 export function SaveStatusChip({ status, onRetry }) {
-  const { c } = useTheme();
   if (status === 'idle') return null;
   if (status === 'saving') {
-    return <Txt style={{ fontSize: 12, color: c.ink3 }}>Сохранение…</Txt>;
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#94A3B8' }} />
+        <Txt style={{ fontSize: 13, fontWeight: '500', color: MUTED }}>Сохранение…</Txt>
+      </View>
+    );
   }
   if (status === 'saved') {
-    return <Txt style={{ fontSize: 12, color: c.green, fontWeight: '600' }}>Сохранено</Txt>;
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: GREEN }} />
+        <Txt style={{ fontSize: 13, fontWeight: '500', color: MUTED }}>Ответ сохранён</Txt>
+      </View>
+    );
   }
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-      <Txt style={{ fontSize: 12, color: c.red, fontWeight: '600' }}>Не сохранено — проверьте интернет</Txt>
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <Txt style={{ fontSize: 13, color: '#EF4444', fontWeight: '600' }}>Не сохранено — проверьте интернет</Txt>
       {onRetry ? (
         <Pressable onPress={onRetry}>
-          <Txt style={{ fontSize: 12, color: c.blue, fontWeight: '700' }}>Повторить</Txt>
+          <Txt style={{ fontSize: 13, color: NAVY, fontWeight: '700' }}>Повторить</Txt>
         </Pressable>
       ) : null}
     </View>
