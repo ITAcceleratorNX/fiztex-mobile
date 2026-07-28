@@ -13,7 +13,7 @@ export function useAnticheat({ enabled, attemptId, onLogEvent, onPrivacy }) {
     ScreenCapture.preventScreenCaptureAsync().catch(() => {});
 
     const screenshotSub = ScreenCapture.addScreenshotListener(() => {
-      onLogEvent?.('tab_switch', 'screenshot detected');
+      onLogEvent?.('screenshot_attempt', 'screenshot detected');
     });
 
     const sub = AppState.addEventListener('change', (next) => {

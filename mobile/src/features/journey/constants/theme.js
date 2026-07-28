@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { useTheme } from '@shared/theme/ThemeContext';
-import { FIZTEX } from '@shared/theme/tokens';
+import { PHYSTECH } from '@shared/theme/tokens';
 
-/** Semantic journey colours derived from the Fiztex design system. */
+/** Semantic journey colours derived from the brand palette. */
 export function journeyPalette(c) {
   return {
     green: c.green,
@@ -59,5 +59,5 @@ export const theme = journeyPalette({
   greenSoft: '#FFF7ED',
   blueSoft: '#EEF1F8',
   goldSoft: '#FEF9C3',
-  ...FIZTEX,
+  ...PHYSTECH,
 });

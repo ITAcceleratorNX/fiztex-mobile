@@ -8,6 +8,7 @@ import Icon from '@shared/components/Icon';
 import { SUBJECT_COLORS } from '@shared/data/mock';
 import { shadowSm } from '@shared/components/Screen';
 
+// Resolve a brand colour-name to a theme hex (falls back to muted ink).
 export function brandColor(c, name) {
   return {
     green: c.green,

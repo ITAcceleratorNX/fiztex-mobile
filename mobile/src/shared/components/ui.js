@@ -3,14 +3,14 @@ import { View, Pressable } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Txt, Ink, wrapStrings } from './Txt';
 import Icon from './Icon';
-import { Hex, HexBadge, FiztexMark, FiztexLogotype } from './Hex';
+import { Hex, HexBadge, PhysTechMark, PhysTechLogotype } from './Hex';
 
-// ─── Fiztex wordmark (exact "ΦIZTEX" logotype) ────────────────────────────────
+// ─── PhysTech wordmark (exact logotype) ────────────────────────────────────
 // The primary brand logo used in headers. `size` is the rendered height;
 // `color` defaults to the brand navy.
-export function FiztexWordmark({ size = 26, color, style }) {
+export function PhysTechWordmark({ size = 26, color, style }) {
   const { c } = useTheme();
-  return <FiztexLogotype height={size} color={color || c.blue} style={style} />;
+  return <PhysTechLogotype height={size} color={color || c.blue} style={style} />;
 }
 
 // Repeating faded logo watermark for gradient card headers (per the design ref).
@@ -32,7 +32,7 @@ export function LogoWatermark({ color = 'rgba(255,255,255,0.06)', mark = 30, cou
     >
       {Array.from({ length: count }).map((_, i) => (
         <View key={i} style={{ margin: mark * 0.28 }}>
-          <FiztexMark size={mark} color={color} />
+          <PhysTechMark size={mark} color={color} />
         </View>
       ))}
     </View>
@@ -250,4 +250,4 @@ export function SectionTitle({ title, right }) {
   );
 }
 
-export { Hex, HexBadge, FiztexMark };
+export { Hex, HexBadge, PhysTechMark };

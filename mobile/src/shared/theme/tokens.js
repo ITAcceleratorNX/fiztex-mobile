@@ -1,13 +1,11 @@
-// Fiztex brand colours — matches fiztex-web's tailwind brand/navy palette
+// Brand colours — matches web's tailwind brand/navy palette
 // (navy #274185 is the exact logo blue; orange #f5923b is the primary CTA colour).
 // Key names are kept ("green"/"blue"/"red"/"gold") so existing call sites
 // (`color="green"`, `c.blue`, etc.) don't need touching — only the hues change:
 // `green` is now the primary/CTA slot (orange), `blue` is the structural/brand slot (navy).
-export const FIZTEX = {
-  // Figma schedule accent (orange #FB923C) — primary CTA / "now" / active tab
-  green: '#FB923C',
-  greenDeep: '#EA580C',
-  // Figma navy #274185 — titles, selected day chip, "next"
+export const PHYSTECH = {
+  green: '#f5923b',
+  greenDeep: '#c2620f',
   blue: '#274185',
   blueDeep: '#182A5C',
   red: '#DC2626',
@@ -25,7 +23,7 @@ export const FONT = {
   extrabold: 'Onest_800ExtraBold',
 };
 
-// Map a Fiztex colour name ("green" | "blue" | "red" | "gold") to its hex.
+// Map a brand colour name ("green" | "blue" | "red" | "gold") to its hex.
 export function brand(name) {
-  return FIZTEX[name] || FIZTEX.green;
+  return PHYSTECH[name] || PHYSTECH.green;
 }

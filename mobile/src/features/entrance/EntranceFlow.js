@@ -274,9 +274,39 @@ export function EntranceFlow({ onExit }) {
   }
 
   if (screen === 'done') {
+    const answeredCount = attempt
+      ? (attempt.answers || []).filter(
+          (a) =>
+            (a.photos?.length ?? 0) > 0 ||
+            (a.selectedOptionIds?.length ?? 0) > 0 ||
+            (a.openTextAnswer ?? '').trim().length > 0,
+        ).length
+      : undefined;
+    let elapsedLabel;
+    if (attempt) {
+      const used = Math.max(
+        0,
+        (attempt.durationMinutes ?? 0) * 60 - (attempt.remainingSeconds ?? 0),
+      );
+      const mins = Math.max(1, Math.round(used / 60));
+      const mod10 = mins % 10;
+      const mod100 = mins % 100;
+      const word =
+        mod100 >= 11 && mod100 <= 14
+          ? 'минут'
+          : mod10 === 1
+            ? 'минута'
+            : mod10 >= 2 && mod10 <= 4
+              ? 'минуты'
+              : 'минут';
+      elapsedLabel = `${mins} ${word}`;
+    }
     return (
       <EntranceDoneScreen
         testTitle={attempt?.testTitle}
+        answeredCount={answeredCount}
+        totalQuestions={attempt?.questions?.length}
+        elapsedLabel={elapsedLabel}
         onBackToList={handleBackToList}
         onExit={handleExit}
       />

@@ -5,7 +5,7 @@ import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen, shadowLg } from '@shared/components/Screen';
 import { Txt, Ink } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
-import { HexBadge, FiztexMark } from '@shared/components/Hex';
+import { HexBadge, PhysTechMark } from '@shared/components/Hex';
 import { Card, Pill, Avatar, PrimaryButton, AppHeader, ScreenHeader, SectionTitle, CircleButton } from '@shared/components/ui';
 import { GradCard, GRAD } from '@shared/components/Grad';
 import { useAppState } from '@shared/state/AppState';
@@ -292,7 +292,7 @@ export function StudentCheckoutQR({ nav }) {
         <View style={[{ marginTop: 24, marginBottom: 16, width: 240, height: 240, padding: 18, backgroundColor: '#fff', borderRadius: 26, alignItems: 'center', justifyContent: 'center' }, shadowLg]}>
           <QRMockup size={204} />
           <View style={{ position: 'absolute', width: 48, height: 48, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
-            <FiztexMark size={30} color={c.blue} />
+            <PhysTechMark size={30} color={c.blue} />
           </View>
         </View>
 

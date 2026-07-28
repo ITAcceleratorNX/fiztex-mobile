@@ -10,5 +10,5 @@ export {
 } from './screens/EntranceScreens';
 
 export { EntranceProvider, useEntrance } from './context/EntranceContext';
-export { admissionsApi, entranceApi } from './api/entranceApi';
+export { admissionsApi } from './api/entranceApi';
 export { API_BASE_URL } from './config';

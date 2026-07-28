@@ -1,13 +1,13 @@
 import Svg, { Circle, Ellipse, Path, Polygon, Rect } from 'react-native-svg';
-import { FIZTEX } from '@shared/theme/tokens';
+import { PHYSTECH } from '@shared/theme/tokens';
 
 export function Flag({ size = 40 }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 40 56">
       <Ellipse cx={20} cy={52} rx={8} ry={2} fill="#00000018" />
       <Rect x={18} y={6} width={3} height={48} rx={1.5} fill="#8C8678" />
-      <Polygon points="21,6 38,14 21,22" fill={FIZTEX.red} />
-      <Polygon points="21,6 33,10 21,14" fill={FIZTEX.redDeep} />
+      <Polygon points="21,6 38,14 21,22" fill={PHYSTECH.red} />
+      <Polygon points="21,6 33,10 21,14" fill={PHYSTECH.redDeep} />
     </Svg>
   );
 }

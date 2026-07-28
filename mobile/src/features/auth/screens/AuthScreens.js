@@ -11,8 +11,8 @@ import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
-import { HexBadge, FiztexMark } from '@shared/components/Hex';
-import { Card, PrimaryButton, ScreenHeader, FiztexWordmark } from '@shared/components/ui';
+import { HexBadge, PhysTechMark } from '@shared/components/Hex';
+import { Card, PrimaryButton, ScreenHeader, PhysTechWordmark } from '@shared/components/ui';
 import { GradCard, GRAD } from '@shared/components/Grad';
 import { authApi } from '@shared/api/authApi';
 import { useAuth } from '../AuthContext';
@@ -40,7 +40,7 @@ function BrandEmblem() {
           justifyContent: 'center',
         }}
       >
-        <FiztexMark size={68} color="#fff" />
+        <PhysTechMark size={68} color="#fff" />
       </View>
     </View>
   );
@@ -82,7 +82,7 @@ export function AuthWelcome({ onContinue, onEntrance }) {
     <Screen scroll={false}>
       <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 40 }}>
         <View style={{ alignItems: 'center', marginTop: 20 }}>
-          <FiztexWordmark size={40} />
+          <PhysTechWordmark size={40} />
         </View>
 
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
