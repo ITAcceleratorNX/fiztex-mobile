@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Pressable, ScrollView, Animated } from 'react-native';
+import { View, Pressable, ScrollView, Animated, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
@@ -9,8 +9,10 @@ import { HexBadge } from '@shared/components/Hex';
 import { Card, Pill, Avatar, PrimaryButton, AppHeader, ScreenHeader, SectionTitle, CircleButton } from '@shared/components/ui';
 import { GradCard, GRAD } from '@shared/components/Grad';
 import { useAppState } from '@shared/state/AppState';
+import { useAuth } from '@features/auth/AuthContext';
 import { TEACHER, CLASS_ROSTER, AI_QUESTIONS } from '@shared/data/mock';
 import { LessonRow, ProfileRow, QuickAction, brandColor } from '@shared/ui/rows';
+import { useMySchedule } from '@shared/hooks/useSchedule';
 
 const chunk = (arr, n) => arr.reduce((rows, item, i) => {
   if (i % n === 0) rows.push([]);
@@ -21,12 +23,10 @@ const chunk = (arr, n) => arr.reduce((rows, item, i) => {
 // ═══ HOME ═══
 export function TeacherHome({ nav }) {
   const { c } = useTheme();
-  const todays = [
-    { time: '08:30', end: '09:10', subject: 'Математика · 4Б', room: 'каб. 204', status: 'done' },
-    { time: '09:20', end: '10:00', subject: 'Математика · 4А', room: 'каб. 204', status: 'done' },
-    { time: '10:20', end: '11:00', subject: 'Чтение · 4Б', room: 'каб. 207', status: 'now', progress: 0.6 },
-    { time: '12:30', end: '13:10', subject: 'Математика · 4В', room: 'каб. 204', status: 'upcoming' },
-  ];
+  const { fullName } = useAuth();
+  const { loading, error, data, emptyMessage } = useMySchedule();
+  const lessons = data?.lessons || [];
+  const nowLesson = lessons.find((l) => l.status === 'now') || lessons.find((l) => l.status === 'upcoming');
   const actions = [
     { icon: 'qr', color: 'green', label: 'Сканировать QR', to: 'scanner' },
     { icon: 'pencil', color: 'blue', label: 'Выставить оценки', to: 'grade-entry' },
@@ -37,29 +37,38 @@ export function TeacherHome({ nav }) {
     <Screen>
       <AppHeader
         greeting="Добрый день,"
-        name={TEACHER.name}
+        name={fullName || TEACHER.name}
         right={<CircleButton icon="bell" badge onPress={() => nav('notifications')} />}
       />
 
-      <GradCard colors={GRAD.blue} style={{ marginHorizontal: 16, marginBottom: 16 }} padding={18}>
-        <Pill style={{ backgroundColor: 'rgba(255,255,255,0.18)', color: '#fff' }}>● Сейчас</Pill>
-        <Txt style={{ fontSize: 22, fontWeight: '700', marginTop: 10, letterSpacing: -0.4 }}>Чтение · 4 «Б»</Txt>
-        <Txt style={{ fontSize: 13, opacity: 0.9, marginTop: 4 }}>Каб. 207 · 10:20–11:00</Txt>
-        <View style={{ marginTop: 14, flexDirection: 'row', gap: 14, alignItems: 'flex-end' }}>
-          <View>
-            <Txt style={{ fontSize: 11, opacity: 0.7 }}>Присутствует</Txt>
-            <Txt style={{ fontSize: 18, fontWeight: '700', marginTop: 2 }}>22 / 24</Txt>
-          </View>
-          <View>
-            <Txt style={{ fontSize: 11, opacity: 0.7 }}>Опоздавших</Txt>
-            <Txt style={{ fontSize: 18, fontWeight: '700', marginTop: 2 }}>1</Txt>
-          </View>
-          <View style={{ flex: 1 }} />
-          <Pressable onPress={() => nav('class')} style={{ backgroundColor: 'rgba(255,255,255,0.20)', borderRadius: 999, paddingVertical: 8, paddingHorizontal: 14 }}>
-            <Txt style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Класс →</Txt>
-          </Pressable>
+      {loading ? (
+        <View style={{ padding: 24, alignItems: 'center' }}>
+          <ActivityIndicator color={c.blue} />
         </View>
-      </GradCard>
+      ) : nowLesson ? (
+        <GradCard colors={GRAD.blue} style={{ marginHorizontal: 16, marginBottom: 16 }} padding={18}>
+          <Pill style={{ backgroundColor: 'rgba(255,255,255,0.18)', color: '#fff' }}>
+            {nowLesson.status === 'now' ? '● Сейчас' : 'Далее'}
+          </Pill>
+          <Txt style={{ fontSize: 22, fontWeight: '700', marginTop: 10, letterSpacing: -0.4 }}>
+            {nowLesson.subject}
+            {nowLesson.className ? ` · ${nowLesson.className}` : ''}
+          </Txt>
+          <Txt style={{ fontSize: 13, opacity: 0.9, marginTop: 4 }}>
+            {nowLesson.room} · {nowLesson.time}–{nowLesson.end}
+          </Txt>
+          <View style={{ marginTop: 14, flexDirection: 'row', alignItems: 'flex-end' }}>
+            <View style={{ flex: 1 }} />
+            <Pressable onPress={() => nav('class')} style={{ backgroundColor: 'rgba(255,255,255,0.20)', borderRadius: 999, paddingVertical: 8, paddingHorizontal: 14 }}>
+              <Txt style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Класс →</Txt>
+            </Pressable>
+          </View>
+        </GradCard>
+      ) : (
+        <Card style={{ marginHorizontal: 16, marginBottom: 16, padding: 18 }}>
+          <Txt style={{ fontSize: 14, color: c.ink2 }}>{error || emptyMessage || 'Сегодня уроков нет'}</Txt>
+        </Card>
+      )}
 
       <View style={{ marginHorizontal: 16, marginBottom: 18, gap: 8 }}>
         {chunk(actions, 2).map((row, ri) => (
@@ -73,9 +82,19 @@ export function TeacherHome({ nav }) {
 
       <SectionTitle title="Расписание сегодня" />
       <View style={{ gap: 8, marginHorizontal: 16, marginBottom: 18 }}>
-        {todays.map((l, i) => (
-          <LessonRow key={i} lesson={l} onPress={() => nav('class')} />
+        {lessons.map((l, i) => (
+          <LessonRow
+            key={l.lessonId || i}
+            lesson={{
+              ...l,
+              subject: l.className ? `${l.subject} · ${l.className}` : l.subject,
+            }}
+            onPress={() => nav('class')}
+          />
         ))}
+        {!loading && lessons.length === 0 ? (
+          <Txt style={{ color: c.ink3, fontSize: 14 }}>{error || emptyMessage || 'Нет уроков'}</Txt>
+        ) : null}
       </View>
 
       <SectionTitle title="Нужно сделать" />
@@ -518,16 +537,24 @@ export function TeacherFeedbackWrite({ nav }) {
 // ═══ PROFILE ═══
 export function TeacherProfile({ onSignOut }) {
   const { c, dark, toggle } = useTheme();
+  const { fullName, biometricsEnabled, biometricMeta, enableBiometrics, disableBiometrics } = useAuth();
+  const displayName = fullName || TEACHER.name;
   const classes = [
     { c: '4 «Б»', sub: 'Кл. руководитель · 24 ученика', color: 'green' },
     { c: '4 «А»', sub: 'Математика · 22 ученика', color: 'blue' },
     { c: '4 «В»', sub: 'Математика · 21 ученик', color: 'red' },
   ];
+
+  const toggleBio = async () => {
+    if (biometricsEnabled) await disableBiometrics();
+    else if (biometricMeta.available) await enableBiometrics();
+  };
+
   return (
     <Screen>
       <View style={{ paddingTop: 14, paddingHorizontal: 16, paddingBottom: 8, alignItems: 'center' }}>
-        <Avatar name={TEACHER.name} size={86} color="red" />
-        <Txt style={{ fontSize: 22, fontWeight: '700', marginTop: 12, letterSpacing: -0.3 }}>{TEACHER.name}</Txt>
+        <Avatar name={displayName} size={86} color="red" />
+        <Txt style={{ fontSize: 22, fontWeight: '700', marginTop: 12, letterSpacing: -0.3 }}>{displayName}</Txt>
         <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 2 }}>{TEACHER.subject}</Txt>
       </View>
 
@@ -556,7 +583,14 @@ export function TeacherProfile({ onSignOut }) {
           <ProfileRow icon="settings" title="Тёмная тема" value={dark ? 'Вкл' : 'Выкл'} />
         </Pressable>
         <ProfileRow icon="bell" title="Уведомления" />
-        <ProfileRow icon="face" title="Face ID" value="Включён" last />
+        <Pressable onPress={toggleBio}>
+          <ProfileRow
+            icon="face"
+            title={biometricMeta.label || 'Face ID'}
+            value={biometricsEnabled ? 'Вкл' : biometricMeta.available ? 'Выкл' : 'Нет'}
+            last
+          />
+        </Pressable>
       </Card>
 
       <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 100 }}>

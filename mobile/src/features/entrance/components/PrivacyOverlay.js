@@ -1,9 +1,9 @@
 import React from 'react';
-import { View, Modal, StyleSheet } from 'react-native';
+import { View, Modal, StyleSheet, Pressable } from 'react-native';
 import { Txt } from '@shared/components/Txt';
 import { useTheme } from '@shared/theme/ThemeContext';
 
-export function PrivacyOverlay({ visible }) {
+export function PrivacyOverlay({ visible, onResume }) {
   const { c, dark } = useTheme();
   if (!visible) return null;
 
@@ -12,7 +12,23 @@ export function PrivacyOverlay({ visible }) {
       <View style={[styles.overlay, { backgroundColor: dark ? '#000' : '#0F172A' }]}>
         <View style={{ width: 72, height: 72, borderRadius: 24, backgroundColor: c.green, opacity: 0.35 }} />
         <Txt style={styles.title}>Тест приостановлен</Txt>
-        <Txt style={styles.sub}>Вернитесь в приложение, чтобы продолжить</Txt>
+        <Txt style={styles.sub}>
+          Выход из приложения зафиксирован. Нажмите «Продолжить», чтобы снова увидеть вопросы.
+        </Txt>
+        {onResume ? (
+          <Pressable
+            onPress={onResume}
+            style={{
+              marginTop: 28,
+              paddingVertical: 14,
+              paddingHorizontal: 28,
+              borderRadius: 999,
+              backgroundColor: c.green,
+            }}
+          >
+            <Txt style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>Продолжить</Txt>
+          </Pressable>
+        ) : null}
       </View>
     </Modal>
   );

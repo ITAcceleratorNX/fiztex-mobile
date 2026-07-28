@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { CustomTabBar } from './CustomTabBar';
 import { withNav } from './withNav';
 import { NotificationsScreen } from '@features/notifications';
+import { ScheduleScreen } from '@features/schedule';
 import {
   StudentHome, StudentSchedule, StudentLesson, StudentCheckoutQR, StudentDiary, StudentSubject,
   StudentClubs, StudentClub, StudentTest, StudentAITest, StudentEvents, StudentAchievements,
@@ -21,6 +22,14 @@ import {
 const tabScreenOptions = { headerShown: false };
 const stackScreenOptions = { headerShown: false };
 
+function ParentSchedule(props) {
+  return <ScheduleScreen {...props} role="parent" />;
+}
+
+function TeacherSchedule(props) {
+  return <ScheduleScreen {...props} role="teacher" />;
+}
+
 function renderTabs(Tab, tabs) {
   return tabs.map((t) => (
     <Tab.Screen
@@ -36,7 +45,7 @@ function renderDetails(Stack, details) {
   return details.map((d) => <Stack.Screen key={d.name} name={d.name} component={withNav(d.comp)} />);
 }
 
-// ─── Student ──────────────────────────────────────────────────────────────────
+// ─── Student — Figma: Home / Schedule / Diary / Profile ───────────────────────
 const SStack = createNativeStackNavigator();
 const STab = createBottomTabNavigator();
 
@@ -45,8 +54,8 @@ function StudentTabs() {
     <STab.Navigator tabBar={(p) => <CustomTabBar {...p} />} screenOptions={tabScreenOptions}>
       {renderTabs(STab, [
         { name: 'home', comp: StudentHome, label: 'Главная', icon: 'home' },
-        { name: 'heroes', comp: StudentHeroes, label: 'Путь', icon: 'heroes' },
-        { name: 'test', comp: StudentTest, label: 'Учёба', icon: 'sparkle' },
+        { name: 'schedule', comp: StudentSchedule, label: 'Расписание', icon: 'calendar' },
+        { name: 'diary', comp: StudentDiary, label: 'Дневник', icon: 'book' },
         { name: 'profile', comp: StudentProfile, label: 'Я', icon: 'user' },
       ])}
     </STab.Navigator>
@@ -58,25 +67,25 @@ export function StudentApp() {
     <SStack.Navigator screenOptions={stackScreenOptions}>
       <SStack.Screen name="Tabs" component={StudentTabs} />
       {renderDetails(SStack, [
-        { name: 'schedule', comp: StudentSchedule },
         { name: 'lesson', comp: StudentLesson },
         { name: 'checkout', comp: StudentCheckoutQR },
-        { name: 'diary', comp: StudentDiary },
         { name: 'subject', comp: StudentSubject },
         { name: 'clubs', comp: StudentClubs },
         { name: 'club', comp: StudentClub },
+        { name: 'test', comp: StudentTest },
         { name: 'aitest', comp: StudentAITest },
         { name: 'events', comp: StudentEvents },
         { name: 'achievements', comp: StudentAchievements },
         { name: 'map', comp: StudentMap },
         { name: 'shop', comp: StudentShop },
+        { name: 'heroes', comp: StudentHeroes },
         { name: 'notifications', comp: NotificationsScreen },
       ])}
     </SStack.Navigator>
   );
 }
 
-// ─── Parent ───────────────────────────────────────────────────────────────────
+// ─── Parent — Home / Schedule / Grades / Profile ──────────────────────────────
 const PStack = createNativeStackNavigator();
 const PTab = createBottomTabNavigator();
 
@@ -85,9 +94,8 @@ function ParentTabs() {
     <PTab.Navigator tabBar={(p) => <CustomTabBar {...p} />} screenOptions={tabScreenOptions}>
       {renderTabs(PTab, [
         { name: 'home', comp: ParentHome, label: 'Главная', icon: 'home' },
-        { name: 'attendance', comp: ParentAttendance, label: 'Журнал', icon: 'calendar' },
+        { name: 'schedule', comp: ParentSchedule, label: 'Расписание', icon: 'calendar' },
         { name: 'grades', comp: ParentGrades, label: 'Дневник', icon: 'book' },
-        { name: 'service', comp: ParentService, label: 'Сервис', icon: 'clean' },
         { name: 'profile', comp: ParentProfile, label: 'Я', icon: 'user' },
       ])}
     </PTab.Navigator>
@@ -99,9 +107,10 @@ export function ParentApp() {
     <PStack.Navigator screenOptions={stackScreenOptions}>
       <PStack.Screen name="Tabs" component={ParentTabs} />
       {renderDetails(PStack, [
-        { name: 'schedule', comp: StudentSchedule },
         { name: 'lesson', comp: StudentLesson },
         { name: 'subject', comp: StudentSubject },
+        { name: 'attendance', comp: ParentAttendance },
+        { name: 'service', comp: ParentService },
         { name: 'clubs', comp: StudentClubs },
         { name: 'club', comp: StudentClub },
         { name: 'events', comp: StudentEvents },
@@ -112,7 +121,7 @@ export function ParentApp() {
   );
 }
 
-// ─── Teacher ──────────────────────────────────────────────────────────────────
+// ─── Teacher — Home / Schedule / Class / Profile ──────────────────────────────
 const TStack = createNativeStackNavigator();
 const TTab = createBottomTabNavigator();
 
@@ -121,9 +130,8 @@ function TeacherTabs() {
     <TTab.Navigator tabBar={(p) => <CustomTabBar {...p} />} screenOptions={tabScreenOptions}>
       {renderTabs(TTab, [
         { name: 'home', comp: TeacherHome, label: 'Сегодня', icon: 'home' },
+        { name: 'schedule', comp: TeacherSchedule, label: 'Расписание', icon: 'calendar' },
         { name: 'class', comp: TeacherClass, label: 'Класс', icon: 'user' },
-        { name: 'grade-entry', comp: TeacherGradeEntry, label: 'Оценки', icon: 'pencil' },
-        { name: 'ai-upload', comp: TeacherAIUpload, label: 'AI-тест', icon: 'sparkle' },
         { name: 'profile', comp: TeacherProfile, label: 'Я', icon: 'user' },
       ])}
     </TTab.Navigator>
@@ -136,6 +144,8 @@ export function TeacherApp() {
       <TStack.Screen name="Tabs" component={TeacherTabs} />
       {renderDetails(TStack, [
         { name: 'scanner', comp: TeacherScanner },
+        { name: 'grade-entry', comp: TeacherGradeEntry },
+        { name: 'ai-upload', comp: TeacherAIUpload },
         { name: 'feedback-write', comp: TeacherFeedbackWrite },
         { name: 'notifications', comp: NotificationsScreen },
       ])}

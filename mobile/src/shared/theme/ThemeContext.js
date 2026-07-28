@@ -6,11 +6,11 @@ import { FIZTEX } from './tokens';
 // (slate-50 background, white surfaces, slate-900/500 ink, slate-200 borders).
 // Brand colours are merged in so screens can read `c.green`, `c.goldDeep`, etc.
 const light = {
-  bg: '#F8FAFC',
+  bg: '#FAFBFC',
   bg2: '#F1F5F9',
   surface: '#FFFFFF',
   surface2: '#F8FAFC',
-  ink: '#0F172A',
+  ink: '#1A1F36',
   ink2: '#475569',
   ink3: '#94A3B8',
   border: '#E2E8F0',

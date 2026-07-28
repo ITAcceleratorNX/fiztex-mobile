@@ -12,6 +12,7 @@ import { Onest_800ExtraBold } from '@expo-google-fonts/onest/800ExtraBold';
 import { ThemeProvider, useTheme } from '@shared/theme/ThemeContext';
 import { FiztexAppStateProvider } from '@shared/state/AppState';
 import { EntranceProvider } from '@features/entrance';
+import { AuthProvider } from '@features/auth';
 import { RootNavigator } from '@app/navigation/RootNavigator';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -31,14 +32,16 @@ function Inner() {
     },
   };
   return (
-    <FiztexAppStateProvider>
-      <EntranceProvider>
-        <NavigationContainer theme={navTheme}>
-          <StatusBar style={dark ? 'light' : 'dark'} />
-          <RootNavigator />
-        </NavigationContainer>
-      </EntranceProvider>
-    </FiztexAppStateProvider>
+    <AuthProvider>
+      <FiztexAppStateProvider>
+        <EntranceProvider>
+          <NavigationContainer theme={navTheme}>
+            <StatusBar style={dark ? 'light' : 'dark'} />
+            <RootNavigator />
+          </NavigationContainer>
+        </EntranceProvider>
+      </FiztexAppStateProvider>
+    </AuthProvider>
   );
 }
 

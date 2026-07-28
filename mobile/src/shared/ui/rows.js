@@ -1,14 +1,13 @@
 import React from 'react';
-import { View } from 'react-native';
-import Svg, { Rect, G } from 'react-native-svg';
+import { View, Pressable } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Txt } from '@shared/components/Txt';
-import Icon from '@shared/components/Icon';
+import { Card, Pill, Avatar } from '@shared/components/ui';
 import { HexBadge } from '@shared/components/Hex';
-import { Card, Pill } from '@shared/components/ui';
+import Icon from '@shared/components/Icon';
 import { SUBJECT_COLORS } from '@shared/data/mock';
+import { shadowSm } from '@shared/components/Screen';
 
-// Resolve a Fiztex colour-name to a theme hex (falls back to muted ink).
 export function brandColor(c, name) {
   return {
     green: c.green,
@@ -26,47 +25,109 @@ export function softColor(c, name) {
   return { green: c.greenSoft, blue: c.blueSoft, red: c.redSoft, gold: c.goldSoft }[name] || c.bg2;
 }
 
-// ─── Schedule lesson row ──────────────────────────────────────────────────────
-export function LessonRow({ lesson, onPress }) {
+/**
+ * Figma schedule lesson card:
+ * time | accent stripe | subject+meta | status badge
+ * done = muted; now = orange stripe + outline pill; next = navy stripe + outline pill
+ */
+export function LessonRow({ lesson, onPress, showClassBadge = false }) {
   const { c } = useTheme();
-  const subInfo = SUBJECT_COLORS[lesson.subject] || { color: 'gray' };
-  const stripe = brandColor(c, subInfo.color);
+  const status = lesson.status || 'upcoming';
+  const muted = status === 'done';
 
-  const badge = {
-    done: (
-      <Pill color="green">
-        <Icon name="check" size={12} />
-        <Txt style={{ fontSize: 12, fontWeight: '600' }}> Был</Txt>
-      </Pill>
-    ),
-    now: (
-      <Pill color="red" style={{ backgroundColor: c.red, color: '#fff' }}>
-        ● Сейчас
-      </Pill>
-    ),
-    next: <Pill color="gold">Следующий</Pill>,
-    upcoming: <Pill color="gray">{lesson.time}</Pill>,
-  }[lesson.status];
+  const stripe =
+    status === 'now' ? c.green : status === 'next' ? c.blue : muted ? '#D1D5DB' : '#D1D5DB';
+
+  const ink = muted ? '#94A3B8' : c.ink;
+  const ink2 = muted ? '#CBD5E1' : c.ink2;
+
+  let badge = null;
+  if (status === 'now') {
+    badge = (
+      <View
+        style={{
+          paddingVertical: 5,
+          paddingHorizontal: 10,
+          borderRadius: 999,
+          borderWidth: 1.5,
+          borderColor: c.green,
+        }}
+      >
+        <Txt style={{ fontSize: 12, fontWeight: '700', color: c.green }}>Сейчас</Txt>
+      </View>
+    );
+  } else if (status === 'next') {
+    badge = (
+      <View
+        style={{
+          paddingVertical: 5,
+          paddingHorizontal: 10,
+          borderRadius: 999,
+          borderWidth: 1.5,
+          borderColor: c.blue,
+        }}
+      >
+        <Txt style={{ fontSize: 12, fontWeight: '700', color: c.blue }}>Следующий</Txt>
+      </View>
+    );
+  }
+
+  const metaParts = [];
+  if (lesson.teacher) metaParts.push(lesson.teacher);
+  if (lesson.room && lesson.room !== '—') metaParts.push(lesson.room);
+  if (lesson.subgroupName) metaParts.push(lesson.subgroupName);
+  const meta = metaParts.join(' · ');
 
   return (
-    <Card onPress={onPress} style={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-      <View style={{ width: 4, alignSelf: 'stretch', borderRadius: 4, backgroundColor: stripe }} />
-      <View style={{ minWidth: 54 }}>
-        <Txt style={{ fontSize: 15, fontWeight: '700', letterSpacing: -0.2 }}>{lesson.time}</Txt>
-        <Txt style={{ fontSize: 11, color: c.ink3, marginTop: 1 }}>{lesson.end}</Txt>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        {
+          backgroundColor: c.surface,
+          borderRadius: 20,
+          paddingVertical: 14,
+          paddingHorizontal: 14,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          opacity: pressed ? 0.92 : 1,
+          ...shadowSm,
+          shadowOpacity: 0.06,
+          shadowRadius: 10,
+          elevation: 2,
+        },
+      ]}
+    >
+      <View style={{ minWidth: 52 }}>
+        <Txt style={{ fontSize: 15, fontWeight: '700', letterSpacing: -0.2, color: ink }}>{lesson.time}</Txt>
+        <Txt style={{ fontSize: 12, color: ink2, marginTop: 2 }}>{lesson.end}</Txt>
       </View>
+
+      <View style={{ width: 4, height: 38, borderRadius: 2, backgroundColor: stripe }} />
+
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Txt style={{ fontSize: 15, fontWeight: '600' }}>{lesson.subject}</Txt>
-        <Txt style={{ fontSize: 12, color: c.ink3, marginTop: 1 }}>
-          {lesson.room} · {lesson.teacher}
+        <Txt style={{ fontSize: 15, fontWeight: '700', color: ink }} numberOfLines={1}>
+          {lesson.subject}
         </Txt>
+        {meta ? (
+          <Txt style={{ fontSize: 12, color: ink2, marginTop: 3 }} numberOfLines={1}>
+            {meta}
+          </Txt>
+        ) : null}
       </View>
-      {badge}
-    </Card>
+
+      <View style={{ alignItems: 'flex-end', gap: 6 }}>
+        {showClassBadge && lesson.className ? (
+          <View style={{ paddingVertical: 3, paddingHorizontal: 8, borderRadius: 8, backgroundColor: c.bg2 }}>
+            <Txt style={{ fontSize: 11, fontWeight: '700', color: c.ink2 }}>{lesson.className}</Txt>
+          </View>
+        ) : null}
+        {badge}
+      </View>
+    </Pressable>
   );
 }
 
-// ─── Diary subject row ────────────────────────────────────────────────────────
 export function SubjectRow({ subject, onPress }) {
   const { c } = useTheme();
   const subInfo = SUBJECT_COLORS[subject.name] || { color: 'gray' };
@@ -100,7 +161,6 @@ export function SubjectRow({ subject, onPress }) {
   );
 }
 
-// ─── Settings / info row ──────────────────────────────────────────────────────
 export function ProfileRow({ icon, title, value, last }) {
   const { c } = useTheme();
   return (
@@ -118,51 +178,42 @@ export function ProfileRow({ icon, title, value, last }) {
         <Icon name={icon} size={16} color={c.ink2} />
       </View>
       <Txt style={{ flex: 1, fontSize: 14, fontWeight: '500' }}>{title}</Txt>
-      {value ? <Txt style={{ fontSize: 13, color: c.ink3, marginRight: 6 }}>{value}</Txt> : null}
-      <Icon name="chevronRight" size={14} color={c.ink3} />
+      {value ? <Txt style={{ fontSize: 13, color: c.ink3, fontWeight: '600' }}>{value}</Txt> : <Icon name="chevronRight" size={16} color={c.ink3} />}
     </View>
   );
 }
 
-// ─── Quick action tile (parent / teacher home) ───────────────────────────────
 export function QuickAction({ icon, color, label, onPress }) {
   const { c } = useTheme();
   return (
-    <Card onPress={onPress} style={{ flex: 1, padding: 16, gap: 10 }}>
+    <Card onPress={onPress} style={{ flex: 1, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
       <HexBadge size={40} fill={brandColor(c, color)} icon={icon} iconColor="#fff" iconSize={18} />
-      <Txt style={{ fontSize: 14, fontWeight: '700' }}>{label}</Txt>
+      <Txt style={{ flex: 1, fontSize: 13, fontWeight: '700' }}>{label}</Txt>
     </Card>
   );
 }
 
-// ─── Decorative QR mockup (not a real QR code) ────────────────────────────────
-export function QRMockup({ size = 200 }) {
-  const grid = 17;
-  const cell = size / grid;
-  const dark = '#0F172A';
-  const cells = [];
-  const rng = (n) => ((n * 9301 + 49297) % 233280) / 233280;
-  for (let y = 0; y < grid; y++) {
-    for (let x = 0; x < grid; x++) {
-      if ((x < 8 && y < 8) || (x > 8 && y < 8) || (x < 8 && y > 8)) continue;
-      if (rng(x * 100 + y) > 0.5) {
-        cells.push(<Rect key={`${x}-${y}`} x={x * cell} y={y * cell} width={cell * 0.9} height={cell * 0.9} fill={dark} rx={cell * 0.2} />);
-      }
-    }
-  }
-  const corner = (cx, cy, key) => (
-    <G key={key}>
-      <Rect x={cx} y={cy} width={7 * cell} height={7 * cell} fill={dark} rx={cell * 0.6} />
-      <Rect x={cx + cell} y={cy + cell} width={5 * cell} height={5 * cell} fill="#fff" rx={cell * 0.4} />
-      <Rect x={cx + cell * 2} y={cy + cell * 2} width={3 * cell} height={3 * cell} fill={dark} rx={cell * 0.3} />
-    </G>
-  );
+export function QRMockup({ size = 180 }) {
+  const { c } = useTheme();
+  const cells = 11;
+  const gap = 2;
+  const cell = (size - gap * (cells - 1)) / cells;
   return (
-    <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      {cells}
-      {corner(0, 0, 'tl')}
-      {corner(size - 7 * cell, 0, 'tr')}
-      {corner(0, size - 7 * cell, 'bl')}
-    </Svg>
+    <View style={{ width: size, height: size, flexDirection: 'row', flexWrap: 'wrap', gap }}>
+      {Array.from({ length: cells * cells }).map((_, i) => {
+        const on = ((i * 7) % 11) > 4;
+        return (
+          <View
+            key={i}
+            style={{
+              width: cell,
+              height: cell,
+              borderRadius: 2,
+              backgroundColor: on ? c.ink : c.bg2,
+            }}
+          />
+        );
+      })}
+    </View>
   );
 }

@@ -4,14 +4,16 @@
 // (`color="green"`, `c.blue`, etc.) don't need touching — only the hues change:
 // `green` is now the primary/CTA slot (orange), `blue` is the structural/brand slot (navy).
 export const FIZTEX = {
-  green: '#f5923b',
-  greenDeep: '#c2620f',
+  // Figma schedule accent (orange #FB923C) — primary CTA / "now" / active tab
+  green: '#FB923C',
+  greenDeep: '#EA580C',
+  // Figma navy #274185 — titles, selected day chip, "next"
   blue: '#274185',
-  blueDeep: '#182a5c',
-  red: '#dc2626',
-  redDeep: '#b91c1c',
-  gold: '#eab308',
-  goldDeep: '#a16207',
+  blueDeep: '#182A5C',
+  red: '#DC2626',
+  redDeep: '#B91C1C',
+  gold: '#EAB308',
+  goldDeep: '#A16207',
 };
 
 // Font family aliases (loaded in App.js via @expo-google-fonts/onest).

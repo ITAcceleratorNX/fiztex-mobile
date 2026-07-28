@@ -1,5 +1,12 @@
-import React, { useEffect } from 'react';
-import { View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  TextInput,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+} from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
@@ -7,8 +14,9 @@ import Icon from '@shared/components/Icon';
 import { HexBadge, FiztexMark } from '@shared/components/Hex';
 import { Card, PrimaryButton, ScreenHeader, FiztexWordmark } from '@shared/components/ui';
 import { GradCard, GRAD } from '@shared/components/Grad';
+import { authApi } from '@shared/api/authApi';
+import { useAuth } from '../AuthContext';
 
-// Clean branded emblem for the welcome hero (replaces the old colour-hex cluster).
 function BrandEmblem() {
   const { c } = useTheme();
   return (
@@ -38,6 +46,36 @@ function BrandEmblem() {
   );
 }
 
+function Field({ label, value, onChangeText, secureTextEntry, keyboardType, autoCapitalize, placeholder, error }) {
+  const { c } = useTheme();
+  return (
+    <View style={{ marginTop: 14 }}>
+      <Txt style={{ fontSize: 13, fontWeight: '600', color: c.ink2, marginBottom: 6 }}>{label}</Txt>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        secureTextEntry={secureTextEntry}
+        keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize || 'none'}
+        autoCorrect={false}
+        placeholder={placeholder}
+        placeholderTextColor={c.ink3}
+        style={{
+          height: 52,
+          borderWidth: 1.5,
+          borderColor: error ? c.red : c.border,
+          borderRadius: 14,
+          paddingHorizontal: 14,
+          fontSize: 16,
+          fontWeight: '600',
+          color: c.ink,
+          backgroundColor: c.surface,
+        }}
+      />
+    </View>
+  );
+}
+
 export function AuthWelcome({ onContinue, onEntrance }) {
   const { c } = useTheme();
   return (
@@ -52,14 +90,18 @@ export function AuthWelcome({ onContinue, onEntrance }) {
         </View>
 
         <View style={{ paddingBottom: 24 }}>
-          <Txt style={{ fontSize: 30, fontWeight: '700', letterSpacing: -0.7, lineHeight: 35 }}>Школа в твоём кармане</Txt>
+          <Txt style={{ fontSize: 30, fontWeight: '700', letterSpacing: -0.7, lineHeight: 35 }}>
+            Школа в твоём кармане
+          </Txt>
           <Txt style={{ fontSize: 15, color: c.ink2, marginTop: 10, lineHeight: 22 }}>
             Расписание, оценки, кружки, достижения и связь с учителями — всё в одном месте.
           </Txt>
         </View>
 
         <View style={{ paddingBottom: 24 }}>
-          <PrimaryButton color="green" onPress={onContinue}>Войти</PrimaryButton>
+          <PrimaryButton color="green" onPress={onContinue}>
+            Войти
+          </PrimaryButton>
           {onEntrance ? (
             <PrimaryButton color="blue" style={{ marginTop: 10 }} onPress={onEntrance}>
               Вступительный тест
@@ -74,92 +116,407 @@ export function AuthWelcome({ onContinue, onEntrance }) {
   );
 }
 
-export function AuthSignIn({ onRole, onBack }) {
+export function AuthSignIn({ onBack, onStudent, onParentTeacher, onFaceId, canUseFaceId, biometricLabel }) {
   const { c } = useTheme();
   return (
     <Screen>
       <ScreenHeader title="Вход" back={onBack} />
       <View style={{ paddingHorizontal: 20 }}>
-        <Txt style={{ fontSize: 26, fontWeight: '700', letterSpacing: -0.4, lineHeight: 31, marginTop: 8 }}>Как ты заходишь?</Txt>
+        <Txt style={{ fontSize: 26, fontWeight: '700', letterSpacing: -0.4, lineHeight: 31, marginTop: 8 }}>
+          Как ты заходишь?
+        </Txt>
         <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 8 }}>
-          Выбери способ — приложение запомнит выбор для следующего раза.
+          Ученик — по коду и PIN. Родитель и учитель — по телефону или email.
         </Txt>
 
-        <GradCard colors={GRAD.green} padding={22} radius={20} patternColor="rgba(255,255,255,0.10)" patternSize={26} style={{ marginTop: 24 }}>
-          <HexBadge size={52} fill="rgba(255,255,255,0.20)" icon="qr" iconColor="#fff" iconSize={26} />
-          <Txt style={{ fontSize: 18, fontWeight: '700', marginTop: 14 }}>Вход по QR-коду</Txt>
-          <Txt style={{ fontSize: 13, opacity: 0.85, marginTop: 2 }}>Покажи QR на входе в школу</Txt>
-          <View style={{ marginTop: 14, alignSelf: 'flex-start', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.18)' }}>
-            <Txt style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Сгенерировать QR</Txt>
-          </View>
+        {canUseFaceId ? (
+          <Card
+            style={{ marginTop: 24, padding: 22, flexDirection: 'row', alignItems: 'center', gap: 16 }}
+            onPress={onFaceId}
+          >
+            <HexBadge size={52} fill={c.blue} icon="face" iconColor="#fff" iconSize={26} />
+            <View style={{ flex: 1 }}>
+              <Txt style={{ fontSize: 18, fontWeight: '700' }}>{biometricLabel || 'Face ID'}</Txt>
+              <Txt style={{ fontSize: 13, color: c.ink2, marginTop: 2 }}>Быстрый вход</Txt>
+            </View>
+            <Icon name="chevronRight" size={20} color={c.ink3} />
+          </Card>
+        ) : null}
+
+        <GradCard
+          colors={GRAD.green}
+          padding={22}
+          radius={20}
+          patternColor="rgba(255,255,255,0.10)"
+          patternSize={26}
+          style={{ marginTop: canUseFaceId ? 12 : 24 }}
+          onPress={onStudent}
+        >
+          <HexBadge size={52} fill="rgba(255,255,255,0.20)" icon="star" iconColor="#fff" iconSize={26} />
+          <Txt style={{ fontSize: 18, fontWeight: '700', marginTop: 14 }}>Я ученик</Txt>
+          <Txt style={{ fontSize: 13, opacity: 0.85, marginTop: 2 }}>Персональный код и PIN</Txt>
         </GradCard>
 
-        <Card style={{ marginTop: 12, padding: 22, flexDirection: 'row', alignItems: 'center', gap: 16 }} onPress={() => onRole('select')}>
-          <HexBadge size={52} fill={c.blue} icon="face" iconColor="#fff" iconSize={26} />
+        <Card
+          style={{ marginTop: 12, padding: 22, flexDirection: 'row', alignItems: 'center', gap: 16 }}
+          onPress={onParentTeacher}
+        >
+          <HexBadge size={52} fill={c.blue} icon="user" iconColor="#fff" iconSize={26} />
           <View style={{ flex: 1 }}>
-            <Txt style={{ fontSize: 18, fontWeight: '700' }}>Face ID</Txt>
-            <Txt style={{ fontSize: 13, color: c.ink2, marginTop: 2 }}>Привязанный аккаунт</Txt>
+            <Txt style={{ fontSize: 18, fontWeight: '700' }}>Родитель или учитель</Txt>
+            <Txt style={{ fontSize: 13, color: c.ink2, marginTop: 2 }}>Телефон / email и пароль</Txt>
           </View>
           <Icon name="chevronRight" size={20} color={c.ink3} />
         </Card>
-
-        <View style={{ alignItems: 'center', marginTop: 28 }}>
-          <Txt style={{ color: c.ink2, fontSize: 14, fontWeight: '600' }}>Войти по email и паролю</Txt>
-        </View>
       </View>
     </Screen>
   );
 }
 
-export function AuthRolePicker({ onPick, onBack }) {
+export function AuthStudentLogin({ onBack, onActivatedHint }) {
   const { c } = useTheme();
-  const roles = [
-    { id: 'student', name: 'Ученик', sub: 'Расписание, оценки, ачивки', color: 'green', icon: 'star' },
-    { id: 'parent', name: 'Родитель', sub: 'Следить за ребёнком', color: 'blue', icon: 'user' },
-    { id: 'teacher', name: 'Учитель', sub: 'Классы, оценки, фидбек', color: 'red', icon: 'pencil' },
-  ];
-  const fill = { green: c.green, blue: c.blue, red: c.red };
+  const { signInWithResponse, biometricMeta, enableBiometrics } = useAuth();
+  const [code, setCode] = useState('');
+  const [pin, setPin] = useState('');
+  const [mode, setMode] = useState('login'); // login | activate
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [offerBio, setOfferBio] = useState(false);
+
+  const submit = async () => {
+    if (code.trim().length < 4) {
+      setError('Введите персональный код');
+      return;
+    }
+    if (!/^\d{4,6}$/.test(pin)) {
+      setError('PIN должен быть 4–6 цифр');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const res =
+        mode === 'activate'
+          ? await authApi.activateStudent(code.trim(), pin)
+          : await authApi.studentLogin(code.trim(), pin);
+      const next = await signInWithResponse(res);
+      if (biometricMeta.available) setOfferBio(next.role);
+      else onActivatedHint?.(next.role);
+    } catch (e) {
+      setError(e.message || 'Не удалось войти');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (offerBio) {
+    return (
+      <EnableBiometricsScreen
+        label={biometricMeta.label}
+        onEnable={async () => {
+          await enableBiometrics();
+          onActivatedHint?.(offerBio);
+        }}
+        onSkip={() => onActivatedHint?.(offerBio)}
+      />
+    );
+  }
+
   return (
     <Screen>
-      <ScreenHeader title="Роль" back={onBack} />
-      <View style={{ paddingHorizontal: 20 }}>
-        <Txt style={{ fontSize: 26, fontWeight: '700', letterSpacing: -0.4, lineHeight: 31 }}>Я захожу как</Txt>
-        <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 8 }}>На демо можно переключить роль в настройках.</Txt>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <ScreenHeader title={mode === 'activate' ? 'Активация' : 'Ученик'} back={onBack} />
+        <View style={{ paddingHorizontal: 20 }}>
+          <Txt style={{ fontSize: 26, fontWeight: '700', letterSpacing: -0.4, lineHeight: 31 }}>
+            {mode === 'activate' ? 'Первый вход' : 'Вход по коду'}
+          </Txt>
+          <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 8 }}>
+            {mode === 'activate'
+              ? 'Придумайте PIN из 4–6 цифр — он будет вашим паролем.'
+              : 'Введите персональный код и PIN, выданные школой.'}
+          </Txt>
 
-        <View style={{ gap: 10, marginTop: 24 }}>
-          {roles.map((r) => (
-            <Card key={r.id} onPress={() => onPick(r.id)} style={{ padding: 18, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-              <HexBadge size={56} fill={fill[r.color]} icon={r.icon} iconColor="#fff" iconSize={24} />
-              <View style={{ flex: 1 }}>
-                <Txt style={{ fontSize: 18, fontWeight: '700' }}>{r.name}</Txt>
-                <Txt style={{ fontSize: 13, color: c.ink3 }}>{r.sub}</Txt>
+          <Field
+            label="Персональный код"
+            value={code}
+            onChangeText={(t) => {
+              setError(null);
+              setCode(t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16));
+            }}
+            autoCapitalize="characters"
+            placeholder="Код ученика"
+            error={error}
+          />
+          <Field
+            label="PIN"
+            value={pin}
+            onChangeText={(t) => {
+              setError(null);
+              setPin(t.replace(/\D/g, '').slice(0, 6));
+            }}
+            keyboardType="number-pad"
+            secureTextEntry
+            placeholder="4–6 цифр"
+            error={error}
+          />
+          {error ? (
+            <Txt style={{ color: c.red, fontSize: 13, marginTop: 10 }}>{error}</Txt>
+          ) : null}
+
+          <PrimaryButton color="green" style={{ marginTop: 24 }} onPress={submit} disabled={loading}>
+            {loading ? <ActivityIndicator color="#fff" /> : mode === 'activate' ? 'Активировать' : 'Войти'}
+          </PrimaryButton>
+
+          <Pressable
+            onPress={() => {
+              setError(null);
+              setMode(mode === 'login' ? 'activate' : 'login');
+            }}
+            style={{ marginTop: 16, alignItems: 'center' }}
+          >
+            <Txt style={{ color: c.blue, fontWeight: '600', fontSize: 14 }}>
+              {mode === 'login' ? 'Первый вход — активировать PIN' : 'Уже активирован — войти'}
+            </Txt>
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
+    </Screen>
+  );
+}
+
+export function AuthParentTeacherLogin({ onBack, onActivatedHint }) {
+  const { c } = useTheme();
+  const { signInWithResponse, biometricMeta, enableBiometrics } = useAuth();
+  const [tab, setTab] = useState('login'); // login | activate
+  const [role, setRole] = useState('parent'); // parent | teacher — only for activate
+  const [login, setLogin] = useState('');
+  const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [code, setCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [offerBio, setOfferBio] = useState(false);
+
+  const submit = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      let res;
+      if (tab === 'login') {
+        if (!login.trim() || !password) {
+          setError('Введите логин и пароль');
+          setLoading(false);
+          return;
+        }
+        res = await authApi.login(login.trim(), password);
+      } else {
+        if (!phone.trim() || !code.trim() || password.length < 8) {
+          setError('Телефон, код активации и пароль (мин. 8 символов)');
+          setLoading(false);
+          return;
+        }
+        res =
+          role === 'teacher'
+            ? await authApi.activateTeacher(phone.trim(), code.trim(), password)
+            : await authApi.activateParent(phone.trim(), code.trim(), password);
+      }
+      const next = await signInWithResponse(res);
+      if (biometricMeta.available) setOfferBio(next.role);
+      else onActivatedHint?.(next.role);
+    } catch (e) {
+      setError(e.message || 'Не удалось войти');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (offerBio) {
+    return (
+      <EnableBiometricsScreen
+        label={biometricMeta.label}
+        onEnable={async () => {
+          await enableBiometrics();
+          onActivatedHint?.(offerBio);
+        }}
+        onSkip={() => onActivatedHint?.(offerBio)}
+      />
+    );
+  }
+
+  return (
+    <Screen>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <ScreenHeader title="Родитель / учитель" back={onBack} />
+        <View style={{ paddingHorizontal: 20, paddingBottom: 40 }}>
+          <Txt style={{ fontSize: 26, fontWeight: '700', letterSpacing: -0.4, lineHeight: 31 }}>
+            {tab === 'login' ? 'Вход' : 'Активация'}
+          </Txt>
+          <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 8 }}>
+            {tab === 'login'
+              ? 'Телефон или email и пароль после активации.'
+              : 'Код активации выдаёт школа. Придумайте пароль от 8 символов.'}
+          </Txt>
+
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 18 }}>
+            {[
+              { id: 'login', label: 'Вход' },
+              { id: 'activate', label: 'Активация' },
+            ].map((t) => (
+              <Pressable
+                key={t.id}
+                onPress={() => {
+                  setError(null);
+                  setTab(t.id);
+                }}
+                style={{
+                  flex: 1,
+                  height: 40,
+                  borderRadius: 999,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: tab === t.id ? c.blue : c.surface2,
+                }}
+              >
+                <Txt style={{ fontWeight: '600', color: tab === t.id ? '#fff' : c.ink2 }}>{t.label}</Txt>
+              </Pressable>
+            ))}
+          </View>
+
+          {tab === 'activate' ? (
+            <>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
+                {[
+                  { id: 'parent', label: 'Родитель' },
+                  { id: 'teacher', label: 'Учитель' },
+                ].map((r) => (
+                  <Pressable
+                    key={r.id}
+                    onPress={() => setRole(r.id)}
+                    style={{
+                      flex: 1,
+                      height: 40,
+                      borderRadius: 999,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderWidth: 1.5,
+                      borderColor: role === r.id ? c.green : c.border,
+                      backgroundColor: role === r.id ? c.greenSoft : c.surface,
+                    }}
+                  >
+                    <Txt style={{ fontWeight: '600', color: role === r.id ? c.green : c.ink2 }}>{r.label}</Txt>
+                  </Pressable>
+                ))}
               </View>
-              <Icon name="chevronRight" size={20} color={c.ink3} />
-            </Card>
-          ))}
+              <Field label="Телефон" value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+7…" error={error} />
+              <Field label="Код активации" value={code} onChangeText={setCode} autoCapitalize="characters" placeholder="Код из школы" error={error} />
+              <Field label="Новый пароль" value={password} onChangeText={setPassword} secureTextEntry placeholder="Минимум 8 символов" error={error} />
+            </>
+          ) : (
+            <>
+              <Field
+                label="Телефон или email"
+                value={login}
+                onChangeText={setLogin}
+                keyboardType="email-address"
+                placeholder="login"
+                error={error}
+              />
+              <Field label="Пароль" value={password} onChangeText={setPassword} secureTextEntry placeholder="Пароль" error={error} />
+            </>
+          )}
+
+          {error ? <Txt style={{ color: c.red, fontSize: 13, marginTop: 10 }}>{error}</Txt> : null}
+
+          <PrimaryButton color="blue" style={{ marginTop: 24 }} onPress={submit} disabled={loading}>
+            {loading ? <ActivityIndicator color="#fff" /> : tab === 'activate' ? 'Активировать' : 'Войти'}
+          </PrimaryButton>
         </View>
+      </KeyboardAvoidingView>
+    </Screen>
+  );
+}
+
+function EnableBiometricsScreen({ label, onEnable, onSkip }) {
+  const { c } = useTheme();
+  const [busy, setBusy] = useState(false);
+  return (
+    <Screen scroll={false}>
+      <View style={{ flex: 1, paddingHorizontal: 24, justifyContent: 'center' }}>
+        <View style={{ alignItems: 'center' }}>
+          <HexBadge size={88} fill={c.blue} icon="face" iconColor="#fff" iconSize={40} />
+          <Txt style={{ marginTop: 24, fontSize: 24, fontWeight: '700', textAlign: 'center' }}>
+            Включить {label}?
+          </Txt>
+          <Txt style={{ marginTop: 10, fontSize: 14, color: c.ink2, textAlign: 'center', lineHeight: 20 }}>
+            В следующий раз можно входить быстрее — без кода и пароля.
+          </Txt>
+        </View>
+        <PrimaryButton
+          color="blue"
+          style={{ marginTop: 32 }}
+          disabled={busy}
+          onPress={async () => {
+            setBusy(true);
+            try {
+              await onEnable();
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Включить {label}
+        </PrimaryButton>
+        <PrimaryButton color="ghost" style={{ marginTop: 10 }} onPress={onSkip} disabled={busy}>
+          Не сейчас
+        </PrimaryButton>
       </View>
     </Screen>
   );
 }
 
-export function AuthFaceID({ onSuccess, onBack }) {
+export function AuthFaceID({ onSuccess, onFail, onBack }) {
   const { c } = useTheme();
+  const { unlockWithBiometrics, biometricMeta } = useAuth();
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const tryUnlock = async () => {
+    setBusy(true);
+    setError(null);
+    const result = await unlockWithBiometrics();
+    setBusy(false);
+    if (result.success) onSuccess?.();
+    else {
+      setError('Не удалось подтвердить личность');
+      onFail?.(result);
+    }
+  };
+
   useEffect(() => {
-    const t = setTimeout(() => onSuccess && onSuccess(), 1600);
-    return () => clearTimeout(t);
+    tryUnlock();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
   return (
     <Screen>
-      <ScreenHeader title="Face ID" back={onBack} />
+      <ScreenHeader title={biometricMeta.label || 'Face ID'} back={onBack} />
       <View style={{ paddingHorizontal: 24, alignItems: 'center' }}>
         <View style={{ marginTop: 40, width: 180, height: 180, alignItems: 'center', justifyContent: 'center' }}>
           <View style={{ position: 'absolute', width: 180, height: 180, borderRadius: 999, backgroundColor: c.blueSoft }} />
           <View style={{ position: 'absolute', width: 120, height: 120, borderRadius: 999, backgroundColor: c.blue }} />
           <Icon name="face" size={68} color="#fff" />
         </View>
-        <Txt style={{ marginTop: 28, fontSize: 17, fontWeight: '700' }}>Смотри в камеру</Txt>
-        <Txt style={{ fontSize: 13, color: c.ink2, marginTop: 4 }}>Идентификация…</Txt>
+        <Txt style={{ marginTop: 28, fontSize: 17, fontWeight: '700' }}>
+          {busy ? 'Подтвердите личность…' : error || `Используйте ${biometricMeta.label}`}
+        </Txt>
+        {error ? (
+          <PrimaryButton color="blue" style={{ marginTop: 24 }} onPress={tryUnlock}>
+            Повторить
+          </PrimaryButton>
+        ) : null}
+        <PrimaryButton color="ghost" style={{ marginTop: 12 }} onPress={onBack}>
+          Войти по паролю
+        </PrimaryButton>
       </View>
     </Screen>
   );
