@@ -98,11 +98,15 @@ export function QuestionBody({
           <PhotoAnswerBlock
             {...photoProps}
             photos={photos}
-            onPhotosChange={(next) => onPhotosChange?.(next) ?? onChange({
-                selectedOptionIds: value?.selectedOptionIds || [],
-                openTextAnswer: value?.openTextAnswer || '',
-                photos: next,
-              })}
+            onPhotosChange={(next) =>
+              onPhotosChange
+                ? onPhotosChange(next)
+                : onChange({
+                    selectedOptionIds: value?.selectedOptionIds || [],
+                    openTextAnswer: value?.openTextAnswer || '',
+                    photos: next,
+                  })
+            }
           />
         ) : null}
       </View>
@@ -131,11 +135,15 @@ export function QuestionBody({
           <PhotoAnswerBlock
             {...photoProps}
             photos={photos}
-            onPhotosChange={(next) => onPhotosChange?.(next) ?? onChange({
-                selectedOptionIds: value?.selectedOptionIds || [],
-                openTextAnswer: value?.openTextAnswer || '',
-                photos: next,
-              })}
+            onPhotosChange={(next) =>
+              onPhotosChange
+                ? onPhotosChange(next)
+                : onChange({
+                    selectedOptionIds: value?.selectedOptionIds || [],
+                    openTextAnswer: value?.openTextAnswer || '',
+                    photos: next,
+                  })
+            }
           />
         ) : null}
       </View>
@@ -170,12 +178,13 @@ export function QuestionBody({
             {...photoProps}
             photos={photos}
             onPhotosChange={(next) =>
-              onPhotosChange?.(next) ??
-              onChange({
-                openTextAnswer: value?.openTextAnswer || '',
-                selectedOptionIds: value?.selectedOptionIds || [],
-                photos: next,
-              })
+              onPhotosChange
+                ? onPhotosChange(next)
+                : onChange({
+                    openTextAnswer: value?.openTextAnswer || '',
+                    selectedOptionIds: value?.selectedOptionIds || [],
+                    photos: next,
+                  })
             }
           />
         ) : null}
@@ -196,8 +205,9 @@ export function QuestionBody({
         {...photoProps}
         photos={photos}
         onPhotosChange={(next) =>
-          onPhotosChange?.(next) ??
-          onChange({ selectedOptionIds: [], openTextAnswer: '', photos: next })
+          onPhotosChange
+            ? onPhotosChange(next)
+            : onChange({ selectedOptionIds: [], openTextAnswer: '', photos: next })
         }
       />
     ) : null;

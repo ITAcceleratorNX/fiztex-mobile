@@ -891,6 +891,7 @@ export function EntranceTestScreen({ attempt, onFinished }) {
   const [privacy, setPrivacy] = useState(false);
   const [showTimeWarning, setShowTimeWarning] = useState(false);
   const [displayClock, setDisplayClock] = useState(() => formatTime(attempt.remainingSeconds || 0));
+  const [liveRemaining, setLiveRemaining] = useState(() => attempt.remainingSeconds || 0);
   const [finishOpen, setFinishOpen] = useState(false);
   const [anticheatSnack, setAnticheatSnack] = useState(false);
 
@@ -1042,6 +1043,7 @@ export function EntranceTestScreen({ attempt, onFinished }) {
 
   const handleTick = useCallback((secondsLeft) => {
     setDisplayClock(formatTime(secondsLeft));
+    setLiveRemaining(secondsLeft);
   }, []);
 
   const scheduleSave = (questionId) => {
@@ -1067,10 +1069,12 @@ export function EntranceTestScreen({ attempt, onFinished }) {
     savedRef.current[questionId] = serialize(next);
   };
 
-  const goTo = async (nextIndex) => {
+  const goTo = (nextIndex) => {
     const currentId = questions[index].id;
     clearTimeout(saveTimers.current[currentId]);
-    await saveQuestion(currentId);
+    // Persist in the background; blocking navigation on the network POST makes
+    // switching questions feel laggy. The answer is also flushed on submit.
+    void saveQuestion(currentId);
     setIndex(nextIndex);
   };
 
@@ -1099,7 +1103,7 @@ export function EntranceTestScreen({ attempt, onFinished }) {
   const currentSaveStatus = saveStatus[question?.id] ?? 'idle';
   const isLast = index === questions.length - 1;
   const progressPct = questions.length > 0 ? Math.round(((index + 1) / questions.length) * 100) : 0;
-  const lowClock = remaining <= warnThreshold && remaining > 0;
+  const lowClock = liveRemaining <= warnThreshold && liveRemaining > 0;
 
   if (!questions.length) {
     return (

@@ -189,20 +189,15 @@ export function EntranceFlow({ onExit }) {
     }
   }
 
-  async function handleBackToList() {
-    await setActiveAttemptId(null);
+  function handleBackToList() {
+    // Navigate immediately using the assignments already in state, then refresh in the
+    // background — waiting on the network GET here makes the screen feel like it hangs.
+    void setActiveAttemptId(null);
     setAttempt(null);
     setResult(null);
     setSelected(null);
-    setBusy(true);
-    try {
-      await loadAssignments();
-      setScreen('list');
-    } catch (e) {
-      toast?.(e.message || 'Не удалось загрузить тесты');
-    } finally {
-      setBusy(false);
-    }
+    setScreen('list');
+    loadAssignments().catch((e) => toast?.(e.message || 'Не удалось обновить тесты'));
   }
 
   if (screen === 'loading') {
