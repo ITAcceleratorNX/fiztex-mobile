@@ -1,30 +1,34 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import {
-  View,
-  Pressable,
-  ActivityIndicator,
-  Modal,
-  FlatList,
-} from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, Pressable, ActivityIndicator, FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/theme/ThemeContext';
-import { Screen, shadowSm } from '@shared/components/Screen';
+import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
-import Icon from '@shared/components/Icon';
-import { Avatar } from '@shared/components/ui';
-import { FiztexMark } from '@shared/components/Hex';
+import { PhysTechMark } from '@shared/components/Hex';
 import { LessonRow } from '@shared/ui/rows';
 import {
-  shortName,
   useMySchedule,
   useChildSchedule,
   useParentChildren,
-  weekDayChips,
+  buildDayStrip,
+  startOfWeek,
   lessonsForDate,
 } from '@shared/hooks/useSchedule';
-import { scheduleStatusMessage } from '@shared/api/scheduleMap';
+import { localDateKey } from '@shared/api/scheduleMap';
+import {
+  InfoBanner,
+  ScheduleSkeleton,
+  ScheduleStateView,
+  resolveDayState,
+} from './ScheduleStates';
+import { ChildPickerSheet, ChildSwitcherPill } from './ChildSwitcher';
+import { mockAttendanceFor } from './attendanceMock';
 
-/** Subtle repeating Φ watermark — Figma schedule background. */
+const STRIP_GAP = 8;
+const STRIP_PAD = 16;
+const VISIBLE_CHIPS = 5;
+
+/** Subtle repeating Φ watermark behind the lesson list (Figma `lessons-scroll`). */
 function ScheduleWatermark() {
   const { c } = useTheme();
   const marks = Array.from({ length: 48 });
@@ -45,83 +49,108 @@ function ScheduleWatermark() {
     >
       {marks.map((_, i) => (
         <View key={i} style={{ width: '25%', height: 110, alignItems: 'center', justifyContent: 'center' }}>
-          <FiztexMark size={36} color={c.blue} />
+          <PhysTechMark size={36} color={c.blue} />
         </View>
       ))}
     </View>
   );
 }
 
-function DayChips({ chips, day, onSelect }) {
+function DayChip({ day, selected, isToday, width, onPress }) {
   const { c } = useTheme();
   return (
-    <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 14 }}>
-      {chips.map((d, i) => {
-        const on = i === day;
-        return (
-          <Pressable
-            key={d.date}
-            onPress={() => onSelect(i)}
-            style={{
-              flex: 1,
-              height: 64,
-              borderRadius: 16,
-              backgroundColor: on ? c.blue : 'transparent',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Txt style={{ fontSize: 12, fontWeight: '600', color: on ? '#fff' : '#64748B' }}>{d.label}</Txt>
-            <Txt style={{ fontSize: 16, fontWeight: '700', marginTop: 2, color: on ? '#fff' : '#1A1F36' }}>
-              {d.dayNum}
-            </Txt>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
-function ScheduleEmpty({ status, message, error }) {
-  const { c } = useTheme();
-  const copy =
-    error ||
-    message ||
-    scheduleStatusMessage(status) ||
-    'На этот день уроков нет';
-
-  const icon =
-    status === 'schedule_not_published'
-      ? 'bell'
-      : status === 'non_working_day' || status === 'calendar_no_lessons'
-        ? 'calendar'
-        : error
-          ? 'x'
-          : 'calendar';
-
-  return (
-    <View style={{ paddingHorizontal: 32, paddingTop: 72, alignItems: 'center' }}>
-      <View
-        style={{
-          width: 88,
-          height: 88,
-          borderRadius: 44,
-          backgroundColor: c.blueSoft,
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: 18,
-        }}
-      >
-        <Icon name={icon} size={36} color={c.blue} />
-      </View>
-      <Txt style={{ fontSize: 16, fontWeight: '600', color: c.ink2, textAlign: 'center', lineHeight: 24 }}>
-        {copy}
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${day.label} ${day.dayNum}${isToday ? ', сегодня' : ''}`}
+      onPress={onPress}
+      style={{
+        width,
+        height: 64,
+        borderRadius: 16,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        gap: 4,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: selected ? c.blue : 'transparent',
+        borderWidth: !selected && isToday ? 1.5 : 0,
+        borderColor: c.blue,
+      }}
+    >
+      <Txt style={{ fontSize: 12, fontWeight: '600', color: selected ? '#fff' : isToday ? c.blue : c.inkMuted }}>
+        {day.label}
       </Txt>
+      <Txt style={{ fontSize: 16, fontWeight: '700', color: selected ? '#fff' : c.ink }}>{day.dayNum}</Txt>
+    </Pressable>
+  );
+}
+
+/**
+ * Figma `weekday-strip` (node 2022:12344), extended to scroll across weeks:
+ * the selected day is kept centred, so previous and next days stay reachable.
+ * Five chips are visible at a time, matching the mockup's geometry.
+ */
+function DayStrip({ days, selectedDate, todayStr, onSelect }) {
+  const listRef = useRef(null);
+  const [width, setWidth] = useState(0);
+  const didInitialScroll = useRef(false);
+
+  const chipWidth = width
+    ? (width - STRIP_PAD * 2 - STRIP_GAP * (VISIBLE_CHIPS - 1)) / VISIBLE_CHIPS
+    : 0;
+  const itemSize = chipWidth + STRIP_GAP;
+  const index = days.findIndex((d) => d.date === selectedDate);
+
+  // Keep the selected chip centred (viewPosition 0.5). The first positioning
+  // must not animate, otherwise the strip visibly flies in on mount.
+  useEffect(() => {
+    if (!listRef.current || !chipWidth || index < 0) return;
+    const animated = didInitialScroll.current;
+    didInitialScroll.current = true;
+    listRef.current.scrollToIndex({ index, viewPosition: 0.5, animated });
+  }, [index, chipWidth]);
+
+  return (
+    <View
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+      style={{ paddingVertical: 8 }}
+    >
+      {chipWidth > 0 ? (
+        <FlatList
+          ref={listRef}
+          data={days}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(d) => d.date}
+          initialScrollIndex={index >= 0 ? index : 0}
+          getItemLayout={(_, i) => ({ length: itemSize, offset: itemSize * i, index: i })}
+          onScrollToIndexFailed={() => {}}
+          contentContainerStyle={{ paddingHorizontal: STRIP_PAD, gap: STRIP_GAP }}
+          renderItem={({ item }) => (
+            <DayChip
+              day={item}
+              width={chipWidth}
+              selected={item.date === selectedDate}
+              isToday={item.date === todayStr}
+              onPress={() => onSelect(item.date)}
+            />
+          )}
+        />
+      ) : (
+        <View style={{ height: 64 }} />
+      )}
     </View>
   );
 }
 
-function markNextLesson(lessons) {
+/**
+ * «Следующий» is only meaningful for the current day — on any other day the
+ * first lesson is not "next up". Past/future days are already resolved to
+ * done/upcoming by the date-aware status in scheduleMap.
+ */
+function markNextLesson(lessons, isToday) {
+  if (!isToday) return lessons;
   const list = lessons.map((l) => ({ ...l }));
   const nowIdx = list.findIndex((l) => l.status === 'now');
   const start = nowIdx >= 0 ? nowIdx + 1 : 0;
@@ -144,7 +173,7 @@ export function ScheduleScreen({ nav, role = 'student' }) {
   const isParent = role === 'parent';
   const isTeacher = role === 'teacher';
 
-  const { children, loading: childrenLoading } = useParentChildren(isParent);
+  const { children, loading: childrenLoading, reload: reloadChildren } = useParentChildren(isParent);
   const [childId, setChildId] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -152,150 +181,103 @@ export function ScheduleScreen({ nav, role = 'student' }) {
     if (isParent && children.length && !childId) setChildId(children[0].id);
   }, [isParent, children, childId]);
 
-  const me = useMySchedule({ week: true });
-  const child = useChildSchedule(isParent ? childId : null, { week: true });
-  const { loading, error, data, emptyMessage } = isParent ? child : me;
+  const todayStr = localDateKey();
+  const [selectedDate, setSelectedDate] = useState(todayStr);
+  const days = useMemo(() => buildDayStrip(todayStr), [todayStr]);
 
-  const chips = useMemo(() => weekDayChips(data), [data]);
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const [day, setDay] = useState(0);
+  // Refetch only when the *week* changes, not on every day tap.
+  const weekAnchor = useMemo(() => startOfWeek(selectedDate), [selectedDate]);
+  const me = useMySchedule({ week: true, date: weekAnchor });
+  const child = useChildSchedule(isParent ? childId : null, { week: true, date: weekAnchor });
+  const { loading, error, data, reload } = isParent ? child : me;
 
-  useEffect(() => {
-    const idx = chips.findIndex((d) => d.date === todayStr);
-    if (idx >= 0) setDay(idx);
-  }, [chips, todayStr]);
+  const rawLessons = lessonsForDate(data, selectedDate);
+  const lessons = markNextLesson(rawLessons, selectedDate === todayStr);
+  const selectedIndex = children.findIndex((ch) => ch.id === childId);
+  const selectedChild = selectedIndex >= 0 ? children[selectedIndex] : null;
 
-  const selected = chips[day] || chips[0];
-  const rawLessons = lessonsForDate(data, selected?.date);
-  const lessons = markNextLesson(rawLessons);
-  const selectedChild = children.find((ch) => ch.id === childId);
+  const dayState = resolveDayState({ loading, error, view: data, lessons, dateStr: selectedDate });
+  const onRetry = useCallback(() => reload?.(), [reload]);
 
-  const showEmpty = !loading && lessons.length === 0;
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      // `silent` keeps the current lessons on screen instead of flashing skeletons.
+      await Promise.all([reload?.(true), isParent ? reloadChildren?.() : null]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [reload, reloadChildren, isParent]);
 
   return (
-    <Screen scroll contentStyle={{ paddingBottom: insets.bottom + 100 }} style={{ backgroundColor: c.bg }}>
+    <Screen
+      scroll
+      contentStyle={{ paddingBottom: insets.bottom + 100 }}
+      style={{ backgroundColor: c.bg }}
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+    >
       <ScheduleWatermark />
 
-      <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-        <Txt style={{ fontSize: 24, fontWeight: '800', color: c.blue, letterSpacing: -0.4 }}>Расписание</Txt>
+      <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+        <Txt style={{ fontSize: 24, fontWeight: '800', color: c.blue }}>Расписание</Txt>
       </View>
 
       {isParent ? (
-        <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
           {childrenLoading ? (
             <ActivityIndicator color={c.blue} />
           ) : selectedChild ? (
-            <Pressable
-              onPress={() => (children.length > 1 ? setPickerOpen(true) : null)}
-              style={{
-                alignSelf: 'flex-start',
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 10,
-                paddingVertical: 8,
-                paddingHorizontal: 12,
-                borderRadius: 999,
-                backgroundColor: c.surface,
-                borderWidth: 1,
-                borderColor: c.border,
-                ...shadowSm,
-                shadowOpacity: 0.05,
-              }}
-            >
-              <Avatar name={selectedChild.fullName} size={28} color="blue" />
-              <Txt style={{ fontSize: 14, fontWeight: '700', color: c.ink }}>
-                {shortName(selectedChild.fullName)}
-                {selectedChild.fullName.split(/\s+/).length > 1
-                  ? ` ${selectedChild.fullName.split(/\s+/)[0][0]}.`
-                  : ''}
-                {selectedChild.className ? ` · ${selectedChild.className}` : ''}
-              </Txt>
-              {children.length > 1 ? <Icon name="chevronDown" size={16} color={c.ink3} /> : null}
-            </Pressable>
+            <ChildSwitcherPill
+              child={selectedChild}
+              index={selectedIndex}
+              canSwitch={children.length > 1}
+              onPress={() => setPickerOpen(true)}
+            />
           ) : (
             <Txt style={{ color: c.ink3, fontSize: 14 }}>Нет связанных детей</Txt>
           )}
         </View>
       ) : null}
 
-      <DayChips chips={chips} day={day} onSelect={setDay} />
+      <DayStrip days={days} selectedDate={selectedDate} todayStr={todayStr} onSelect={setSelectedDate} />
 
-      {loading ? (
-        <View style={{ paddingTop: 60, alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={c.blue} />
-        </View>
-      ) : showEmpty ? (
-        <ScheduleEmpty status={data?.status} message={emptyMessage} error={error} />
-      ) : (
-        <View style={{ gap: 10, paddingHorizontal: 16 }}>
-          {lessons.map((l, i) => (
-            <LessonRow
-              key={l.lessonId || i}
-              lesson={l}
-              showClassBadge={isTeacher}
-              onPress={() => nav?.('lesson', l)}
-            />
+      {dayState.kind === 'loading' ? (
+        <ScheduleSkeleton />
+      ) : dayState.kind === 'lessons' ? (
+        <>
+          {dayState.infoEvents.map((e) => (
+            <InfoBanner key={e.id} title={e.title} />
           ))}
-        </View>
+          <View style={{ gap: 12, paddingHorizontal: 16 }}>
+            {lessons.map((l, i) => (
+              <LessonRow
+                key={l.lessonId || i}
+                lesson={l}
+                teacherView={isTeacher}
+                // A single attendance mark belongs to one pupil, so it is
+                // meaningless on a teacher's own schedule (a whole class).
+                attendance={isTeacher ? null : mockAttendanceFor(l)}
+                onPress={() => nav?.('lesson', l)}
+              />
+            ))}
+          </View>
+        </>
+      ) : (
+        <ScheduleStateView state={dayState} onRetry={onRetry} />
       )}
 
-      <Modal visible={pickerOpen} transparent animationType="fade" onRequestClose={() => setPickerOpen(false)}>
-        <Pressable
-          style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.35)', justifyContent: 'flex-end' }}
-          onPress={() => setPickerOpen(false)}
-        >
-          <Pressable
-            onPress={(e) => e.stopPropagation?.()}
-            style={{
-              backgroundColor: c.surface,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              paddingTop: 12,
-              paddingBottom: insets.bottom + 16,
-              maxHeight: '55%',
-            }}
-          >
-            <View style={{ alignItems: 'center', paddingBottom: 8 }}>
-              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: c.border }} />
-            </View>
-            <Txt style={{ fontSize: 17, fontWeight: '700', paddingHorizontal: 20, marginBottom: 8 }}>
-              Выберите ребёнка
-            </Txt>
-            <FlatList
-              data={children}
-              keyExtractor={(item) => String(item.id)}
-              renderItem={({ item }) => {
-                const on = item.id === childId;
-                return (
-                  <Pressable
-                    onPress={() => {
-                      setChildId(item.id);
-                      setPickerOpen(false);
-                    }}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 12,
-                      paddingHorizontal: 20,
-                      paddingVertical: 14,
-                      backgroundColor: on ? c.blueSoft : 'transparent',
-                    }}
-                  >
-                    <Avatar name={item.fullName} size={40} color="blue" />
-                    <View style={{ flex: 1 }}>
-                      <Txt style={{ fontSize: 15, fontWeight: '700' }}>{item.fullName}</Txt>
-                      <Txt style={{ fontSize: 13, color: c.ink3, marginTop: 2 }}>
-                        {item.className || 'Класс не назначен'}
-                      </Txt>
-                    </View>
-                    {on ? <Icon name="check" size={18} color={c.blue} /> : null}
-                  </Pressable>
-                );
-              }}
-            />
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <ChildPickerSheet
+        visible={pickerOpen}
+        items={children}
+        selectedId={childId}
+        onSelect={(id) => {
+          setChildId(id);
+          setPickerOpen(false);
+        }}
+        onClose={() => setPickerOpen(false)}
+      />
     </Screen>
   );
 }

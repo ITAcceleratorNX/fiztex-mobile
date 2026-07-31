@@ -1,6 +1,5 @@
 export {
   StudentHome,
-  StudentSchedule,
   StudentLesson,
   StudentCheckoutQR,
   StudentDiary,

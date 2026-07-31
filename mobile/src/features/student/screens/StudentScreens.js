@@ -138,46 +138,9 @@ export function StudentHome({ nav }) {
 }
 
 // ═══ SCHEDULE ═══
-export function StudentSchedule({ nav }) {
-  const { c } = useTheme();
-  const [day, setDay] = useState(2);
-  const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт'];
-  const dates = [26, 27, 28, 29, 30];
-  return (
-    <Screen>
-      <ScreenHeader title="Расписание" large sub="Май 2026 · 4 «Б»" />
-      <View style={{ flexDirection: 'row', gap: 6, paddingHorizontal: 16, paddingTop: 4, paddingBottom: 14 }}>
-        {days.map((d, i) => {
-          const on = i === day;
-          return (
-            <Pressable
-              key={d}
-              onPress={() => setDay(i)}
-              style={{
-                flex: 1,
-                height: 64,
-                borderRadius: 18,
-                backgroundColor: on ? c.green : c.surface,
-                borderWidth: on ? 0 : 1,
-                borderColor: c.border,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Txt style={{ fontSize: 11, opacity: 0.8, color: on ? '#fff' : c.ink, fontWeight: '600' }}>{d}</Txt>
-              <Txt style={{ fontSize: 18, marginTop: 2, color: on ? '#fff' : c.ink, fontWeight: '600' }}>{dates[i]}</Txt>
-            </Pressable>
-          );
-        })}
-      </View>
-      <View style={{ gap: 10, marginHorizontal: 16, marginBottom: 100 }}>
-        {TODAY_SCHEDULE.map((l, i) => (
-          <LessonRow key={i} lesson={l} onPress={() => nav('lesson', l)} />
-        ))}
-      </View>
-    </Screen>
-  );
-}
+// The student schedule tab now renders the shared, API-backed
+// `features/schedule/ScheduleScreen` (wired in RoleNavigators) — the old
+// hardcoded mock screen was removed.
 
 // ═══ LESSON DETAIL ═══
 export function StudentLesson({ nav, payload }) {

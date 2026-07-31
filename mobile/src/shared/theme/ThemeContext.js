@@ -13,6 +13,9 @@ const light = {
   ink: '#1A1F36',
   ink2: '#475569',
   ink3: '#94A3B8',
+  // Figma mobile greys — lesson meta / weekday labels and the idle accent stripe.
+  inkMuted: '#6B7280',
+  stripeIdle: '#D1D5DB',
   border: '#E2E8F0',
   borderStrong: '#CBD5E1',
   greenSoft: '#FFF7ED',
@@ -30,6 +33,8 @@ const dark = {
   ink: '#F1F5F9',
   ink2: '#B6C2D6',
   ink3: '#64748B',
+  inkMuted: '#9AA6BC',
+  stripeIdle: '#3E4F6D',
   border: '#2E3D57',
   borderStrong: '#3E4F6D',
   greenSoft: '#3A2412',

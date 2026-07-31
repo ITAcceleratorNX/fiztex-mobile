@@ -6,14 +6,16 @@
 export function mapLessonToRow(lesson, now = new Date()) {
   const time = formatTime(lesson.startTime);
   const end = formatTime(lesson.endTime);
-  const status = computeLessonStatus(lesson.startTime, lesson.endTime, now);
+  const status = computeLessonStatus(lesson.startTime, lesson.endTime, lesson.date, now);
   return {
     lessonId: lesson.lessonId,
     time,
     end,
     subject: lesson.subjectName || 'Предмет',
     room: lesson.room || '—',
+    roomLabel: formatRoom(lesson.room),
     teacher: lesson.teacherFullName || '',
+    teacherShort: abbreviateTeacherName(lesson.teacherFullName),
     status,
     className: lesson.className,
     subgroupName: lesson.subgroupName,
@@ -21,6 +23,22 @@ export function mapLessonToRow(lesson, now = new Date()) {
     date: lesson.date,
     raw: lesson,
   };
+}
+
+/** "Ахметова Гульнара Сериковна" → "Ахметова Г.С." (Figma lesson-card meta line). */
+export function abbreviateTeacherName(fullName) {
+  const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return parts[0];
+  const initials = parts.slice(1).map((p) => `${p[0].toUpperCase()}.`).join('');
+  return `${parts[0]} ${initials}`;
+}
+
+/** Room numbers get the "каб." prefix; named places ("Спортзал") are left alone. */
+export function formatRoom(room) {
+  const value = String(room || '').trim();
+  if (!value || value === '—') return '';
+  return /^\d+[A-Za-zА-Яа-я]?$/.test(value) ? `каб. ${value}` : value;
 }
 
 export function mapScheduleView(view, now = new Date()) {
@@ -79,7 +97,21 @@ function parseTimeToMinutes(value) {
   return h * 60 + m;
 }
 
-function computeLessonStatus(startTime, endTime, now) {
+/** Local YYYY-MM-DD (never UTC — toISOString would shift the day near midnight). */
+export function localDateKey(date = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/**
+ * Lesson status. The date is decisive: only lessons *on the current day* can be
+ * "now" — otherwise a 09:00 lesson looked "done" on every future day too.
+ */
+function computeLessonStatus(startTime, endTime, date, now) {
+  const today = localDateKey(now);
+  if (date && date < today) return 'done';
+  if (date && date > today) return 'upcoming';
+
   const start = parseTimeToMinutes(typeof startTime === 'string' ? startTime : null);
   const end = parseTimeToMinutes(typeof endTime === 'string' ? endTime : null);
   if (start == null || end == null) return 'upcoming';

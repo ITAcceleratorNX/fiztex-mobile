@@ -6,7 +6,7 @@ import { withNav } from './withNav';
 import { NotificationsScreen } from '@features/notifications';
 import { ScheduleScreen } from '@features/schedule';
 import {
-  StudentHome, StudentSchedule, StudentLesson, StudentCheckoutQR, StudentDiary, StudentSubject,
+  StudentHome, StudentLesson, StudentCheckoutQR, StudentDiary, StudentSubject,
   StudentClubs, StudentClub, StudentTest, StudentAITest, StudentEvents, StudentAchievements,
   StudentMap, StudentShop, StudentProfile,
 } from '@features/student';
@@ -21,6 +21,10 @@ import {
 
 const tabScreenOptions = { headerShown: false };
 const stackScreenOptions = { headerShown: false };
+
+function StudentSchedule(props) {
+  return <ScheduleScreen {...props} role="student" />;
+}
 
 function ParentSchedule(props) {
   return <ScheduleScreen {...props} role="parent" />;

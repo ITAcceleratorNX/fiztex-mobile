@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 
@@ -21,7 +21,8 @@ export const shadowLg = {
 };
 
 // Screen container — scrollable by default, themed background, status-bar inset.
-export function Screen({ children, scroll = true, contentStyle, style }) {
+// Pass `onRefresh` (with `refreshing`) to enable pull-to-refresh.
+export function Screen({ children, scroll = true, contentStyle, style, refreshing = false, onRefresh }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const pad = { paddingTop: insets.top + 4 };
@@ -37,6 +38,16 @@ export function Screen({ children, scroll = true, contentStyle, style }) {
       style={[{ flex: 1, backgroundColor: c.bg }, style]}
       contentContainerStyle={[pad, contentStyle]}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={c.blue}
+            colors={[c.blue]}
+          />
+        ) : undefined
+      }
     >
       {children}
     </ScrollView>

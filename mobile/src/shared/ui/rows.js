@@ -26,58 +26,118 @@ export function softColor(c, name) {
   return { green: c.greenSoft, blue: c.blueSoft, red: c.redSoft, gold: c.goldSoft }[name] || c.bg2;
 }
 
+// Outlined status chip from the Figma lesson-card (`status-badge`):
+// 1px border + 8%-alpha fill of the same brand colour, 11px bold label.
+function StatusBadge({ label, color, tint }) {
+  return (
+    <View
+      style={{
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: color,
+        backgroundColor: tint,
+      }}
+    >
+      <Txt style={{ fontSize: 11, fontWeight: '700', color }} numberOfLines={1}>
+        {label}
+      </Txt>
+    </View>
+  );
+}
+
+// Figma `attendance-badge` (node 2022:14970) — shown on finished lessons only.
+// Translucent fills work on both themes; ink/border are picked per scheme.
+const ATTENDANCE = {
+  present: { label: 'Посетил', icon: 'check', tint: 'rgba(34,197,94,0.12)', ink: '#16A34A', inkDark: '#4ADE80' },
+  late: { label: 'Опоздал', icon: 'clock', tint: 'rgba(245,158,11,0.12)', ink: '#FB923C', inkDark: '#FBBF6C' },
+  absent: { label: 'Пропустил', icon: 'x', tint: 'rgba(239,68,68,0.12)', ink: '#DC2626', inkDark: '#F87171' },
+};
+
+function AttendanceBadge({ status }) {
+  const { dark } = useTheme();
+  const v = ATTENDANCE[status];
+  if (!v) return null;
+  const color = dark ? v.inkDark : v.ink;
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingLeft: 8,
+        paddingRight: 10,
+        paddingVertical: 4,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: color,
+        backgroundColor: v.tint,
+      }}
+    >
+      <Icon name={v.icon} size={10} color={color} strokeWidth={3} />
+      <Txt style={{ fontSize: 11, fontWeight: '700', color }}>{v.label}</Txt>
+    </View>
+  );
+}
+
+// Figma `class-badge` (node 2022:14002) — the class a teacher's lesson belongs to.
+// Square-ish (r6) and tinted, unlike the outlined pill used for lesson status.
+function ClassBadge({ label }) {
+  const { c } = useTheme();
+  return (
+    <View
+      style={{
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 6,
+        backgroundColor: c.bg2,
+        maxWidth: 110,
+      }}
+    >
+      <Txt style={{ fontSize: 11, fontWeight: '700', color: c.ink }} numberOfLines={1}>
+        {label}
+      </Txt>
+    </View>
+  );
+}
+
 /**
- * Figma schedule lesson card:
- * time | accent stripe | subject+meta | status badge
- * done = muted; now = orange stripe + outline pill; next = navy stripe + outline pill
+ * Figma `lesson-card` — time column | accent stripe | details.
+ * Student/parent: node 2022:12361. Teacher: node 2022:13993.
+ *
+ * Status drives the accent stripe and the badge:
+ *   done     → grey stripe, whole card at 50% opacity, no badge
+ *   now      → orange stripe + «Сейчас»
+ *   next     → navy stripe + «Следующий»
+ *   upcoming → no stripe, no badge
+ *
+ * `teacherView` switches to the teacher card: a class badge next to the subject,
+ * and a meta line without the teacher's own name.
+ *
+ * `attendance` ('present' | 'late' | 'absent') renders the attendance badge from
+ * node 2022:14940. Per the design it only applies to finished lessons — a lesson
+ * that is «Сейчас»/«Следующий» keeps its status badge instead.
+ *
+ * Accepts both API rows (`teacherShort`/`roomLabel` from scheduleMap) and the
+ * legacy mock rows (`teacher`/`room`) still used by the home previews.
  */
-export function LessonRow({ lesson, onPress, showClassBadge = false }) {
+export function LessonRow({ lesson, onPress, teacherView = false, attendance = null }) {
   const { c } = useTheme();
   const status = lesson.status || 'upcoming';
-  const muted = status === 'done';
+  const done = status === 'done';
 
-  const stripe =
-    status === 'now' ? c.green : status === 'next' ? c.blue : muted ? '#D1D5DB' : '#D1D5DB';
+  const stripeColor =
+    status === 'now' ? c.green : status === 'next' ? c.blue : done ? c.stripeIdle : null;
 
-  const ink = muted ? '#94A3B8' : c.ink;
-  const ink2 = muted ? '#CBD5E1' : c.ink2;
-
-  let badge = null;
-  if (status === 'now') {
-    badge = (
-      <View
-        style={{
-          paddingVertical: 5,
-          paddingHorizontal: 10,
-          borderRadius: 999,
-          borderWidth: 1.5,
-          borderColor: c.green,
-        }}
-      >
-        <Txt style={{ fontSize: 12, fontWeight: '700', color: c.green }}>Сейчас</Txt>
-      </View>
-    );
-  } else if (status === 'next') {
-    badge = (
-      <View
-        style={{
-          paddingVertical: 5,
-          paddingHorizontal: 10,
-          borderRadius: 999,
-          borderWidth: 1.5,
-          borderColor: c.blue,
-        }}
-      >
-        <Txt style={{ fontSize: 12, fontWeight: '700', color: c.blue }}>Следующий</Txt>
-      </View>
-    );
-  }
-
-  const metaParts = [];
-  if (lesson.teacher) metaParts.push(lesson.teacher);
-  if (lesson.room && lesson.room !== '—') metaParts.push(lesson.room);
-  if (lesson.subgroupName) metaParts.push(lesson.subgroupName);
-  const meta = metaParts.join(' · ');
+  // Student/parent: «Учитель · каб. · подгруппа». Teacher: «подгруппа · каб.»
+  // — their own name would be noise on their own schedule.
+  const teacher = lesson.teacherShort || lesson.teacher;
+  const room = lesson.roomLabel !== undefined ? lesson.roomLabel : lesson.room;
+  const metaParts = teacherView
+    ? [lesson.subgroupName, room]
+    : [teacher, room, lesson.subgroupName];
+  const meta = metaParts.filter((p) => p && p !== '—').join(' · ');
 
   return (
     <Pressable
@@ -86,44 +146,49 @@ export function LessonRow({ lesson, onPress, showClassBadge = false }) {
         {
           backgroundColor: c.surface,
           borderRadius: 20,
-          paddingVertical: 14,
-          paddingHorizontal: 14,
+          padding: 12,
           flexDirection: 'row',
-          alignItems: 'center',
+          alignItems: 'flex-start',
           gap: 12,
-          opacity: pressed ? 0.92 : 1,
+          opacity: done ? 0.5 : pressed ? 0.92 : 1,
           ...shadowSm,
-          shadowOpacity: 0.06,
-          shadowRadius: 10,
-          elevation: 2,
+          shadowOpacity: 0.03,
+          shadowRadius: 6,
+          shadowOffset: { width: 0, height: 4 },
+          elevation: 1,
         },
       ]}
     >
-      <View style={{ minWidth: 52 }}>
-        <Txt style={{ fontSize: 15, fontWeight: '700', letterSpacing: -0.2, color: ink }}>{lesson.time}</Txt>
-        <Txt style={{ fontSize: 12, color: ink2, marginTop: 2 }}>{lesson.end}</Txt>
+      <View style={{ width: 72, gap: 2 }}>
+        <Txt style={{ fontSize: 14, fontWeight: '700', color: c.ink }}>{lesson.time}</Txt>
+        <Txt style={{ fontSize: 12, fontWeight: '500', color: c.inkMuted }}>{lesson.end}</Txt>
       </View>
 
-      <View style={{ width: 4, height: 38, borderRadius: 2, backgroundColor: stripe }} />
+      {stripeColor ? (
+        <View style={{ width: 4, borderRadius: 2, alignSelf: 'stretch', backgroundColor: stripeColor }} />
+      ) : null}
 
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Txt style={{ fontSize: 15, fontWeight: '700', color: ink }} numberOfLines={1}>
-          {lesson.subject}
-        </Txt>
+      <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Txt style={{ flex: 1, fontSize: 15, fontWeight: '700', color: c.ink }} numberOfLines={1}>
+              {lesson.subject}
+            </Txt>
+            {teacherView && lesson.className ? <ClassBadge label={lesson.className} /> : null}
+          </View>
+          {status === 'now' ? (
+            <StatusBadge label="Сейчас" color={c.green} tint="rgba(245,146,59,0.08)" />
+          ) : null}
+          {status === 'next' ? (
+            <StatusBadge label="Следующий" color={c.blue} tint="rgba(39,65,133,0.08)" />
+          ) : null}
+          {done && attendance ? <AttendanceBadge status={attendance} /> : null}
+        </View>
         {meta ? (
-          <Txt style={{ fontSize: 12, color: ink2, marginTop: 3 }} numberOfLines={1}>
+          <Txt style={{ fontSize: 13, fontWeight: '500', color: c.inkMuted }} numberOfLines={2}>
             {meta}
           </Txt>
         ) : null}
-      </View>
-
-      <View style={{ alignItems: 'flex-end', gap: 6 }}>
-        {showClassBadge && lesson.className ? (
-          <View style={{ paddingVertical: 3, paddingHorizontal: 8, borderRadius: 8, backgroundColor: c.bg2 }}>
-            <Txt style={{ fontSize: 11, fontWeight: '700', color: c.ink2 }}>{lesson.className}</Txt>
-          </View>
-        ) : null}
-        {badge}
       </View>
     </Pressable>
   );

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@features/auth/AuthContext';
 import { scheduleApi } from '@shared/api/scheduleApi';
 import { parentApi } from '@shared/api/parentApi';
-import { mapScheduleView, scheduleStatusMessage } from '@shared/api/scheduleMap';
+import { localDateKey, mapScheduleView, scheduleStatusMessage } from '@shared/api/scheduleMap';
 
 export function shortName(fullName = '') {
   const parts = String(fullName).trim().split(/\s+/).filter(Boolean);
@@ -11,21 +11,27 @@ export function shortName(fullName = '') {
   return parts[1]; // first name when "Last First"
 }
 
-export function useMySchedule({ week = false } = {}) {
+/**
+ * @param {{week?: boolean, date?: string|null}} options
+ *   `date` — any day inside the wanted week (YYYY-MM-DD); omitted = current week.
+ *   `reload(silent)` skips the loading flag, so pull-to-refresh keeps the list
+ *   on screen instead of flashing the skeleton.
+ */
+export function useMySchedule({ week = false, date = null } = {}) {
   const { token } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (silent = false) => {
     if (!token) {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (!silent) setLoading(true);
     setError(null);
     try {
-      const raw = week ? await scheduleApi.meWeek(token) : await scheduleApi.meToday(token);
+      const raw = week ? await scheduleApi.meWeek(token, date) : await scheduleApi.meToday(token);
       setData(mapScheduleView(raw));
     } catch (e) {
       setError(e.message || 'Не удалось загрузить расписание');
@@ -33,7 +39,7 @@ export function useMySchedule({ week = false } = {}) {
     } finally {
       setLoading(false);
     }
-  }, [token, week]);
+  }, [token, week, date]);
 
   useEffect(() => {
     reload();
@@ -42,23 +48,23 @@ export function useMySchedule({ week = false } = {}) {
   return { loading, error, data, reload, emptyMessage: data ? scheduleStatusMessage(data.status, data.message) : null };
 }
 
-export function useChildSchedule(childId, { week = false } = {}) {
+export function useChildSchedule(childId, { week = false, date = null } = {}) {
   const { token } = useAuth();
   const [loading, setLoading] = useState(Boolean(childId));
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (silent = false) => {
     if (!token || !childId) {
       setData(null);
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const raw = week
-        ? await scheduleApi.childWeek(token, childId)
+        ? await scheduleApi.childWeek(token, childId, date)
         : await scheduleApi.childToday(token, childId);
       setData(mapScheduleView(raw));
     } catch (e) {
@@ -67,7 +73,7 @@ export function useChildSchedule(childId, { week = false } = {}) {
     } finally {
       setLoading(false);
     }
-  }, [token, childId, week]);
+  }, [token, childId, week, date]);
 
   useEffect(() => {
     reload();
@@ -108,34 +114,34 @@ export function useParentChildren(enabled = true) {
   return { loading, error, children, reload };
 }
 
-/** Build Mon–Fri chips for the current week from a week schedule view. */
-export function weekDayChips(weekView) {
-  const dayLabels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт'];
-  if (!weekView?.weekStart) {
-    const today = new Date();
-    const monday = new Date(today);
-    const dow = (today.getDay() + 6) % 7;
-    monday.setDate(today.getDate() - dow);
-    return dayLabels.map((label, i) => {
+const DAY_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт'];
+
+/** Monday of the week containing `dateStr` (YYYY-MM-DD in, YYYY-MM-DD out). */
+export function startOfWeek(dateStr) {
+  const d = new Date(`${dateStr}T12:00:00`);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return localDateKey(d);
+}
+
+/**
+ * School days (Пн–Пт) spanning several weeks around `centerDate`, so the strip
+ * can scroll into previous and next weeks instead of being stuck on one.
+ *
+ * Dates are formatted from local parts — `toISOString()` would render the
+ * previous day for any timezone ahead of UTC during the early morning.
+ */
+export function buildDayStrip(centerDate, weeksAround = 12) {
+  const monday = new Date(`${startOfWeek(centerDate)}T12:00:00`);
+  monday.setDate(monday.getDate() - weeksAround * 7);
+  const out = [];
+  for (let w = 0; w <= weeksAround * 2; w += 1) {
+    for (let i = 0; i < DAY_LABELS.length; i += 1) {
       const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      return {
-        label,
-        date: d.toISOString().slice(0, 10),
-        dayNum: d.getDate(),
-      };
-    });
+      d.setDate(monday.getDate() + w * 7 + i);
+      out.push({ label: DAY_LABELS[i], date: localDateKey(d), dayNum: d.getDate() });
+    }
   }
-  const start = new Date(`${weekView.weekStart}T12:00:00`);
-  return dayLabels.map((label, i) => {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    return {
-      label,
-      date: d.toISOString().slice(0, 10),
-      dayNum: d.getDate(),
-    };
-  });
+  return out;
 }
 
 export function lessonsForDate(weekView, dateStr) {
