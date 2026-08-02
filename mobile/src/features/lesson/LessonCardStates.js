@@ -9,39 +9,42 @@ import { StateView } from '@shared/components/ui';
 /**
  * Заголовок карточки урока: возврат в расписание слева, дата урока справа.
  * Общий для всех ролей — экран урока один и тот же объект, откуда бы в него ни зашли.
+ *
+ * `subtitle` — вторая строка под возвратом (у родителя там ребёнок, в чьём контексте
+ * открыт урок). Отступ 21px выравнивает её по тексту «Расписание», а не по шеврону.
  */
-export function LessonCardHeader({ dateLabel, onBack }) {
+export function LessonCardHeader({ dateLabel, subtitle, onBack }) {
   const { c } = useTheme();
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingTop: 12,
-        paddingBottom: 4,
-        gap: 12,
-      }}
-    >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Назад к расписанию"
-        onPress={onBack}
-        hitSlop={8}
-        style={({ pressed }) => ({
+    <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, gap: 4 }}>
+      <View
+        style={{
           flexDirection: 'row',
           alignItems: 'center',
-          gap: 4,
-          opacity: pressed ? 0.6 : 1,
-        })}
+          justifyContent: 'space-between',
+          gap: 12,
+        }}
       >
-        <Icon name="chevronLeft" size={16} color={c.blue} strokeWidth={2.4} />
-        <Txt style={{ fontSize: 18, fontWeight: '500', color: c.blue }}>Расписание</Txt>
-      </Pressable>
-      {dateLabel ? (
-        <Txt style={{ fontSize: 14, fontWeight: '500', color: c.inkMuted }}>{dateLabel}</Txt>
-      ) : null}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Назад к расписанию"
+          onPress={onBack}
+          hitSlop={8}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            opacity: pressed ? 0.6 : 1,
+          })}
+        >
+          <Icon name="chevronLeft" size={16} color={c.blue} strokeWidth={2.4} />
+          <Txt style={{ fontSize: 18, fontWeight: '500', color: c.blue }}>Расписание</Txt>
+        </Pressable>
+        {dateLabel ? (
+          <Txt style={{ fontSize: 14, fontWeight: '500', color: c.inkMuted }}>{dateLabel}</Txt>
+        ) : null}
+      </View>
+      {subtitle ? <View style={{ paddingLeft: 21 }}>{subtitle}</View> : null}
     </View>
   );
 }

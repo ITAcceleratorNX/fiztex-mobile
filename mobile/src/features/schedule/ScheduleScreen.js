@@ -23,7 +23,7 @@ import {
   ScheduleStateView,
   resolveDayState,
 } from './ScheduleStates';
-import { ChildPickerSheet, ChildSwitcherPill } from './ChildSwitcher';
+import { ChildPickerSheet, ChildSwitcherPill, childShortLabel } from './ChildSwitcher';
 import { mockAttendanceFor } from './attendanceMock';
 
 const STRIP_GAP = 8;
@@ -285,7 +285,14 @@ export function ScheduleScreen({ nav, role = 'student' }) {
                 // с переездом ученика и родителя на ту же карточку исключений не осталось.
                 onPress={
                   l.lessonInstanceId
-                    ? () => nav?.('lesson', { ...l, childId: isParent ? childId : null })
+                    ? () => nav?.('lesson', {
+                        ...l,
+                        childId: isParent ? childId : null,
+                        // Имя ребёнка знает расписание, а не карточка урока: в ответе
+                        // урока его нет, и запрашивать список детей ради подзаголовка
+                        // было бы лишним походом в сеть.
+                        childName: isParent && selectedChild ? childShortLabel(selectedChild) : null,
+                      })
                     : undefined
                 }
               />

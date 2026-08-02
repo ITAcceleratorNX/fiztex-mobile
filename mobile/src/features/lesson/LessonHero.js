@@ -6,26 +6,45 @@ import Icon from '@shared/components/Icon';
 import { LogoWatermark } from '@shared/components/ui';
 
 /**
- * Figma `step-1-info` (экран ученика) — шапка карточки урока: фирменная navy-подложка
- * с водяным знаком, статус, время, предмет и три строки «где и с кем».
+ * Figma `step-1-info` — шапка карточки урока: фирменная подложка с водяным знаком,
+ * статус, время, предмет и строки «где и с кем».
  *
- * Подложка одна в обеих темах, поэтому цвета поверх неё берутся из hero-токенов, а не из
- * обычных `ink`: тема переключает фон экрана, но не этот блок.
+ * Подложка не зависит от темы (тема переключает фон экрана, но не этот блок), зато
+ * зависит от роли: ученик — navy со знаками #88A7F9 3%, родитель — оранжевая с белыми
+ * знаками 6%. Поэтому цвета поверх берутся из hero-токенов, а не из обычных `ink`.
  */
+const TONES = {
+  student: (c) => ({
+    bg: c.heroBg,
+    mark: c.heroWatermark,
+    markOpacity: c.heroWatermarkOpacity,
+    accent: c.blue,
+  }),
+  parent: (c) => ({
+    bg: c.heroBgParent,
+    mark: c.heroWatermarkParent,
+    markOpacity: c.heroWatermarkParentOpacity,
+    accent: c.green,
+  }),
+};
 
 /**
  * Статусный чип урока. Цвет приходит из общей модели карточки (`lesson.badge`), а как он
- * выглядит на синем — решает шапка: у ученика чип залит целиком, а «Следующий» отличается
- * от подложки белой обводкой, а не другим фоном.
+ * ложится на подложку — решает шапка: «Следующий» повторяет её цвет и отличается белой
+ * обводкой, а чип, который совпал бы с подложкой по заливке («Сейчас» на оранжевой),
+ * выворачивается — белый фон и цветной текст, иначе он бы просто исчез.
  */
-function HeroChip({ badge }) {
+function HeroChip({ badge, tone }) {
   const { c } = useTheme();
   if (!badge) return null;
 
+  const onOrange = tone.bg === c.heroBgParent;
   const styles = {
     red: { backgroundColor: c.red, color: c.heroInk },
-    green: { backgroundColor: c.green, color: c.heroInk },
-    blue: { backgroundColor: c.blue, color: c.heroInk, borderColor: c.heroInk, borderWidth: 1 },
+    green: onOrange
+      ? { backgroundColor: c.heroInk, color: c.green }
+      : { backgroundColor: c.green, color: c.heroInk },
+    blue: { backgroundColor: tone.bg, color: c.heroInk, borderColor: c.heroInk, borderWidth: 1 },
     gray: { backgroundColor: c.heroChipBg, color: c.heroChipInk },
   };
   const s = styles[badge.color] || styles.gray;
@@ -63,8 +82,10 @@ function HeroMeta({ icon, children }) {
  * Полоска поверх шапки: замена учителя и причина отмены. Обе — про «с этим уроком что-то
  * не так, как в расписании», поэтому выглядят одинаково и стоят в одном месте.
  */
-function HeroNotice({ children }) {
+function HeroNotice({ children, tone }) {
   const { c } = useTheme();
+  // Оранжевый значок на оранжевой подложке не виден — там он белый, как и текст.
+  const iconColor = tone.bg === c.heroBgParent ? c.heroInk : c.green;
   return (
     <View
       style={{
@@ -77,20 +98,27 @@ function HeroNotice({ children }) {
         backgroundColor: c.heroSurface,
       }}
     >
-      <Icon name="alertTriangle" size={14} color={c.green} strokeWidth={2.2} />
+      <Icon name="alertTriangle" size={14} color={iconColor} strokeWidth={2.2} />
       <Txt style={{ flex: 1, fontSize: 12, fontWeight: '600', color: c.heroInk }}>{children}</Txt>
     </View>
   );
 }
 
-export function LessonHero({ lesson }) {
+/**
+ * @param {'student'|'parent'} variant чей это экран. У родителя (Figma «Родитель —
+ *   полный экран») подложка оранжевая, а класс уже назван в подзаголовке экрана,
+ *   поэтому в шапке он не повторяется и учитель с кабинетом идут одной строкой.
+ */
+export function LessonHero({ lesson, variant = 'student' }) {
   const { c } = useTheme();
+  const tone = (TONES[variant] || TONES.student)(c);
+  const compactMeta = variant === 'parent';
   const audience = [lesson.className, lesson.subgroupName].filter(Boolean).join(' · ');
 
   return (
     <View
       style={{
-        backgroundColor: c.heroBg,
+        backgroundColor: tone.bg,
         borderRadius: 16,
         padding: 16,
         gap: 12,
@@ -98,36 +126,43 @@ export function LessonHero({ lesson }) {
       }}
     >
       {/* Сетка знаков как в макете (Figma `ЛогоGroup`): знак 49×54, шаг 62.6×67,
-          заливка без обводки, прозрачность 3% — подложка остаётся navy. */}
+          заливка без обводки — подложка остаётся цветом роли. */}
       <LogoWatermark
-        color={c.heroWatermark}
-        opacity={c.heroWatermarkOpacity}
+        color={tone.mark}
+        opacity={tone.markOpacity}
         mark={49}
         gap={0.135}
         stroke="none"
       />
 
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <HeroChip badge={lesson.badge} />
+        <HeroChip badge={lesson.badge} tone={tone} />
         <Txt style={{ fontSize: 14, fontWeight: '600', color: c.heroInk }}>{lesson.timeRange}</Txt>
       </View>
 
       <Txt style={{ fontSize: 22, fontWeight: '700', color: c.heroInk }}>{lesson.subject}</Txt>
 
-      <View style={{ gap: 8 }}>
-        <HeroMeta icon="users">{audience}</HeroMeta>
-        <HeroMeta icon="mapPin">{lesson.room}</HeroMeta>
-        {/* В строке остаётся учитель урока, даже когда есть замена: подменяет её полоска
-            ниже, а не эта строка — иначе из карточки исчезло бы, чей это урок вообще. */}
-        <HeroMeta icon="userCheck">{lesson.teacherName}</HeroMeta>
-      </View>
+      {/* В строке учителя остаётся учитель урока, даже когда есть замена: подменяет её
+          полоска ниже, а не эта строка — иначе из карточки исчезло бы, чей это урок. */}
+      {compactMeta ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+          <HeroMeta icon="userCheck">{lesson.teacherName}</HeroMeta>
+          <HeroMeta icon="mapPin">{lesson.room}</HeroMeta>
+        </View>
+      ) : (
+        <View style={{ gap: 8 }}>
+          <HeroMeta icon="users">{audience}</HeroMeta>
+          <HeroMeta icon="mapPin">{lesson.room}</HeroMeta>
+          <HeroMeta icon="userCheck">{lesson.teacherName}</HeroMeta>
+        </View>
+      )}
 
       {lesson.substituteName ? (
-        <HeroNotice>{`Урок проводит: ${lesson.substituteName} · замена`}</HeroNotice>
+        <HeroNotice tone={tone}>{`Урок проводит: ${lesson.substituteName} · замена`}</HeroNotice>
       ) : null}
 
       {lesson.status === 'CANCELLED' && lesson.cancellationComment ? (
-        <HeroNotice>{lesson.cancellationComment}</HeroNotice>
+        <HeroNotice tone={tone}>{lesson.cancellationComment}</HeroNotice>
       ) : null}
     </View>
   );

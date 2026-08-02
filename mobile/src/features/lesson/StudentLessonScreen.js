@@ -115,12 +115,16 @@ function HomeworkCard({ homework, canSubmit, saving, error, onDone, onUndo }) {
         <Txt style={{ fontSize: 12, fontWeight: '500', color: c.red }}>{error}</Txt>
       ) : null}
 
-      {homework ? (
+      {homework && !canSubmit ? (
+        // Родитель отметку не ставит, поэтому у него не кнопка и не блок во всю ширину,
+        // а чип состояния (Figma «Родитель — полный экран», `status-done`).
+        <HomeworkStatusChip done={homework.completed} />
+      ) : null}
+
+      {homework && canSubmit ? (
         homework.completed ? (
-          // Родитель видит ту же отметку, но снять её не может — без `onUndo` блок
-          // перестаёт быть кнопкой, а не превращается в выключенную.
-          <DoneBlock onUndo={canSubmit ? onUndo : null} saving={saving} />
-        ) : canSubmit ? (
+          <DoneBlock onUndo={onUndo} saving={saving} />
+        ) : (
           <View style={{ gap: 10 }}>
             <Pressable
               accessibilityRole="button"
@@ -160,9 +164,32 @@ function HomeworkCard({ homework, canSubmit, saving, error, onDone, onUndo }) {
               <Txt style={{ fontSize: 10, fontWeight: '700', color: c.ink3 }}>СКОРО</Txt>
             </View>
           </View>
-        ) : null
+        )
       ) : null}
     </Card>
+  );
+}
+
+/**
+ * Figma `status-done` (экран родителя) — состояние задания без действия: «Не выполнено»
+ * фирменным оранжевым, «Выполнено» — цветом успеха, как блок «Готово» у ученика.
+ */
+function HomeworkStatusChip({ done }) {
+  const { c } = useTheme();
+  return (
+    <View
+      style={{
+        alignSelf: 'flex-start',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 6,
+        backgroundColor: done ? c.successSoft : c.greenSoft,
+      }}
+    >
+      <Txt style={{ fontSize: 12, fontWeight: '700', color: done ? c.success : c.green }}>
+        {done ? 'Выполнено' : 'Не выполнено'}
+      </Txt>
+    </View>
   );
 }
 
@@ -205,16 +232,30 @@ function DoneBlock({ onUndo, saving }) {
   );
 }
 
+/** Подзаголовок родителя: «Ребёнок: Айгерим Б. · 7А» (Figma `child-name-subtitle`). */
+function ChildSubtitle({ name, className }) {
+  const { c } = useTheme();
+  if (!name && !className) return null;
+  return (
+    <Txt style={{ fontSize: 14, fontWeight: '400', color: c.ink }}>
+      <Txt style={{ color: c.inkMuted }}>Ребёнок: </Txt>
+      {[name, className].filter(Boolean).join(' · ')}
+    </Txt>
+  );
+}
+
 /**
- * Карточка урока для ученика и родителя (Figma «Ученик — полный экран урока»).
+ * Карточка урока для ученика и родителя (Figma «Ученик / Родитель — полный экран урока»).
  *
  * Экран тот же объект, что и карточка учителя, но другая работа: учитель урок ведёт, а
  * ученик к нему готовится. Отсюда и разница вёрстки — вместо полей с карандашами читаемая
  * шапка, задание с одной кнопкой и сводка разделов. Общее (шапка экрана, скелет, ошибки,
  * загрузка урока) живёт в `LessonCardStates` и `useLesson`, чтобы состояния не разъезжались.
  *
- * Что показывать и что разрешено, решают `capabilities` из ответа бэка: родитель получает
- * тот же экран без кнопки «Отметить готово», потому что у него нет SUBMIT_HOMEWORK.
+ * Ученик и родитель тоже не разведены по файлам: у родителя те же блоки, но он смотрит на
+ * урок чужими глазами — сверху написано, чей это урок, класс из шапки уходит в подзаголовок,
+ * а вместо кнопки остаётся состояние задания. Роль берётся из ответа бэка (`viewerRole` и
+ * `capabilities`), а не вычисляется на клиенте.
  */
 export function StudentLessonScreen({ nav, payload }) {
   const { c } = useTheme();
@@ -241,6 +282,10 @@ export function StudentLessonScreen({ nav, payload }) {
     }
   }, [reload]);
 
+  // Роль — из ответа бэка: клиент не должен решать «я родитель» по тому, что ему
+  // передали childId, иначе экран и права разъедутся на первом же нестандартном заходе.
+  const isParent = lesson?.viewerRole === 'PARENT';
+
   if (loading || forbidden || !lesson) {
     return (
       <LessonCardFallback
@@ -261,7 +306,13 @@ export function StudentLessonScreen({ nav, payload }) {
       refreshing={refreshing}
       onRefresh={onRefresh}
     >
-      <LessonCardHeader dateLabel={lesson.dateLabel} onBack={onBack} />
+      <LessonCardHeader
+        dateLabel={lesson.dateLabel}
+        subtitle={isParent
+          ? <ChildSubtitle name={payload?.childName} className={lesson.className} />
+          : null}
+        onBack={onBack}
+      />
 
       <View style={{ padding: 16, gap: 12 }}>
         {/* Обновление не прошло, но карточка на экране актуальна на момент последней
@@ -272,7 +323,7 @@ export function StudentLessonScreen({ nav, payload }) {
           </Banner>
         ) : null}
 
-        <LessonHero lesson={lesson} />
+        <LessonHero lesson={lesson} variant={isParent ? 'parent' : 'student'} />
 
         <TopicCard topic={lesson.topic} comment={lesson.comment?.body} />
 
