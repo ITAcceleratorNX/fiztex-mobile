@@ -17,6 +17,13 @@ export function formatCardDate(dateStr) {
   return `${d.getDate()} ${MONTHS_GENITIVE[d.getMonth()]}, ${WEEKDAYS_SHORT[d.getDay()]}`;
 }
 
+/** "2025-10-18" → "18 октября" (бейдж срока сдачи ДЗ). */
+export function formatDueDate(dateStr) {
+  const d = parseLocalDate(dateStr);
+  if (!d) return '';
+  return `${d.getDate()} ${MONTHS_GENITIVE[d.getMonth()]}`;
+}
+
 /** ISO-момент → "14 окт, 09:12" (подпись под комментарием). */
 export function formatStamp(iso) {
   if (!iso) return '';
@@ -57,6 +64,27 @@ export function resolveBadge(lesson, highlight) {
     default:
       return null;
   }
+}
+
+/**
+ * Домашнее задание карточки.
+ *
+ * `completed` приходит с бэка трёхзначным: true/false — состояние того ученика, в контексте
+ * которого открыт урок, null — контекста нет (учитель, админ). Экрану нужен булев флаг,
+ * а право отметить он берёт из capabilities, а не из этого поля.
+ */
+export function mapHomework(homework) {
+  if (!homework) return null;
+  return {
+    id: homework.id,
+    body: homework.body,
+    dueDate: homework.dueDate || null,
+    dueLabel: homework.dueDate ? `Срок: ${formatDueDate(homework.dueDate)}` : null,
+    completed: homework.completed === true,
+    completedStamp: homework.completedAt ? formatStamp(homework.completedAt) : null,
+    completedCount: homework.completedCount ?? 0,
+    author: abbreviateTeacherName(homework.createdByName) || homework.createdByName || '',
+  };
 }
 
 const CHANGED_LABELS = {
@@ -116,6 +144,7 @@ export function mapLessonCard(lesson, { highlight = null } = {}) {
     },
 
     topic: lesson.topic || null,
+    homework: mapHomework(lesson.homework),
     comment: comment
       ? {
           body: comment.body,
@@ -130,6 +159,7 @@ export function mapLessonCard(lesson, { highlight = null } = {}) {
       viewHistory: caps.includes('VIEW_TEACHER_HISTORY') || caps.includes('VIEW_ADMIN_HISTORY'),
       manageStructure: caps.includes('MANAGE_STRUCTURE'),
       fillAttendance: caps.includes('FILL_ATTENDANCE'),
+      submitHomework: caps.includes('SUBMIT_HOMEWORK'),
       // Закрытый период — «только просмотр» по макету. Бэк это пока не проверяет,
       // так что ограничение здесь клиентское.
       editTeaching: caps.includes('EDIT_TEACHING_PART') && !periodClosed,

@@ -72,6 +72,46 @@ export function useLesson(lessonId, { childId = null, highlight = null } = {}) {
 }
 
 /**
+ * Отметка ученика «домашнее задание сделано».
+ *
+ * Состояние не правится локально: отметку видит и родитель, и учитель (счётчиком), так что
+ * источник правды — ответ бэка, а карточка перечитывается тихо, без скелета поверх экрана.
+ */
+export function useLessonHomework(lessonId, reload) {
+  const { token } = useAuth();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const toggle = useCallback(async (done) => {
+    if (!token || !lessonId) return false;
+    setSaving(true);
+    setError(null);
+    try {
+      if (done) {
+        await lessonApi.completeHomework(token, lessonId);
+      } else {
+        await lessonApi.uncompleteHomework(token, lessonId);
+      }
+      await reload?.(true);
+      return true;
+    } catch (e) {
+      setError(e?.message || 'Не удалось сохранить отметку');
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }, [token, lessonId, reload]);
+
+  return {
+    saving,
+    error,
+    clearError: () => setError(null),
+    markDone: () => toggle(true),
+    undoDone: () => toggle(false),
+  };
+}
+
+/**
  * Изменения учебной части (тема и комментарий).
  *
  * Каждое действие возвращает обновлённую карточку через `reload`, а не правит

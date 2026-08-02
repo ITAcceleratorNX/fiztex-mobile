@@ -4,6 +4,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { Txt, Ink, wrapStrings } from './Txt';
 import Icon from './Icon';
 import { Hex, HexBadge, PhysTechMark, PhysTechLogotype } from './Hex';
+import { shadowCard } from './Screen';
 
 // ─── PhysTech wordmark (exact logotype) ────────────────────────────────────
 // The primary brand logo used in headers. `size` is the rendered height;
@@ -13,12 +14,42 @@ export function PhysTechWordmark({ size = 26, color, style }) {
   return <PhysTechLogotype height={size} color={color || c.blue} style={style} />;
 }
 
-// Repeating faded logo watermark for gradient card headers (per the design ref).
+// Repeating faded logo watermark for card headers (per the design ref).
 // Renders a wrapped grid of marks, clipped by the parent's `overflow: hidden`.
-export function LogoWatermark({ color = 'rgba(255,255,255,0.06)', mark = 30, count = 30 }) {
+//
+// Число знаков по умолчанию считается по фактическому размеру слоя, а не берётся
+// фиксированным: при фиксированном count сетка заполняла блок только частично, и
+// у высокой карточки низ оставался пустым. `count` остаётся как ручной override
+// для мест, где сетка намеренно короткая.
+//
+// `opacity` — на слое целиком, а не в цвете: знаки рисуются заливкой и обводкой
+// одного цвета, и полупрозрачный цвет дал бы двойное наложение по контуру.
+export function LogoWatermark({
+  color = 'rgba(255,255,255,0.06)',
+  mark = 30,
+  count,
+  opacity = 1,
+  gap = 0.28,
+  stroke,
+}) {
+  const [box, setBox] = React.useState({ width: 0, height: 0 });
+
+  const step = mark * gap * 2;
+  const cellW = mark + step;
+  const cellH = mark * (96 / 89) + step;
+  const cols = Math.ceil(box.width / cellW);
+  const rows = Math.ceil(box.height / cellH);
+  const total = count ?? cols * rows;
+
   return (
     <View
       pointerEvents="none"
+      onLayout={(e) => {
+        const { width, height } = e.nativeEvent.layout;
+        setBox((prev) => (prev.width === width && prev.height === height
+          ? prev
+          : { width, height }));
+      }}
       style={{
         position: 'absolute',
         top: -mark,
@@ -27,12 +58,13 @@ export function LogoWatermark({ color = 'rgba(255,255,255,0.06)', mark = 30, cou
         bottom: -mark,
         flexDirection: 'row',
         flexWrap: 'wrap',
-        alignItems: 'center',
+        alignContent: 'flex-start',
+        opacity,
       }}
     >
-      {Array.from({ length: count }).map((_, i) => (
-        <View key={i} style={{ margin: mark * 0.28 }}>
-          <PhysTechMark size={mark} color={color} />
+      {Array.from({ length: total }).map((_, i) => (
+        <View key={i} style={{ margin: mark * gap }}>
+          <PhysTechMark size={mark} color={color} stroke={stroke} />
         </View>
       ))}
     </View>
@@ -40,14 +72,18 @@ export function LogoWatermark({ color = 'rgba(255,255,255,0.06)', mark = 30, cou
 }
 
 // ─── Card ───────────────────────────────────────────────────────────────────
-export function Card({ children, style, padded = true, onPress }) {
+// `elevated` — вариант из макетов ученика: карточка отделяется от фона тенью, а не
+// рамкой, и радиус крупнее. Обводка и тень вместе дают «двойную» границу, поэтому
+// это именно варианты, а не флаги, которые можно включить одновременно.
+export function Card({ children, style, padded = true, onPress, elevated = false }) {
   const { c } = useTheme();
   const base = {
     backgroundColor: c.surface,
-    borderRadius: 20,
-    borderWidth: 1,
+    borderRadius: elevated ? 24 : 20,
+    borderWidth: elevated ? 0 : 1,
     borderColor: c.border,
     padding: padded ? 16 : 0,
+    ...(elevated ? shadowCard : null),
   };
   if (onPress) {
     return (

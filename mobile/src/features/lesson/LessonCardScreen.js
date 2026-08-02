@@ -1,55 +1,18 @@
 import React, { useCallback, useState } from 'react';
-import { View, Pressable } from 'react-native';
+import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
-import { Pill, Banner, StateView } from '@shared/components/ui';
+import { Pill, Banner } from '@shared/components/ui';
 import { EditableField, LessonActionTile } from '@shared/ui/rows';
 import { useLesson, useLessonEditing } from '@shared/hooks/useLesson';
 import { LessonEditSheet } from './LessonEditSheet';
-import { LessonCardSkeleton } from './LessonCardStates';
+import { LessonCardFallback, LessonCardHeader } from './LessonCardStates';
 
 const TOPIC_MAX = 300;
 const COMMENT_MAX = 2000;
-
-/** Заголовок экрана: возврат в расписание слева, дата урока справа. */
-function CardHeader({ dateLabel, onBack }) {
-  const { c } = useTheme();
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingTop: 12,
-        paddingBottom: 4,
-        gap: 12,
-      }}
-    >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Назад к расписанию"
-        onPress={onBack}
-        hitSlop={8}
-        style={({ pressed }) => ({
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 4,
-          opacity: pressed ? 0.6 : 1,
-        })}
-      >
-        <Icon name="chevronLeft" size={16} color={c.blue} strokeWidth={2.4} />
-        <Txt style={{ fontSize: 18, fontWeight: '500', color: c.blue }}>Расписание</Txt>
-      </Pressable>
-      {dateLabel ? (
-        <Txt style={{ fontSize: 14, fontWeight: '500', color: c.inkMuted }}>{dateLabel}</Txt>
-      ) : null}
-    </View>
-  );
-}
 
 /** Строка «иконка + значение», с необязательной пометкой «Изменено» (Figma step-1-info). */
 function MetaRow({ icon, children, changed }) {
@@ -113,50 +76,16 @@ export function LessonCardScreen({ nav, payload }) {
   }, [reload]);
 
   // ─── Состояния до карточки ──────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <Screen scroll={false} style={{ backgroundColor: c.bg }}>
-        <CardHeader dateLabel={payload?.dateLabel} onBack={onBack} />
-        <LessonCardSkeleton />
-      </Screen>
-    );
-  }
-
-  if (forbidden) {
-    return (
-      <Screen scroll={false} style={{ backgroundColor: c.bg }}>
-        <CardHeader onBack={onBack} />
-        <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 80 }}>
-          <StateView
-            icon="lock"
-            tone="brand"
-            title="У вас нет доступа к этому уроку"
-            subtitle="Урок принадлежит другому классу или группе"
-            actionLabel="Вернуться к расписанию"
-            onAction={onBack}
-          />
-        </View>
-      </Screen>
-    );
-  }
-
   // Экран ошибки — только когда показывать нечего. Если карточка уже на экране,
   // а обновление не прошло, она остаётся, а про сбой сообщает строка ниже.
-  if (!lesson) {
+  if (loading || forbidden || !lesson) {
     return (
-      <Screen scroll={false} style={{ backgroundColor: c.bg }}>
-        <CardHeader onBack={onBack} />
-        <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 80 }}>
-          <StateView
-            icon="alertTriangle"
-            tone="warn"
-            title="Не удалось загрузить урок"
-            subtitle="Проверьте подключение к сети интернет и попробуйте ещё раз"
-            actionLabel="Повторить"
-            onAction={() => reload()}
-          />
-        </View>
-      </Screen>
+      <LessonCardFallback
+        kind={loading ? 'loading' : forbidden ? 'forbidden' : 'error'}
+        dateLabel={payload?.dateLabel}
+        onBack={onBack}
+        onRetry={() => reload()}
+      />
     );
   }
 
@@ -172,7 +101,7 @@ export function LessonCardScreen({ nav, payload }) {
       refreshing={refreshing}
       onRefresh={onRefresh}
     >
-      <CardHeader dateLabel={lesson.dateLabel} onBack={onBack} />
+      <LessonCardHeader dateLabel={lesson.dateLabel} onBack={onBack} />
 
       <View style={{ padding: 16, gap: 12 }}>
         {/* Обновление не прошло, но карточка на экране актуальна на момент
@@ -253,7 +182,15 @@ export function LessonCardScreen({ nav, payload }) {
         <View style={{ gap: 10 }}>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <LessonActionTile icon="userCheck" tint="green" label="Посещаемость" value="Не отмечена" soon />
-            <LessonActionTile icon="bookOpen" tint="gold" label="Домашнее задание" value="Не выдано" soon />
+            <LessonActionTile
+              icon="bookOpen"
+              tint="gold"
+              label="Домашнее задание"
+              // Задание уже приходит в карточке (его видит ученик), а вот выдача и правка
+              // из приложения — следующий заход, поэтому плитка остаётся неактивной.
+              value={lesson.homework ? 'Выдано' : 'Не выдано'}
+              soon
+            />
           </View>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <LessonActionTile icon="paperclip" tint="blue" label="Материалы" value="Нет файлов" soon />

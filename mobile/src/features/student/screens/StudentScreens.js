@@ -129,8 +129,11 @@ export function StudentHome({ nav }) {
         }
       />
       <View style={{ gap: 8, marginHorizontal: 16, marginBottom: 100 }}>
+        {/* Превью «Сегодня» пока на моках: у строки нет id фактического урока, а карточка
+            грузится только по нему — переход отсюда открыл бы пустой экран. Появится
+            вместе с переводом главной на API. */}
         {TODAY_SCHEDULE.slice(0, 3).map((l, i) => (
-          <LessonRow key={i} lesson={l} onPress={() => nav('lesson', l)} />
+          <LessonRow key={i} lesson={l} />
         ))}
       </View>
     </Screen>
@@ -143,102 +146,10 @@ export function StudentHome({ nav }) {
 // hardcoded mock screen was removed.
 
 // ═══ LESSON DETAIL ═══
-export function StudentLesson({ nav, payload }) {
-  const { c } = useTheme();
-  const state = useAppState();
-  const lesson = payload || TODAY_SCHEDULE[2];
-  const subInfo = SUBJECT_COLORS[lesson.subject] || { color: 'gray' };
-  const color = brandColor(c, subInfo.color);
-  const hwKey = `${lesson.subject}-${lesson.time}`;
-  const isDone = state.homework[hwKey];
-  return (
-    <Screen>
-      <ScreenHeader title={lesson.subject} back={() => nav.back()} />
-      <View style={{ marginHorizontal: 16, marginBottom: 16, borderRadius: 24, overflow: 'hidden' }}>
-        <View style={{ backgroundColor: color, padding: 22 }}>
-          <Ink color="#fff">
-            <Pill style={{ backgroundColor: 'rgba(255,255,255,0.18)', color: '#fff' }}>{`${lesson.time}–${lesson.end}`}</Pill>
-            <Txt style={{ fontSize: 28, fontWeight: '700', letterSpacing: -0.5, marginTop: 8 }}>{lesson.subject}</Txt>
-            <Txt style={{ fontSize: 14, opacity: 0.9, marginTop: 4 }}>{lesson.room} · {lesson.teacher}</Txt>
-          </Ink>
-        </View>
-      </View>
-
-      <Card style={{ marginHorizontal: 16, marginBottom: 12, padding: 18 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Icon name="book" size={14} color={c.ink3} />
-          <Txt style={{ color: c.ink3, fontSize: 11, fontWeight: '600', letterSpacing: 0.4, textTransform: 'uppercase' }}>Сегодня изучаем</Txt>
-        </View>
-        <Txt style={{ fontSize: 18, fontWeight: '700', marginTop: 6 }}>Сказки народов Казахстана</Txt>
-        <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 8, lineHeight: 21 }}>
-          Читаем сказку «Алдар-Косе и бай», разбираем главных героев и обсуждаем мораль. Дома — нарисовать любимого героя.
-        </Txt>
-      </Card>
-
-      <Card style={{ marginHorizontal: 16, marginBottom: 12, padding: 18 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Icon name="pencil" size={14} color={c.ink3} />
-            <Txt style={{ color: c.ink3, fontSize: 11, fontWeight: '600', letterSpacing: 0.4, textTransform: 'uppercase' }}>Домашнее задание</Txt>
-          </View>
-          <Pill color="gold">до завтра</Pill>
-        </View>
-        <Txt style={{ fontSize: 16, fontWeight: '600', marginTop: 8 }}>Стр. 42–45 + рисунок героя</Txt>
-        <Txt style={{ fontSize: 13, color: c.ink2, marginTop: 6, lineHeight: 20 }}>
-          Прочитать, ответить устно на вопросы 1–3, нарисовать в альбоме любимого героя.
-        </Txt>
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-          <PrimaryButton
-            color={isDone ? 'ghost' : 'green'}
-            full={false}
-            style={{ height: 42, flex: 1 }}
-            onPress={() => {
-              if (!isDone) {
-                state.toggleHomework(hwKey);
-                state.addStars(5);
-                state.toast('+5 ★ за домашнее задание');
-              } else state.toggleHomework(hwKey);
-            }}
-          >
-            {isDone ? (
-              <>
-                <Icon name="check" size={16} color={c.ink} />
-                <Txt style={{ fontSize: 16, fontWeight: '600', color: c.ink }}> Готово</Txt>
-              </>
-            ) : (
-              'Отметить готово'
-            )}
-          </PrimaryButton>
-          <Pressable
-            onPress={() => state.toast('Открываем камеру…')}
-            style={{ height: 42, paddingHorizontal: 16, borderRadius: 999, backgroundColor: c.surface2, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Txt style={{ fontWeight: '600', fontSize: 14 }}>Прикрепить фото</Txt>
-          </Pressable>
-        </View>
-      </Card>
-
-      <Card style={{ marginHorizontal: 16, marginBottom: 100, padding: 18 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Icon name="target" size={14} color={c.ink3} />
-          <Txt style={{ color: c.ink3, fontSize: 11, fontWeight: '600', letterSpacing: 0.4, textTransform: 'uppercase' }}>После урока</Txt>
-        </View>
-        <View style={{ marginTop: 10, flexDirection: 'row', gap: 10, alignItems: 'center', padding: 12, backgroundColor: c.greenSoft, borderRadius: 14 }}>
-          <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: c.green, alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name="qr" size={22} color="#fff" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Txt style={{ fontSize: 14, fontWeight: '600' }}>Покажи QR учителю</Txt>
-            <Txt style={{ fontSize: 12, color: c.ink2 }}>В конце урока, для отметки</Txt>
-          </View>
-          <Pressable onPress={() => nav('checkout')}>
-            <Txt style={{ color: c.green, fontWeight: '600', fontSize: 14 }}>QR →</Txt>
-          </Pressable>
-        </View>
-      </Card>
-    </Screen>
-  );
-}
+// Карточку урока рисует общий `features/lesson/StudentLessonScreen` (подключён в
+// RoleNavigators) — он берёт урок с бэка по `lessonInstanceId`. Прежний мок-экран
+// с зашитым «Стр. 42–45» удалён вместе с локальной отметкой ДЗ: отметка теперь
+// живёт на сервере, иначе её не увидели бы ни родитель, ни учитель.
 
 // ═══ CHECKOUT QR ═══
 export function StudentCheckoutQR({ nav }) {

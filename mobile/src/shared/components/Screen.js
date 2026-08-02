@@ -12,6 +12,16 @@ export const shadowSm = {
   elevation: 3,
 };
 
+// Карточки экрана урока: мягкая тень в фирменный navy, а не в нейтральный графит —
+// Figma `drop-shadow(0 8px 12px rgba(39,65,133,0.08))`.
+export const shadowCard = {
+  shadowColor: '#274185',
+  shadowOpacity: 0.08,
+  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 8 },
+  elevation: 2,
+};
+
 export const shadowLg = {
   shadowColor: '#0F172A',
   shadowOpacity: 0.16,

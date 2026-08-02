@@ -279,13 +279,12 @@ export function ScheduleScreen({ nav, role = 'student' }) {
                 // A single attendance mark belongs to one pupil, so it is
                 // meaningless on a teacher's own schedule (a whole class).
                 attendance={isTeacher ? null : mockAttendanceFor(l)}
-                // Карточка учителя грузится по id фактического урока, а его нет
-                // ни за горизонтом генерации, ни на прошедших днях (генерация
-                // идёт от сегодня вперёд) — такая строка не ведёт никуда.
-                // У ученика и родителя экран урока пока на моках и id не требует,
-                // поэтому им переход оставляем, иначе это была бы регрессия.
+                // Карточка урока грузится по id фактического урока, а его нет ни за
+                // горизонтом генерации, ни на прошедших днях (генерация идёт от сегодня
+                // вперёд) — такая строка не ведёт никуда. Правило одно на все роли:
+                // с переездом ученика и родителя на ту же карточку исключений не осталось.
                 onPress={
-                  !isTeacher || l.lessonInstanceId
+                  l.lessonInstanceId
                     ? () => nav?.('lesson', { ...l, childId: isParent ? childId : null })
                     : undefined
                 }

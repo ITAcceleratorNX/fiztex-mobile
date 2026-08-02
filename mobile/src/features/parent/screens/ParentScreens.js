@@ -98,8 +98,9 @@ export function ParentHome({ nav }) {
         }
       />
       <View style={{ gap: 8, marginHorizontal: 16, marginBottom: 18 }}>
+        {/* Как и на главной ученика: мок-строка без id фактического урока никуда не ведёт. */}
         {TODAY_SCHEDULE.slice(0, 3).map((l, i) => (
-          <LessonRow key={i} lesson={l} onPress={() => nav('lesson', l)} />
+          <LessonRow key={i} lesson={l} />
         ))}
       </View>
 

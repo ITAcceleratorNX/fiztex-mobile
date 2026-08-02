@@ -352,6 +352,47 @@ export function LessonActionTile({ icon, tint, label, value, onPress, soon = fal
   );
 }
 
+/**
+ * Figma `ModuleCard` — раздел урока во всю ширину: тонированная иконка, подпись и
+ * одна строка состояния. Отличие от {@link LessonActionTile} не косметическое: плитка
+ * учителя — это кнопка «заполнить», а строка ученика — сводка «что с этим разделом»,
+ * поэтому без `onPress` она остаётся обычным текстом, а не «выключенной кнопкой».
+ */
+export function ModuleRow({ icon, tint, label, value, onPress }) {
+  const { c } = useTheme();
+
+  const body = (
+    <>
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: softColor(c, tint),
+        }}
+      >
+        <Icon name={icon} size={18} color={brandColor(c, tint)} strokeWidth={2} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <Txt style={{ fontSize: 12, fontWeight: '500', color: c.inkMuted }}>{label}</Txt>
+        <Txt style={{ fontSize: 14, fontWeight: '600', color: c.ink }} numberOfLines={1}>
+          {value}
+        </Txt>
+      </View>
+      {onPress ? <Icon name="chevronRight" size={16} color={c.ink3} /> : null}
+    </>
+  );
+
+  const style = { flexDirection: 'row', alignItems: 'center', gap: 12 };
+  return (
+    <Card elevated onPress={onPress} style={style}>
+      {body}
+    </Card>
+  );
+}
+
 export function SubjectRow({ subject, onPress }) {
   const { c } = useTheme();
   const subInfo = SUBJECT_COLORS[subject.name] || { color: 'gray' };

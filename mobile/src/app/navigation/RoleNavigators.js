@@ -5,9 +5,9 @@ import { CustomTabBar } from './CustomTabBar';
 import { withNav } from './withNav';
 import { NotificationsScreen } from '@features/notifications';
 import { ScheduleScreen } from '@features/schedule';
-import { LessonCardScreen } from '@features/lesson';
+import { LessonCardScreen, StudentLessonScreen } from '@features/lesson';
 import {
-  StudentHome, StudentLesson, StudentCheckoutQR, StudentDiary, StudentSubject,
+  StudentHome, StudentCheckoutQR, StudentDiary, StudentSubject,
   StudentClubs, StudentClub, StudentTest, StudentAITest, StudentEvents, StudentAchievements,
   StudentMap, StudentShop, StudentProfile,
 } from '@features/student';
@@ -72,7 +72,7 @@ export function StudentApp() {
     <SStack.Navigator screenOptions={stackScreenOptions}>
       <SStack.Screen name="Tabs" component={StudentTabs} />
       {renderDetails(SStack, [
-        { name: 'lesson', comp: StudentLesson },
+        { name: 'lesson', comp: StudentLessonScreen },
         { name: 'checkout', comp: StudentCheckoutQR },
         { name: 'subject', comp: StudentSubject },
         { name: 'clubs', comp: StudentClubs },
@@ -112,7 +112,9 @@ export function ParentApp() {
     <PStack.Navigator screenOptions={stackScreenOptions}>
       <PStack.Screen name="Tabs" component={ParentTabs} />
       {renderDetails(PStack, [
-        { name: 'lesson', comp: StudentLesson },
+        // Родителю тот же экран: карточка одна на всех, а что в ней доступно, решает бэк
+        // через capabilities — отдельный «родительский» экран разошёлся бы с ученическим.
+        { name: 'lesson', comp: StudentLessonScreen },
         { name: 'subject', comp: StudentSubject },
         { name: 'attendance', comp: ParentAttendance },
         { name: 'service', comp: ParentService },

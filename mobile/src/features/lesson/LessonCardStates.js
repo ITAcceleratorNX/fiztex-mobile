@@ -1,14 +1,60 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, Pressable } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
+import { Screen } from '@shared/components/Screen';
+import { Txt } from '@shared/components/Txt';
+import Icon from '@shared/components/Icon';
+import { StateView } from '@shared/components/ui';
 
 /**
- * Figma «Учитель — Загрузка»: скелет повторяет геометрию самой карточки —
- * тонированный блок шапки, белый блок учебной части и сетка 2×2. Так контент не
- * прыгает при подмене, а экран сразу читается как «карточка урока», а не как
- * абстрактный лоадер.
+ * Заголовок карточки урока: возврат в расписание слева, дата урока справа.
+ * Общий для всех ролей — экран урока один и тот же объект, откуда бы в него ни зашли.
  */
-export function LessonCardSkeleton() {
+export function LessonCardHeader({ dateLabel, onBack }) {
+  const { c } = useTheme();
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingTop: 12,
+        paddingBottom: 4,
+        gap: 12,
+      }}
+    >
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Назад к расписанию"
+        onPress={onBack}
+        hitSlop={8}
+        style={({ pressed }) => ({
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          opacity: pressed ? 0.6 : 1,
+        })}
+      >
+        <Icon name="chevronLeft" size={16} color={c.blue} strokeWidth={2.4} />
+        <Txt style={{ fontSize: 18, fontWeight: '500', color: c.blue }}>Расписание</Txt>
+      </Pressable>
+      {dateLabel ? (
+        <Txt style={{ fontSize: 14, fontWeight: '500', color: c.inkMuted }}>{dateLabel}</Txt>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * Figma «Загрузка»: скелет повторяет геометрию самой карточки — тонированный блок шапки,
+ * белый блок учебной части и разделы урока. Так контент не прыгает при подмене, а экран
+ * сразу читается как «карточка урока», а не как абстрактный лоадер.
+ *
+ * @param {'grid'|'rows'} sections как выложены разделы урока: сетка 2×2 (учитель) или
+ *   строки во всю ширину (ученик). Скелет обязан совпадать с тем, что появится после него.
+ */
+export function LessonCardSkeleton({ sections = 'grid' }) {
   const { c } = useTheme();
   // Плейсхолдеры берут те же токены, что и реальные поверхности, поэтому скелет
   // сам подстраивается под тему — отдельной палитры для загрузки не нужно.
@@ -17,6 +63,20 @@ export function LessonCardSkeleton() {
 
   const bar = (width, height = 12, color = strong) => (
     <View style={{ width, height, borderRadius: 4, backgroundColor: color }} />
+  );
+
+  const block = (key, height) => (
+    <View
+      key={key}
+      style={{
+        flex: 1,
+        height,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: c.border,
+        backgroundColor: c.surface,
+      }}
+    />
   );
 
   return (
@@ -44,24 +104,63 @@ export function LessonCardSkeleton() {
       </View>
 
       <View style={{ gap: 10 }}>
-        {[0, 1].map((row) => (
-          <View key={row} style={{ flexDirection: 'row', gap: 10 }}>
-            {[0, 1].map((col) => (
-              <View
-                key={col}
-                style={{
-                  flex: 1,
-                  height: 72,
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: c.border,
-                  backgroundColor: c.surface,
-                }}
-              />
+        {sections === 'grid'
+          ? [0, 1].map((row) => (
+              <View key={row} style={{ flexDirection: 'row', gap: 10 }}>
+                {[0, 1].map((col) => block(col, 72))}
+              </View>
+            ))
+          : [0, 1, 2].map((row) => (
+              <View key={row} style={{ flexDirection: 'row' }}>
+                {block(row, 68)}
+              </View>
             ))}
-          </View>
-        ))}
       </View>
     </View>
+  );
+}
+
+/**
+ * Состояния до карточки — загрузка, «нет доступа» и сбой загрузки.
+ *
+ * Один компонент на все роли: тексты и геометрия этих экранов не зависят от того, кто
+ * открыл урок, а расходиться они начинают ровно тогда, когда их копируют по экранам.
+ *
+ * @param {'loading'|'forbidden'|'error'} kind
+ * @param {string} [dateLabel] дата из строки расписания — при загрузке она уже известна,
+ *   и показать её сразу честнее, чем держать шапку пустой
+ */
+export function LessonCardFallback({ kind, dateLabel, sections, onBack, onRetry }) {
+  const { c } = useTheme();
+
+  return (
+    <Screen scroll={false} style={{ backgroundColor: c.bg }}>
+      <LessonCardHeader dateLabel={kind === 'loading' ? dateLabel : null} onBack={onBack} />
+      {kind === 'loading' ? (
+        <LessonCardSkeleton sections={sections} />
+      ) : (
+        <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 80 }}>
+          {kind === 'forbidden' ? (
+            <StateView
+              icon="lock"
+              tone="brand"
+              title="У вас нет доступа к этому уроку"
+              subtitle="Урок принадлежит другому классу или группе"
+              actionLabel="Вернуться к расписанию"
+              onAction={onBack}
+            />
+          ) : (
+            <StateView
+              icon="alertTriangle"
+              tone="warn"
+              title="Не удалось загрузить урок"
+              subtitle="Проверьте подключение к сети интернет и попробуйте ещё раз"
+              actionLabel="Повторить"
+              onAction={onRetry}
+            />
+          )}
+        </View>
+      )}
+    </Screen>
   );
 }

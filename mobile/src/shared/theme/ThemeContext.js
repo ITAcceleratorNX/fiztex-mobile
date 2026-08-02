@@ -5,6 +5,24 @@ import { PHYSTECH } from './tokens';
 // Light + dark palettes — matches web's slate-based admin/entrance UI
 // (slate-50 background, white surfaces, slate-900/500 ink, slate-200 borders).
 // Brand colours are merged in so screens can read `c.green`, `c.goldDeep`, etc.
+// Шапка карточки урока — всегда фирменный navy, в обеих темах одна и та же подложка.
+// Поэтому цвета поверх неё тоже одинаковые: если бы они «переключались» вместе с темой,
+// в тёмной теме белый текст поехал бы на светлый, а фон под ним остался бы синим.
+const hero = {
+  // Подложка шапки карточки урока.
+  heroBg: '#274185',
+  heroInk: '#FFFFFF',
+  heroInkSoft: 'rgba(255,255,255,0.82)',
+  heroSurface: 'rgba(255,255,255,0.09)',
+  heroChipBg: '#E2E8F0',
+  heroChipInk: '#64748B',
+  // Фирменные знаки на подложке (Figma `ЛОГО`, node 2077:918): заливка #88A7F9,
+  // прозрачность 3%. Альфа задаётся не в цвете, а прозрачностью слоя знаков —
+  // так значение читается ровно как в макете (fill + fill-opacity).
+  heroWatermark: '#88A7F9',
+  heroWatermarkOpacity: 0.03,
+};
+
 const light = {
   bg: '#FAFBFC',
   bg2: '#F1F5F9',
@@ -22,6 +40,11 @@ const light = {
   blueSoft: '#EEF1F8',
   redSoft: '#FEE2E2',
   goldSoft: '#FEF9C3',
+  // Успех — отдельный слот: brand-«green» это оранжевый CTA, зелёным ему быть нельзя,
+  // а «готово» без зелёного не читается.
+  success: '#065F46',
+  successSoft: '#E0FBE3',
+  ...hero,
   ...PHYSTECH,
 };
 
@@ -41,6 +64,9 @@ const dark = {
   blueSoft: '#1B2745',
   redSoft: '#3A1C1C',
   goldSoft: '#3A2E0C',
+  success: '#4ADE80',
+  successSoft: '#123527',
+  ...hero,
   ...PHYSTECH,
 };
 

@@ -41,6 +41,16 @@ export const lessonApi = {
   deleteComment: (token, lessonId) =>
     request(`/api/lessons/${lessonId}/comment`, { method: 'DELETE', token }),
 
+  /**
+   * Отметка ученика «сделал». Оба вызова идемпотентны и возвращают задание целиком,
+   * поэтому экран берёт новое состояние прямо из ответа, не перезапрашивая карточку.
+   */
+  completeHomework: (token, lessonId) =>
+    request(`/api/lessons/${lessonId}/homework/completion`, { method: 'POST', token }),
+
+  uncompleteHomework: (token, lessonId) =>
+    request(`/api/lessons/${lessonId}/homework/completion`, { method: 'DELETE', token }),
+
   /** Тема — поле урока, поэтому ответом приходит карточка целиком. */
   updateTopic: (token, lessonId, topic) =>
     request(`/api/lessons/${lessonId}/topic`, { method: 'PUT', body: { topic }, token }),
