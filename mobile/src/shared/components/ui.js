@@ -240,6 +240,115 @@ export function ScreenHeader({ title, back, right, large = false, sub }) {
   );
 }
 
+// ─── Banner ───────────────────────────────────────────────────────────────────
+// A full-width notice above the content: icon + one line of text.
+//
+// `tone` picks how loud it is, not which colour — the colour is always the brand
+// CTA orange, because both current uses are "something about this lesson is not
+// the default":
+//   soft  → tinted background, coloured ink (substitution — informative)
+//   solid → filled background, white ink (closed period — restrictive)
+export function Banner({ icon, children, tone = 'soft', style }) {
+  const { c } = useTheme();
+  const solid = tone === 'solid';
+  const fg = solid ? '#fff' : c.green;
+  return (
+    <View
+      style={[
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
+          paddingVertical: 12,
+          paddingHorizontal: 14,
+          borderRadius: 16,
+          backgroundColor: solid ? c.green : c.greenSoft,
+          borderWidth: solid ? 0 : 1,
+          borderColor: c.green,
+        },
+        style,
+      ]}
+    >
+      {icon ? <Icon name={icon} size={18} color={fg} strokeWidth={2} /> : null}
+      <Ink color={fg}>
+        {wrapStrings(children, { fontSize: 13, fontWeight: '600', color: fg })}
+      </Ink>
+    </View>
+  );
+}
+
+// ─── StateView ────────────────────────────────────────────────────────────────
+// The shared "nothing to show" block: 72px tinted circle + 32px icon, title,
+// optional subtitle, optional action button. Figma uses this same shape for
+// empty, no-access and error states across screens.
+//
+// `tone` ('neutral' | 'warn' | 'error') tints the circle; the action button is
+// always the brand navy, as in the mockups.
+export function StateView({
+  icon = 'info',
+  tone = 'neutral',
+  title,
+  subtitle,
+  actionLabel,
+  onAction,
+  style,
+}) {
+  const { c } = useTheme();
+  const tones = {
+    neutral: { bg: c.bg2, ink: c.inkMuted },
+    warn: { bg: c.greenSoft, ink: c.green },
+    error: { bg: c.redSoft, ink: c.red },
+    brand: { bg: c.blueSoft, ink: c.blue },
+  };
+  const t = tones[tone] || tones.neutral;
+
+  return (
+    <View style={[{ alignItems: 'center', paddingHorizontal: 32, gap: 20 }, style]}>
+      <View style={{ alignItems: 'center', gap: 16 }}>
+        <View
+          style={{
+            width: 72,
+            height: 72,
+            borderRadius: 36,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: t.bg,
+          }}
+        >
+          <Icon name={icon} size={32} color={t.ink} strokeWidth={2} />
+        </View>
+        <View style={{ gap: 6 }}>
+          <Txt style={{ fontSize: 16, fontWeight: '700', color: c.ink, textAlign: 'center' }}>
+            {title}
+          </Txt>
+          {subtitle ? (
+            <Txt style={{ fontSize: 13, fontWeight: '400', color: c.inkMuted, textAlign: 'center' }}>
+              {subtitle}
+            </Txt>
+          ) : null}
+        </View>
+      </View>
+      {actionLabel && onAction ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={onAction}
+          style={({ pressed }) => ({
+            width: '100%',
+            height: 48,
+            borderRadius: 12,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: c.blue,
+            opacity: pressed ? 0.9 : 1,
+          })}
+        >
+          <Txt style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{actionLabel}</Txt>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
 // ─── SectionTitle ─────────────────────────────────────────────────────────────
 export function SectionTitle({ title, right }) {
   return (

@@ -142,6 +142,9 @@ export function LessonRow({ lesson, onPress, teacherView = false, attendance = n
   return (
     <Pressable
       onPress={onPress}
+      // Without a handler the row is not a destination — kill the press feedback
+      // too, so it doesn't look tappable.
+      disabled={!onPress}
       style={({ pressed }) => [
         {
           backgroundColor: c.surface,
@@ -190,6 +193,161 @@ export function LessonRow({ lesson, onPress, teacherView = false, attendance = n
           </Txt>
         ) : null}
       </View>
+    </Pressable>
+  );
+}
+
+/**
+ * Figma lesson card — a labelled block of text with an optional pencil.
+ * Used for «Тема урока» and «Комментарий для учеников».
+ *
+ * Three shapes, driven by the data rather than by a flag:
+ *   value present            → the text
+ *   empty, cannot edit       → muted placeholder («Тема не указана»)
+ *   empty, can edit          → placeholder + an «+ Добавить …» call to action
+ *
+ * `onEdit` omitted means the viewer has no edit right — the pencil disappears
+ * rather than being shown disabled, so the card stays honest about what it offers.
+ */
+export function EditableField({ label, value, placeholder, addLabel, onEdit, footer }) {
+  const { c } = useTheme();
+  const filled = Boolean(value && String(value).trim());
+
+  return (
+    <View style={{ gap: 4 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+        <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+          <Txt
+            style={{
+              fontSize: 11,
+              fontWeight: '700',
+              color: c.inkMuted,
+              textTransform: 'uppercase',
+              letterSpacing: 0.3,
+            }}
+          >
+            {label}
+          </Txt>
+          <Txt
+            style={{
+              fontSize: filled ? 14 : 13,
+              fontWeight: filled ? '500' : '400',
+              lineHeight: 19,
+              color: filled ? c.ink : c.ink3,
+            }}
+          >
+            {filled ? value : placeholder}
+          </Txt>
+        </View>
+        {onEdit ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${label}: изменить`}
+            onPress={onEdit}
+            hitSlop={8}
+            style={({ pressed }) => ({
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: pressed ? c.bg2 : 'transparent',
+            })}
+          >
+            <Icon name="pencil" size={18} color={c.blue} />
+          </Pressable>
+        ) : null}
+      </View>
+
+      {!filled && onEdit && addLabel ? (
+        <Pressable accessibilityRole="button" onPress={onEdit} hitSlop={6}>
+          <Txt style={{ fontSize: 13, fontWeight: '700', color: c.blue }}>{`+ ${addLabel}`}</Txt>
+        </Pressable>
+      ) : null}
+
+      {footer ? (
+        <Txt style={{ fontSize: 11, fontWeight: '400', color: c.ink3 }}>{footer}</Txt>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * Figma lesson card — one of the four tiles (посещаемость / ДЗ / материалы / оценки).
+ * Half-width, 36px tinted icon badge, uppercase label over a one-line value.
+ *
+ * Without `onPress` the tile renders muted and non-interactive: the chevron is
+ * replaced by a «Скоро» hint, so an unbuilt section reads as "not yet" instead of
+ * as a tap that silently does nothing.
+ */
+export function LessonActionTile({ icon, tint, label, value, onPress, soon = false }) {
+  const { c } = useTheme();
+  const interactive = Boolean(onPress) && !soon;
+
+  const body = (
+    <>
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: softColor(c, tint),
+        }}
+      >
+        <Icon name={icon} size={18} color={brandColor(c, tint)} strokeWidth={2} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <Txt
+          style={{
+            fontSize: 11,
+            fontWeight: '600',
+            color: c.inkMuted,
+            textTransform: 'uppercase',
+            letterSpacing: 0.2,
+          }}
+          numberOfLines={2}
+        >
+          {label}
+        </Txt>
+        <Txt style={{ fontSize: 13, fontWeight: '600', color: c.ink }} numberOfLines={1}>
+          {value}
+        </Txt>
+      </View>
+      {interactive ? (
+        <Icon name="chevronRight" size={16} color={c.ink3} />
+      ) : (
+        <Txt style={{ fontSize: 10, fontWeight: '700', color: c.ink3 }}>Скоро</Txt>
+      )}
+    </>
+  );
+
+  const style = {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 72,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: c.border,
+    backgroundColor: c.surface,
+    opacity: interactive ? 1 : 0.65,
+  };
+
+  if (!interactive) {
+    return (
+      <View accessibilityState={{ disabled: true }} style={style}>
+        {body}
+      </View>
+    );
+  }
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [style, pressed && { opacity: 0.9 }]}>
+      {body}
     </Pressable>
   );
 }

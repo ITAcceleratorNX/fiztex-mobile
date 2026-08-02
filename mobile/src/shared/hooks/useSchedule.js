@@ -114,7 +114,15 @@ export function useParentChildren(enabled = true) {
   return { loading, error, children, reload };
 }
 
-const DAY_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт'];
+// Подписи по позиции внутри недели (0 = понедельник), а не по индексу в массиве
+// рабочих дней: у шестидневки суббота обязана быть «Сб», а не пятой подписью.
+const DAY_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+const WEEKDAY_NAMES = [
+  'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY',
+];
+// Пока расписание не пришло, показываем пятидневку — самый частый случай.
+// Как только вьюха отдаст `workingDays`, полоска перестроится под школу.
+const DEFAULT_WORKING_OFFSETS = [0, 1, 2, 3, 4];
 
 /** Monday of the week containing `dateStr` (YYYY-MM-DD in, YYYY-MM-DD out). */
 export function startOfWeek(dateStr) {
@@ -124,24 +132,59 @@ export function startOfWeek(dateStr) {
 }
 
 /**
- * School days (Пн–Пт) spanning several weeks around `centerDate`, so the strip
- * can scroll into previous and next weeks instead of being stuck on one.
+ * Учебные дни года → смещения от понедельника (0..6), по возрастанию.
+ *
+ * Календарь школы приходит с бэка (`RoleScheduleView.workingDays`): захардкоженная
+ * пятидневка прятала субботние уроки шестидневки, а в выходной ещё и оставляла
+ * полоску без выбранного дня — экран выглядел сломанным.
+ */
+export function workingDayOffsets(weekView) {
+  const days = weekView?.workingDays;
+  if (!Array.isArray(days) || days.length === 0) return DEFAULT_WORKING_OFFSETS;
+  const offsets = days
+    .map((d) => WEEKDAY_NAMES.indexOf(d))
+    .filter((i) => i >= 0)
+    .sort((a, b) => a - b);
+  return offsets.length ? offsets : DEFAULT_WORKING_OFFSETS;
+}
+
+/**
+ * School days spanning several weeks around `centerDate`, so the strip can
+ * scroll into previous and next weeks instead of being stuck on one.
  *
  * Dates are formatted from local parts — `toISOString()` would render the
  * previous day for any timezone ahead of UTC during the early morning.
+ *
+ * @param {number[]} offsets  учебные дни как смещения от понедельника (см. workingDayOffsets)
  */
-export function buildDayStrip(centerDate, weeksAround = 12) {
+export function buildDayStrip(centerDate, offsets = DEFAULT_WORKING_OFFSETS, weeksAround = 12) {
   const monday = new Date(`${startOfWeek(centerDate)}T12:00:00`);
   monday.setDate(monday.getDate() - weeksAround * 7);
   const out = [];
   for (let w = 0; w <= weeksAround * 2; w += 1) {
-    for (let i = 0; i < DAY_LABELS.length; i += 1) {
+    for (const offset of offsets) {
       const d = new Date(monday);
-      d.setDate(monday.getDate() + w * 7 + i);
-      out.push({ label: DAY_LABELS[i], date: localDateKey(d), dayNum: d.getDate() });
+      d.setDate(monday.getDate() + w * 7 + offset);
+      out.push({ label: DAY_LABELS[offset], date: localDateKey(d), dayNum: d.getDate() });
     }
   }
   return out;
+}
+
+/**
+ * Ближайший учебный день не раньше `dateStr` — куда встать, если приложение
+ * открыли в выходной. Раньше выбиралось «сегодня», которого в полоске нет:
+ * ни один чип не подсвечивался, и пустой день читался как поломка.
+ */
+export function nearestSchoolDay(dateStr, offsets = DEFAULT_WORKING_OFFSETS) {
+  if (!offsets.length) return dateStr;
+  const d = new Date(`${dateStr}T12:00:00`);
+  for (let i = 0; i < 7; i += 1) {
+    const offset = (d.getDay() + 6) % 7; // 0 = понедельник
+    if (offsets.includes(offset)) return localDateKey(d);
+    d.setDate(d.getDate() + 1);
+  }
+  return dateStr;
 }
 
 export function lessonsForDate(weekView, dateStr) {

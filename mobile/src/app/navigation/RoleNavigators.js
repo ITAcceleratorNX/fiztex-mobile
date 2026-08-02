@@ -5,6 +5,7 @@ import { CustomTabBar } from './CustomTabBar';
 import { withNav } from './withNav';
 import { NotificationsScreen } from '@features/notifications';
 import { ScheduleScreen } from '@features/schedule';
+import { LessonCardScreen } from '@features/lesson';
 import {
   StudentHome, StudentLesson, StudentCheckoutQR, StudentDiary, StudentSubject,
   StudentClubs, StudentClub, StudentTest, StudentAITest, StudentEvents, StudentAchievements,
@@ -147,6 +148,7 @@ export function TeacherApp() {
     <TStack.Navigator screenOptions={stackScreenOptions}>
       <TStack.Screen name="Tabs" component={TeacherTabs} />
       {renderDetails(TStack, [
+        { name: 'lesson', comp: LessonCardScreen },
         { name: 'scanner', comp: TeacherScanner },
         { name: 'grade-entry', comp: TeacherGradeEntry },
         { name: 'ai-upload', comp: TeacherAIUpload },

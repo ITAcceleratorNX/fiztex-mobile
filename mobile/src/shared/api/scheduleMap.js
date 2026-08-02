@@ -8,7 +8,11 @@ export function mapLessonToRow(lesson, now = new Date()) {
   const end = formatTime(lesson.endTime);
   const status = computeLessonStatus(lesson.startTime, lesson.endTime, lesson.date, now);
   return {
+    // Слот расписания — повторяющийся шаблон, один на все даты.
     lessonId: lesson.lessonId,
+    // Фактический урок на эту дату; именно он открывает карточку. `null`, пока
+    // генерация не дошла до этой даты — тогда открывать нечего.
+    lessonInstanceId: lesson.lessonInstanceId ?? null,
     time,
     end,
     subject: lesson.subjectName || 'Предмет',
@@ -51,6 +55,9 @@ export function mapScheduleView(view, now = new Date()) {
     weekEnd: view?.weekEnd || null,
     classId: view?.classId || null,
     className: view?.className || null,
+    // Учебные дни года — по ним строится полоска дней. Пустой массив и
+    // отсутствие поля означают «бэк не сказал», и клиент падает на пятидневку.
+    workingDays: Array.isArray(view?.workingDays) ? view.workingDays : null,
     events: view?.events || [],
     lessons,
   };

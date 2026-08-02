@@ -174,6 +174,61 @@ const ICONS = {
       />
     </G>
   ),
+  // ─── Lesson card (Figma «Карточка урока») ──────────────────────────────────
+  // Meta rows, action tiles and the substitution / closed-period banners.
+  users: (p) => (
+    <>
+      <Path {...p} d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <Circle {...p} cx="9" cy="7" r="4" />
+      <Path {...p} d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+    </>
+  ),
+  mapPin: (p) => (
+    <>
+      <Path {...p} d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" />
+      <Circle {...p} cx="12" cy="10" r="3" />
+    </>
+  ),
+  userCheck: (p) => (
+    <>
+      <Path {...p} d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <Circle {...p} cx="9" cy="7" r="4" />
+      <Path {...p} d="M16 11l2 2 4-4" />
+    </>
+  ),
+  bookOpen: (p) => (
+    <>
+      <Path {...p} d="M2 4h6a3 3 0 0 1 4 3 3 3 0 0 1 4-3h6v14h-6a3 3 0 0 0-4 2 3 3 0 0 0-4-2H2z" />
+      <Path {...p} d="M12 7v13" />
+    </>
+  ),
+  paperclip: (p) => (
+    <Path
+      {...p}
+      d="M21 11.5l-8.6 8.6a5 5 0 0 1-7.07-7.07l8.6-8.6a3.5 3.5 0 1 1 4.95 4.95l-8.6 8.6a2 2 0 0 1-2.83-2.83l7.9-7.9"
+    />
+  ),
+  award: (p) => (
+    <>
+      <Circle {...p} cx="12" cy="9" r="6" />
+      <Path {...p} d="M8.6 13.8L7 22l5-3 5 3-1.6-8.2" />
+    </>
+  ),
+  lock: (p) => (
+    <>
+      <Rect {...p} x="4" y="11" width="16" height="10" rx="2" />
+      <Path {...p} d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </>
+  ),
+  // Substitution — the "swap" arrows, matching the Figma banner glyph.
+  swap: (p) => (
+    <>
+      <Path {...p} d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6.7 3L21 8" />
+      <Path {...p} d="M21 3v5h-5" />
+      <Path {...p} d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-6.7-3L3 16" />
+      <Path {...p} d="M3 21v-5h5" />
+    </>
+  ),
 };
 
 export default function Icon({ name, size = 24, color, strokeWidth = 1.8 }) {

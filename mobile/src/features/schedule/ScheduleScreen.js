@@ -13,6 +13,8 @@ import {
   buildDayStrip,
   startOfWeek,
   lessonsForDate,
+  workingDayOffsets,
+  nearestSchoolDay,
 } from '@shared/hooks/useSchedule';
 import { localDateKey } from '@shared/api/scheduleMap';
 import {
@@ -183,13 +185,31 @@ export function ScheduleScreen({ nav, role = 'student' }) {
 
   const todayStr = localDateKey();
   const [selectedDate, setSelectedDate] = useState(todayStr);
-  const days = useMemo(() => buildDayStrip(todayStr), [todayStr]);
+  const userPickedDay = useRef(false);
 
   // Refetch only when the *week* changes, not on every day tap.
   const weekAnchor = useMemo(() => startOfWeek(selectedDate), [selectedDate]);
   const me = useMySchedule({ week: true, date: weekAnchor });
   const child = useChildSchedule(isParent ? childId : null, { week: true, date: weekAnchor });
   const { loading, error, data, reload } = isParent ? child : me;
+
+  // Учебные дни приходят с расписанием, поэтому первая отрисовка идёт на
+  // пятидневке по умолчанию, а после ответа полоска перестраивается под школу.
+  const offsets = useMemo(() => workingDayOffsets(data), [data]);
+  const days = useMemo(() => buildDayStrip(todayStr, offsets), [todayStr, offsets]);
+
+  // В выходной «сегодня» в полоске нет — без этого не подсвечивался ни один чип,
+  // и пустой день читался как поломка. Ручной выбор дня уважаем и не перебиваем.
+  useEffect(() => {
+    if (userPickedDay.current) return;
+    const snapped = nearestSchoolDay(todayStr, offsets);
+    if (snapped !== selectedDate) setSelectedDate(snapped);
+  }, [todayStr, offsets, selectedDate]);
+
+  const onSelectDay = useCallback((date) => {
+    userPickedDay.current = true;
+    setSelectedDate(date);
+  }, []);
 
   const rawLessons = lessonsForDate(data, selectedDate);
   const lessons = markNextLesson(rawLessons, selectedDate === todayStr);
@@ -241,7 +261,7 @@ export function ScheduleScreen({ nav, role = 'student' }) {
         </View>
       ) : null}
 
-      <DayStrip days={days} selectedDate={selectedDate} todayStr={todayStr} onSelect={setSelectedDate} />
+      <DayStrip days={days} selectedDate={selectedDate} todayStr={todayStr} onSelect={onSelectDay} />
 
       {dayState.kind === 'loading' ? (
         <ScheduleSkeleton />
@@ -259,7 +279,16 @@ export function ScheduleScreen({ nav, role = 'student' }) {
                 // A single attendance mark belongs to one pupil, so it is
                 // meaningless on a teacher's own schedule (a whole class).
                 attendance={isTeacher ? null : mockAttendanceFor(l)}
-                onPress={() => nav?.('lesson', l)}
+                // Карточка учителя грузится по id фактического урока, а его нет
+                // ни за горизонтом генерации, ни на прошедших днях (генерация
+                // идёт от сегодня вперёд) — такая строка не ведёт никуда.
+                // У ученика и родителя экран урока пока на моках и id не требует,
+                // поэтому им переход оставляем, иначе это была бы регрессия.
+                onPress={
+                  !isTeacher || l.lessonInstanceId
+                    ? () => nav?.('lesson', { ...l, childId: isParent ? childId : null })
+                    : undefined
+                }
               />
             ))}
           </View>
