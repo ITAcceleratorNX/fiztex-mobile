@@ -81,12 +81,20 @@ function isQuestionAnswered(a) {
 }
 
 function pluralRu(n, forms) {
+  // Дробные всегда берут родительный единственного: «1,5 балла».
+  if (!Number.isInteger(n)) return forms[1];
   const mod10 = n % 10;
   const mod100 = n % 100;
   if (mod100 >= 11 && mod100 <= 14) return forms[2];
   if (mod10 === 1) return forms[0];
   if (mod10 >= 2 && mod10 <= 4) return forms[1];
   return forms[2];
+}
+
+/** Балл без хвоста «.0»: вопросы бывают по 0.5 балла, целые дробью показывать незачем. */
+function formatScore(value) {
+  const number = Number(value) || 0;
+  return Number.isInteger(number) ? String(number) : String(Math.round(number * 10) / 10);
 }
 
 function isRateLimitError(err) {
@@ -1524,9 +1532,12 @@ export function EntranceDoneScreen({
 export function EntranceResultScreen({ result, onBack, onExit }) {
   const insets = useSafeAreaInsets();
 
-  const displayScore = Math.round(
-    result?.percent > 0 ? result.percent : result?.totalScore ?? 0,
-  );
+  // Сырой балл, а не процент: раньше здесь стоял `percent > 0 ? percent : totalScore` с подписью
+  // «из 100», и цифра не билась с проходным баллом теста, который показан рядом.
+  const totalScore = result?.totalScore ?? 0;
+  const maxScore = result?.maxScore ?? 0;
+  const displayScore = formatScore(totalScore);
+  const scoreOutOf = `${pluralRu(totalScore, ['балл', 'балла', 'баллов'])} из ${formatScore(maxScore)}`;
   const strongTopics = useMemo(() => {
     if (Array.isArray(result?.strongTopics) && result.strongTopics.length) {
       return result.strongTopics;
@@ -1581,7 +1592,7 @@ export function EntranceResultScreen({ result, onBack, onExit }) {
                 <Txt style={{ fontSize: 48, fontWeight: '900', color: NAVY, lineHeight: 58 }}>
                   {displayScore}
                 </Txt>
-                <Txt style={{ fontSize: 15, fontWeight: '600', color: MUTED }}>балла из 100</Txt>
+                <Txt style={{ fontSize: 15, fontWeight: '600', color: MUTED }}>{scoreOutOf}</Txt>
               </View>
               <View
                 style={{
@@ -1616,7 +1627,9 @@ export function EntranceResultScreen({ result, onBack, onExit }) {
           >
             <View style={{ flex: 1, gap: 4 }}>
               <Txt style={{ fontSize: 12, fontWeight: '600', color: MUTED }}>Проходной балл</Txt>
-              <Txt style={{ fontSize: 17, fontWeight: '700', color: INK2 }}>{result.minScore}</Txt>
+              <Txt style={{ fontSize: 17, fontWeight: '700', color: INK2 }}>
+                {formatScore(result.minScore)}
+              </Txt>
             </View>
             <View style={{ width: 1, height: 40, backgroundColor: BORDER, marginHorizontal: 16 }} />
             <View style={{ flex: 1, gap: 4, alignItems: 'flex-end' }}>
