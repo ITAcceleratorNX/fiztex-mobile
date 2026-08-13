@@ -5,6 +5,7 @@ import Icon from '@shared/components/Icon';
 import { Pill } from '@shared/components/ui';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { PhotoAnswerBlock } from './PhotoAnswerBlock';
+import { MathText } from '@shared/math/MathText';
 
 const NAVY = '#274185';
 const SELECTED_BG = '#EFF6FF';
@@ -47,17 +48,17 @@ function OptionRow({ label, selected, onPress, multi }) {
           ) : null}
           {selected && multi ? <Icon name="check" size={12} color="#fff" strokeWidth={3} /> : null}
         </View>
-        <Txt
-          style={{
-            flex: 1,
-            fontSize: 17,
-            lineHeight: 22,
-            fontWeight: selected ? '700' : '500',
-            color: INK,
-          }}
-        >
-          {label}
-        </Txt>
+        <View style={{ flex: 1 }}>
+          <MathText
+            text={label}
+            style={{
+              fontSize: 17,
+              lineHeight: 22,
+              fontWeight: selected ? '700' : '500',
+              color: INK,
+            }}
+          />
+        </View>
       </View>
     </Pressable>
   );

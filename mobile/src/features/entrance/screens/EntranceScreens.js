@@ -23,6 +23,8 @@ import { useAnticheat } from '../hooks/useAnticheat';
 import { TestTimer, formatTime } from '../components/TestTimer';
 import { PrivacyOverlay } from '../components/PrivacyOverlay';
 import { QuestionBody, QuestionMeta, SaveStatusChip } from '../components/QuestionBody';
+import { MathText } from '@shared/math/MathText';
+import { QuestionFigure } from '@shared/components/QuestionFigure';
 import { EntranceCodeBackground } from '../components/EntranceCodeBackground';
 import { shadowSm } from '@shared/components/Screen';
 
@@ -1276,9 +1278,11 @@ export function EntranceTestScreen({ attempt, onFinished }) {
             }}
           >
             <QuestionMeta question={question} />
-            <Txt style={{ fontSize: 20, fontWeight: '600', lineHeight: 28, color: INK2 }}>
-              {question.text}
-            </Txt>
+            <MathText
+              text={question.text}
+              style={{ fontSize: 20, fontWeight: '600', lineHeight: 28, color: INK2 }}
+            />
+            <QuestionFigure imageUrl={question.imageUrl} />
           </View>
 
           <QuestionBody
