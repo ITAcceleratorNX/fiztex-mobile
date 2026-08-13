@@ -25,6 +25,13 @@ export function mapLessonToRow(lesson, now = new Date()) {
     subgroupName: lesson.subgroupName,
     audienceType: lesson.audienceType,
     date: lesson.date,
+    // Отмена и замена — свойства фактического урока: у слота за горизонтом
+    // генерации их нет и быть не может, поэтому дефолт «обычный урок».
+    cancelled: Boolean(lesson.cancelled),
+    substituteTeacher: lesson.substituteTeacherName || null,
+    substituteTeacherShort: lesson.substituteTeacherName
+      ? abbreviateTeacherName(lesson.substituteTeacherName)
+      : null,
     raw: lesson,
   };
 }

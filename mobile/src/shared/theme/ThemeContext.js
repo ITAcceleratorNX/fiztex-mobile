@@ -28,6 +28,26 @@ const hero = {
   heroWatermarkParentOpacity: 0.06,
 };
 
+// Недельная сетка (Figma «Расписание – Сетка», node 2085:9402). Значения сняты
+// пиксель-в-пиксель из макета: линии таблицы там свой серый (#E5E7EB), а не
+// общий `border`, а точки-маркеры — свои акценты, а не brand-палитра.
+// Точки одинаковы в обеих темах: это статус, а не оформление.
+const grid = {
+  gridLine: '#E5E7EB',
+  gridToday: '#EDF1F8',
+  gridOff: '#F5F6F9',
+  dotNow: '#FB923C',
+  dotSubstitute: '#FF3B30',
+};
+
+const gridDark = {
+  gridLine: '#2E3D57',
+  gridToday: '#1B2745',
+  gridOff: '#182338',
+  dotNow: '#FB923C',
+  dotSubstitute: '#FF453A',
+};
+
 const light = {
   bg: '#FAFBFC',
   bg2: '#F1F5F9',
@@ -41,6 +61,7 @@ const light = {
   stripeIdle: '#D1D5DB',
   border: '#E2E8F0',
   borderStrong: '#CBD5E1',
+  ...grid,
   greenSoft: '#FFF7ED',
   blueSoft: '#EEF1F8',
   redSoft: '#FEE2E2',
@@ -65,6 +86,7 @@ const dark = {
   stripeIdle: '#3E4F6D',
   border: '#2E3D57',
   borderStrong: '#3E4F6D',
+  ...gridDark,
   greenSoft: '#3A2412',
   blueSoft: '#1B2745',
   redSoft: '#3A1C1C',

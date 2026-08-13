@@ -104,6 +104,23 @@ export function ChildSwitcherPill({ child, index = 0, canSwitch, onPress }) {
   );
 }
 
+/**
+ * Figma «Родитель (1 ребёнок) – Сетка» (node 2085:10059): единственный ребёнок
+ * подписан строкой под заголовком, без чипа — переключать всё равно не на кого,
+ * а чип в сетке отнимал бы у таблицы высоту.
+ */
+export function ChildSubtitle({ child }) {
+  const { c } = useTheme();
+  const label = childShortLabel(child);
+  const suffix = child?.className ? ` · ${child.className}` : '';
+  return (
+    <Txt style={{ fontSize: 14, fontWeight: '500', color: c.ink3 }} numberOfLines={1}>
+      {label}
+      {suffix}
+    </Txt>
+  );
+}
+
 /** Figma `bottom-sheet` (node 2022:13432) — the child picker. */
 export function ChildPickerSheet({ visible, items, selectedId, onSelect, onClose }) {
   const { c, dark } = useTheme();

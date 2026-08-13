@@ -126,13 +126,26 @@ export function LessonRow({ lesson, onPress, teacherView = false, attendance = n
   const { c } = useTheme();
   const status = lesson.status || 'upcoming';
   const done = status === 'done';
+  // Отменённый урок не «идёт» и не «следующий»: подсветка расписания на нём
+  // врала бы сильнее, чем помогала.
+  const cancelled = Boolean(lesson.cancelled);
 
-  const stripeColor =
-    status === 'now' ? c.green : status === 'next' ? c.blue : done ? c.stripeIdle : null;
+  const stripeColor = cancelled
+    ? c.stripeIdle
+    : status === 'now'
+      ? c.green
+      : status === 'next'
+        ? c.blue
+        : done
+          ? c.stripeIdle
+          : null;
 
   // Student/parent: «Учитель · каб. · подгруппа». Teacher: «подгруппа · каб.»
   // — their own name would be noise on their own schedule.
-  const teacher = lesson.teacherShort || lesson.teacher;
+  // Замена подменяет в мете именно учителя: ученику важно, кто придёт на урок,
+  // а не кто числится в расписании. У учителя его собственного ФИО в мете нет,
+  // поэтому и замена туда не попадает — она видна бейджем.
+  const teacher = lesson.substituteTeacherShort || lesson.teacherShort || lesson.teacher;
   const room = lesson.roomLabel !== undefined ? lesson.roomLabel : lesson.room;
   const metaParts = teacherView
     ? [lesson.subgroupName, room]
@@ -153,7 +166,7 @@ export function LessonRow({ lesson, onPress, teacherView = false, attendance = n
           flexDirection: 'row',
           alignItems: 'flex-start',
           gap: 12,
-          opacity: done ? 0.5 : pressed ? 0.92 : 1,
+          opacity: done || cancelled ? 0.5 : pressed ? 0.92 : 1,
           ...shadowSm,
           shadowOpacity: 0.03,
           shadowRadius: 6,
@@ -174,18 +187,33 @@ export function LessonRow({ lesson, onPress, teacherView = false, attendance = n
       <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Txt style={{ flex: 1, fontSize: 15, fontWeight: '700', color: c.ink }} numberOfLines={1}>
+            <Txt
+              style={{
+                flex: 1,
+                fontSize: 15,
+                fontWeight: '700',
+                color: cancelled ? c.ink3 : c.ink,
+                textDecorationLine: cancelled ? 'line-through' : 'none',
+              }}
+              numberOfLines={1}
+            >
               {lesson.subject}
             </Txt>
             {teacherView && lesson.className ? <ClassBadge label={lesson.className} /> : null}
           </View>
-          {status === 'now' ? (
+          {cancelled ? (
+            <StatusBadge label="Отменён" color={c.red} tint="rgba(220,38,38,0.08)" />
+          ) : null}
+          {!cancelled && lesson.substituteTeacher ? (
+            <StatusBadge label="Замена" color={c.dotSubstitute} tint="rgba(255,59,48,0.08)" />
+          ) : null}
+          {!cancelled && status === 'now' ? (
             <StatusBadge label="Сейчас" color={c.green} tint="rgba(245,146,59,0.08)" />
           ) : null}
-          {status === 'next' ? (
+          {!cancelled && status === 'next' ? (
             <StatusBadge label="Следующий" color={c.blue} tint="rgba(39,65,133,0.08)" />
           ) : null}
-          {done && attendance ? <AttendanceBadge status={attendance} /> : null}
+          {done && !cancelled && attendance ? <AttendanceBadge status={attendance} /> : null}
         </View>
         {meta ? (
           <Txt style={{ fontSize: 13, fontWeight: '500', color: c.inkMuted }} numberOfLines={2}>

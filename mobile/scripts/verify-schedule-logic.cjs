@@ -34,6 +34,9 @@ function load(relPath, extraStubs = {}) {
       if (id.includes(key)) return value;
     }
     if (id === 'react') return { createElement: () => null, default: { createElement: () => null } };
+    // Хелперы babel подставляются настоящие: заглушка вместо `toConsumableArray`
+    // ломает любой spread в исходнике, и падение выглядит как ошибка в коде.
+    if (id.startsWith('@babel/runtime')) return require(id);
     return noop;
   };
   const mod = { exports: {} };
@@ -71,9 +74,19 @@ const useSchedule = load('src/shared/hooks/useSchedule.js', {
   scheduleMap,
   AuthContext: { useAuth: () => ({ token: null }) },
 });
+const weekGrid = load('src/features/schedule/weekGrid.js', { scheduleMap });
 
 const { mapLessonToRow, abbreviateTeacherName, formatRoom, localDateKey } = scheduleMap;
-const { resolveDayState, eventsForDate } = states;
+const { resolveDayState, resolveWeekState, eventsForDate } = states;
+const {
+  buildWeekGrid,
+  buildWeekColumns,
+  buildWeekRows,
+  cellLabel,
+  cellAccessibilityLabel,
+  shiftWeek,
+  MIN_GRID_ROWS,
+} = weekGrid;
 const { childShortLabel, childFullLabel, childInitials, childColor } = childSwitcher;
 const { mockAttendanceFor, ATTENDANCE_STATUSES } = attendance;
 const { buildDayStrip, startOfWeek, lessonsForDate } = useSchedule;
@@ -94,7 +107,8 @@ section('Даты (локальные, без UTC-сдвига)');
   check('startOfWeek от понедельника — он сам', startOfWeek('2026-07-27') === '2026-07-27');
   check('startOfWeek через границу месяца', startOfWeek('2026-08-02') === '2026-07-27', startOfWeek('2026-08-02'));
 
-  const strip = buildDayStrip('2026-07-31', 2);
+  // Учебные дни идут вторым аргументом (см. workingDayOffsets), недели — третьим.
+  const strip = buildDayStrip('2026-07-31', undefined, 2);
   check('полоса дней: 5 дней × (2*2+1) недель', strip.length === 5 * 5, `${strip.length}`);
   check('полоса содержит выбранный день', strip.some((d) => d.date === '2026-07-31'));
   check('выбранный день в центре полосы',
@@ -204,7 +218,147 @@ section('Посещаемость (заглушка)');
   check('встречаются уроки без отметки', all.has(null));
 }
 
-// ── 7. against live backend data (optional) ──────────────────────────────────
+// ── 7. недельная сетка ───────────────────────────────────────────────────────
+section('Недельная сетка');
+{
+  const now = new Date(2026, 6, 29, 12, 0, 0); // Ср 29.07.2026, 12:00
+  const lesson = (date, number, start, subject, extra = {}) =>
+    mapLessonToRow(
+      {
+        lessonId: `${date}-${number}`,
+        lessonInstanceId: extra.instanceId ?? null,
+        date,
+        lessonNumber: number,
+        startTime: start,
+        endTime: start.replace(':00:', ':45:'),
+        subjectName: subject,
+        className: extra.className,
+        subgroupName: extra.subgroupName,
+        room: extra.room,
+        teacherFullName: extra.teacher,
+        cancelled: extra.cancelled,
+        substituteTeacherName: extra.substitute,
+      },
+      now,
+    );
+
+  const view = {
+    workingDays: ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'],
+    events: [{ id: 1, effect: 'NO_LESSONS', title: 'Выходной', dateFrom: '2026-07-30', dateTo: '2026-07-30' }],
+    lessons: [
+      lesson('2026-07-27', 1, '08:00:00', 'Математика'),
+      lesson('2026-07-27', 2, '09:00:00', 'Физика'),
+      lesson('2026-07-29', 1, '08:00:00', 'Алгебра', { className: '11А', instanceId: 42 }),
+      lesson('2026-07-29', 3, '10:00:00', 'Литература', { cancelled: true }),
+      lesson('2026-07-31', 2, '09:00:00', 'История', { substitute: 'Сидорова Анна Петровна' }),
+      // Урок в субботу: в пятидневке для него нет колонки.
+      lesson('2026-08-01', 1, '08:00:00', 'Лишний'),
+    ],
+  };
+  const offsets = [0, 1, 2, 3, 4];
+  const grid = buildWeekGrid({ view, weekStart: '2026-07-27', offsets, todayStr: '2026-07-29' });
+
+  check('колонок — по учебным дням', grid.columns.length === 5, `${grid.columns.length}`);
+  check('первая колонка — понедельник недели',
+    grid.columns[0].date === '2026-07-27' && grid.columns[0].label === 'Пн');
+  check('число дня взято из даты', grid.columns[0].dayNum === 27, `${grid.columns[0].dayNum}`);
+  check('сегодня подсвечено ровно одной колонкой',
+    grid.columns.filter((col) => col.isToday).length === 1 &&
+      grid.columns.find((col) => col.isToday).date === '2026-07-29');
+  check('выходной размечен по событию календаря',
+    grid.columns[3].holiday === 'Выходной' && grid.columns[0].holiday === null);
+  check('шестидневка добавляет субботу',
+    buildWeekColumns('2026-07-27', [0, 1, 2, 3, 4, 5]).length === 6);
+
+  check('строк не меньше семи (макет)', grid.rows.length >= MIN_GRID_ROWS, `${grid.rows.length}`);
+  check('строки идут по возрастанию времени',
+    grid.rows.every((r, i) => i === 0 || !r.time || !grid.rows[i - 1].time || r.time >= grid.rows[i - 1].time));
+  check('время строки взято у урока', grid.rows[0].time === '08:00' && grid.rows[0].number === 1,
+    `${grid.rows[0].number}/${grid.rows[0].time}`);
+  check('пустые строки добора без времени',
+    grid.rows.filter((r) => r.time).length === 3 && grid.rows.some((r) => !r.time));
+
+  check('урок попадает в свою клетку',
+    grid.lessonsAt('n1', '2026-07-27')[0].subject === 'Математика');
+  check('в чужой клетке пусто', grid.lessonsAt('n3', '2026-07-27').length === 0);
+  check('урок вне учебных дней в сетку не попадает',
+    grid.columns.every((col) => col.date !== '2026-08-01') &&
+      grid.rows.every((r) => grid.lessonsAt(r.key, '2026-08-01').length === 0));
+  check('отменённый урок остаётся в сетке',
+    grid.lessonsAt('n3', '2026-07-29')[0].cancelled === true);
+  check('замена доезжает до ячейки',
+    grid.lessonsAt('n2', '2026-07-31')[0].substituteTeacher === 'Сидорова Анна Петровна');
+
+  const empty = buildWeekGrid({ view: { lessons: [] }, weekStart: '2026-07-27', offsets, todayStr: null });
+  check('пустая неделя: таблица есть, уроков нет',
+    empty.isEmpty && empty.rows.length === MIN_GRID_ROWS && empty.columns.length === 5);
+  check('пустая неделя без подсветки сегодня', empty.columns.every((col) => !col.isToday));
+  check('нет данных вообще — не падает',
+    buildWeekGrid({ view: null, weekStart: '2026-07-27', offsets }).rows.length === MIN_GRID_ROWS);
+
+  const noNumber = buildWeekRows([
+    mapLessonToRow({ lessonId: 1, date: '2026-07-27', startTime: '13:00:00', subjectName: 'Ручной' }, now),
+  ]);
+  check('урок без номера получает свою строку по времени',
+    noNumber.some((r) => r.number === null && r.time === '13:00'), JSON.stringify(noNumber[0]));
+
+  const teacherLesson = grid.lessonsAt('n1', '2026-07-29')[0];
+  check('ученику в ячейке только предмет', cellLabel(teacherLesson, 'student') === 'Алгебра');
+  check('учителю в ячейке предмет и класс',
+    cellLabel(teacherLesson, 'teacher') === 'Алгебра · 11А', cellLabel(teacherLesson, 'teacher'));
+  check('подгруппа важнее класса у учителя',
+    cellLabel({ subject: 'Англ.', className: '7А', subgroupName: '7А-1' }, 'teacher') === 'Англ. · 7А-1');
+  check('в озвучке ячейки есть время', cellAccessibilityLabel(teacherLesson, 'student').includes('08:00'));
+  check('отмена озвучивается',
+    cellAccessibilityLabel(grid.lessonsAt('n3', '2026-07-29')[0], 'student').includes('отменён'));
+
+  check('шаг недели вперёд', shiftWeek('2026-07-27', 1) === '2026-08-03');
+  check('шаг недели назад через границу месяца', shiftWeek('2026-08-03', -1) === '2026-07-27');
+
+  const weekKind = (o) => resolveWeekState(o).kind;
+  check('сетка: ошибка важнее загрузки', weekKind({ loading: true, error: 'x', view }) === 'error');
+  check('сетка: загрузка', weekKind({ loading: true, error: null, view }) === 'loading');
+
+  // Все статусы, которые реально отдают недельные эндпоинты (StudentScheduleViewService
+  // и TeacherScheduleViewService). Таблица допустима только там, где расписание есть,
+  // а уроков в нём нет: во всех прочих случаях пустая сетка врала бы, что уроков нет.
+  const WEEK_STATUS_KINDS = {
+    ok: 'grid',
+    no_lessons: 'grid',
+    no_assigned_lessons: 'grid',
+    schedule_not_published: 'unpublished',
+    calendar_no_lessons: 'holiday',
+    no_active_class: 'empty',
+    no_active_period: 'empty',
+    non_working_day: 'empty',
+  };
+  for (const [status, expected] of Object.entries(WEEK_STATUS_KINDS)) {
+    const state = resolveWeekState({ loading: false, error: null, view: { status } });
+    check(`сетка: ${status} → ${expected}`, state.kind === expected, state.kind);
+  }
+  check('сетка: у объясняющих состояний есть текст',
+    ['no_active_class', 'no_active_period', 'non_working_day'].every(
+      (s) => Boolean(resolveWeekState({ loading: false, error: null, view: { status: s } }).message)),
+  );
+  check('сетка: «класс не назначен» — тот же текст, что в дневном виде',
+    resolveWeekState({ loading: false, error: null, view: { status: 'no_active_class' } }).message ===
+      resolveDayState({ loading: false, error: null, view: { status: 'no_active_class', events: [] }, lessons: [], dateStr: '2026-07-28' }).message);
+  check('сетка: про неделю не пишем «Неучебный день»',
+    resolveWeekState({ loading: false, error: null, view: { status: 'non_working_day' } }).message.includes('неделе'));
+  check('сетка: нет данных вовсе — таблица, а не блок',
+    weekKind({ loading: false, error: null, view: null }) === 'grid');
+
+  // День и неделя обязаны одинаково трактовать один и тот же ответ: то, что в дне
+  // объясняется блоком, в неделе не может молча превращаться в пустую таблицу.
+  const BLOCKING = ['schedule_not_published', 'calendar_no_lessons', 'no_active_class', 'no_active_period'];
+  check('день и неделя согласованы по блокирующим статусам',
+    BLOCKING.every((s) => {
+      const day = resolveDayState({ loading: false, error: null, view: { status: s, events: [] }, lessons: [], dateStr: '2026-07-28' }).kind;
+      return resolveWeekState({ loading: false, error: null, view: { status: s } }).kind === day;
+    }));
+}
+
+// ── 8. against live backend data (optional) ──────────────────────────────────
 const livePath = process.argv[2];
 if (livePath && fs.existsSync(livePath)) {
   section('Живые данные бэкенда');

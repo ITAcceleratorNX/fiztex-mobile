@@ -249,14 +249,56 @@ export function eventsForDate(view, dateStr) {
 }
 
 /**
+ * Приоритет состояний, общий для дня и недели: сначала то, что делает экран
+ * бессмысленным (ошибка, загрузка), потом то, что объясняет пустоту.
+ * Вынесено отдельно, чтобы два режима не разъехались в трактовке одного ответа.
+ */
+function baseState({ loading, error }) {
+  if (error) return { kind: 'error' };
+  if (loading) return { kind: 'loading' };
+  return null;
+}
+
+// Формулировки, которые в неделе звучат иначе, чем в дне: «Неучебный день» про
+// целую неделю — неправда.
+const WEEK_MESSAGES = {
+  non_working_day: 'На этой неделе нет учебных дней',
+};
+
+// Единственные два статуса, при которых пустая таблица честна: расписание есть,
+// просто уроков в нём нет (Figma «Сетка – Пустая неделя»). Всё остальное —
+// «сетку строить не из чего», и рисовать её значит врать: пустая таблица
+// выглядит как «уроков нет», хотя на деле нет класса, периода или учебных дней.
+const GRID_STATUSES = new Set(['ok', 'no_lessons', 'no_assigned_lessons']);
+
+/**
+ * Состояние недельной сетки. Приоритет тот же, что у дня, и объяснения те же —
+ * иначе один и тот же ответ бэка в двух режимах читался бы по-разному.
+ *
+ * @returns {{kind: 'loading'|'error'|'unpublished'|'holiday'|'empty'|'grid', message?: string, title?: string}}
+ */
+export function resolveWeekState({ loading, error, view }) {
+  const base = baseState({ loading, error });
+  if (base) return base;
+
+  const status = view?.status;
+  if (status === 'schedule_not_published') return { kind: 'unpublished' };
+  // Вся неделя закрыта календарём — то же самое, что каникулы в дневном виде.
+  if (status === 'calendar_no_lessons') return { kind: 'holiday', title: null };
+  if (!status || GRID_STATUSES.has(status)) return { kind: 'grid' };
+
+  return { kind: 'empty', message: WEEK_MESSAGES[status] || scheduleStatusMessage(status) };
+}
+
+/**
  * Single place that turns (loading / error / status / events) into the state the
  * screen renders, so the states stay consistent instead of ad-hoc `if`s.
  *
  * @returns {{kind: 'loading'|'error'|'holiday'|'unpublished'|'empty'|'lessons', title?: string, message?: string}}
  */
 export function resolveDayState({ loading, error, view, lessons, dateStr }) {
-  if (error) return { kind: 'error' };
-  if (loading) return { kind: 'loading' };
+  const base = baseState({ loading, error });
+  if (base) return base;
 
   const dayEvents = eventsForDate(view, dateStr);
   const blocking = dayEvents.find((e) => e.effect === 'NO_LESSONS');
