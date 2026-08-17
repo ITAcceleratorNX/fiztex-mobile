@@ -47,21 +47,35 @@ function StatusBadge({ label, color, tint }) {
   );
 }
 
-// Figma `attendance-badge` (node 2022:14970) — shown on finished lessons only.
-// Translucent fills work on both themes; ink/border are picked per scheme.
+/**
+ * Figma `attendance-badge` (node 2086:9919 и соседние варианты) — четыре вида
+ * отметки. «Нет отметки» — это не пятый вид, а отсутствие чипа: в макете урок
+ * без отметки («История», 12:00) просто не показывает ничего справа от предмета.
+ *
+ * Цвета — из темы (`attPresentTint`/`attPresentInk` и т. д.), а не из литералов:
+ * заливка одна на обе темы, контур и текст переключаются вместе со схемой.
+ */
 const ATTENDANCE = {
-  present: { label: 'Посетил', icon: 'check', tint: 'rgba(34,197,94,0.12)', ink: '#16A34A', inkDark: '#4ADE80' },
-  late: { label: 'Опоздал', icon: 'clock', tint: 'rgba(245,158,11,0.12)', ink: '#FB923C', inkDark: '#FBBF6C' },
-  absent: { label: 'Пропустил', icon: 'x', tint: 'rgba(239,68,68,0.12)', ink: '#DC2626', inkDark: '#F87171' },
+  present: { label: 'Посетил', icon: 'check', tint: 'attPresentTint', ink: 'attPresentInk' },
+  late: { label: 'Опоздал', icon: 'clock', tint: 'attLateTint', ink: 'attLateInk' },
+  absent: { label: 'Пропустил', icon: 'x', tint: 'attAbsentTint', ink: 'attAbsentInk' },
+  // Щит — единственный замкнутый контур в наборе: на 10px жирная обводка съедает
+  // его внутренность, и глиф превращается в пятно. Открытым «галочке» и «крестику»
+  // толщина 3 наоборот нужна, чтобы они не потерялись.
+  excused: {
+    label: 'Освобождён', icon: 'shield', tint: 'attExcusedTint', ink: 'attExcusedInk', stroke: 2,
+  },
 };
 
-function AttendanceBadge({ status }) {
-  const { dark } = useTheme();
+export function AttendanceBadge({ status }) {
+  const { c } = useTheme();
   const v = ATTENDANCE[status];
   if (!v) return null;
-  const color = dark ? v.inkDark : v.ink;
+  const color = c[v.ink];
   return (
     <View
+      accessibilityRole="text"
+      accessibilityLabel={`Посещаемость: ${v.label.toLowerCase()}`}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -72,10 +86,10 @@ function AttendanceBadge({ status }) {
         borderRadius: 20,
         borderWidth: 1,
         borderColor: color,
-        backgroundColor: v.tint,
+        backgroundColor: c[v.tint],
       }}
     >
-      <Icon name={v.icon} size={10} color={color} strokeWidth={3} />
+      <Icon name={v.icon} size={10} color={color} strokeWidth={v.stroke ?? 3} />
       <Txt style={{ fontSize: 11, fontWeight: '700', color }}>{v.label}</Txt>
     </View>
   );
@@ -115,9 +129,10 @@ function ClassBadge({ label }) {
  * `teacherView` switches to the teacher card: a class badge next to the subject,
  * and a meta line without the teacher's own name.
  *
- * `attendance` ('present' | 'late' | 'absent') renders the attendance badge from
- * node 2022:14940. Per the design it only applies to finished lessons — a lesson
- * that is «Сейчас»/«Следующий» keeps its status badge instead.
+ * `attendance` ('present' | 'late' | 'absent' | 'excused') renders the attendance
+ * badge from node 2086:9882. Per the design it only applies to finished lessons —
+ * a lesson that is «Сейчас»/«Следующий» keeps its status badge instead, and a
+ * finished lesson without a published mark shows nothing at all.
  *
  * Accepts both API rows (`teacherShort`/`roomLabel` from scheduleMap) and the
  * legacy mock rows (`teacher`/`room`) still used by the home previews.

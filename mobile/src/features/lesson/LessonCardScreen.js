@@ -1,5 +1,6 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
@@ -8,7 +9,9 @@ import Icon from '@shared/components/Icon';
 import { Pill, Banner } from '@shared/components/ui';
 import { EditableField, LessonActionTile } from '@shared/ui/rows';
 import { useLesson, useLessonEditing } from '@shared/hooks/useLesson';
-import { LessonEditSheet } from './LessonEditSheet';
+import { useLessonAttendanceSheet } from '@shared/hooks/useAttendance';
+import { sheetStateLabel } from '@shared/api/attendanceMap';
+import { TextEditSheet } from '@shared/components/TextEditSheet';
 import { LessonCardFallback, LessonCardHeader } from './LessonCardStates';
 
 const TOPIC_MAX = 300;
@@ -56,7 +59,27 @@ export function LessonCardScreen({ nav, payload }) {
     highlight,
   });
   const editing = useLessonEditing(lessonId, reload);
+  // Лист посещаемости — отдельный запрос и только при праве на него: без
+  // VIEW_ATTENDANCE бэк ответит 403, и ходить туда ради выключенной плитки незачем.
+  const {
+    loading: attendanceLoading,
+    sheet: attendanceSheet,
+    reload: reloadAttendance,
+  } = useLessonAttendanceSheet(lessonId, {
+    enabled: Boolean(lesson?.can.viewAttendance),
+  });
   const [sheet, setSheet] = useState(null); // 'topic' | 'comment' | null
+
+  // Возврат с листа посещаемости — состояние плитки могло измениться там, а не здесь.
+  // Первый показ пропускается: хук уже сходил за листом при монтировании, и второй
+  // запрос на открытие карточки был бы чистым дублем.
+  const focusedBefore = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (focusedBefore.current) reloadAttendance();
+      else focusedBefore.current = true;
+    }, [reloadAttendance]),
+  );
 
   const closeSheet = useCallback(() => {
     setSheet(null);
@@ -69,11 +92,13 @@ export function LessonCardScreen({ nav, payload }) {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await reload(true);
+      // Лист посещаемости правит не только этот учитель (админ и замещающий — тоже),
+      // поэтому обновляется он вместе с карточкой, а не только при входе на экран.
+      await Promise.all([reload(true), reloadAttendance()]);
     } finally {
       setRefreshing(false);
     }
-  }, [reload]);
+  }, [reload, reloadAttendance]);
 
   // ─── Состояния до карточки ──────────────────────────────────────────────────
   // Экран ошибки — только когда показывать нечего. Если карточка уже на экране,
@@ -177,11 +202,25 @@ export function LessonCardScreen({ nav, payload }) {
           />
         </View>
 
-        {/* Разделы урока. Посещаемость, ДЗ, материалы и оценки — отдельные домены,
-            которых в API ещё нет, поэтому плитки показаны, но неактивны. */}
+        {/* Разделы урока. Посещаемость читается с бэка; ДЗ, материалы и оценки —
+            отдельные домены, которых в API ещё нет, поэтому их плитки неактивны. */}
         <View style={{ gap: 10 }}>
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <LessonActionTile icon="userCheck" tint="green" label="Посещаемость" value="Не отмечена" soon />
+            {/* Плитка ведёт на лист посещаемости — но только тому, кому он положен:
+                без VIEW_ATTENDANCE экран ответил бы 403, и переход был бы обещанием,
+                которого карточка сдержать не может. */}
+            <LessonActionTile
+              icon="userCheck"
+              tint="green"
+              label="Посещаемость"
+              value={attendanceLoading
+                ? 'Загружаем…'
+                : sheetStateLabel(attendanceSheet, { cancelled: lesson.status === 'CANCELLED' })}
+              onPress={lesson.can.viewAttendance
+                ? () => nav?.('attendance', { lessonInstanceId: lessonId })
+                : undefined}
+              soon={!lesson.can.viewAttendance}
+            />
             <LessonActionTile
               icon="bookOpen"
               tint="gold"
@@ -218,7 +257,7 @@ export function LessonCardScreen({ nav, payload }) {
         ) : null}
       </View>
 
-      <LessonEditSheet
+      <TextEditSheet
         visible={sheet === 'topic'}
         title="Тема урока"
         label="Тема"
@@ -236,7 +275,7 @@ export function LessonCardScreen({ nav, payload }) {
         onClose={closeSheet}
       />
 
-      <LessonEditSheet
+      <TextEditSheet
         visible={sheet === 'comment'}
         title="Комментарий для учеников"
         label="Комментарий"

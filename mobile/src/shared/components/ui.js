@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Pressable } from 'react-native';
+import { View, Pressable, Modal, ScrollView, ActivityIndicator } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { Txt, Ink, wrapStrings } from './Txt';
 import Icon from './Icon';
 import { Hex, HexBadge, PhysTechMark, PhysTechLogotype } from './Hex';
-import { shadowCard } from './Screen';
+import { shadowCard, shadowLg } from './Screen';
 
 // ─── PhysTech wordmark (exact logotype) ────────────────────────────────────
 // The primary brand logo used in headers. `size` is the rendered height;
@@ -182,6 +183,190 @@ export function PrimaryButton({ children, onPress, color = 'green', style, full 
       ]}
     >
       <Ink color={fg}>{wrapStrings(children, { fontSize: 16, fontWeight: '600', color: fg })}</Ink>
+    </Pressable>
+  );
+}
+
+// ─── Кнопки формы (Figma: `all-here-btn`, `draft-btn`, `publish-btn`) ─────────
+// Отдельно от {@link PrimaryButton}: тот — крупный CTA во всю ширину (h54, r999),
+// а это кнопки внутри формы — прямоугольные, h44 в подвале и компактные в строке.
+// Два размера, а не свободные пропсы: третий вариант в макетах не встречается, и
+// открытая геометрия быстрее разъезжается, чем закрывается пара значений.
+const BTN_SIZES = {
+  sm: { height: undefined, paddingVertical: 8, paddingHorizontal: 12, radius: 8, fontSize: 13, weight: '600', border: 1 },
+  lg: { height: 44, paddingVertical: 0, paddingHorizontal: 16, radius: 12, fontSize: 14, weight: '700', border: 1.5 },
+};
+
+export function OutlineButton({ children, onPress, disabled = false, size = 'sm', style }) {
+  const { c } = useTheme();
+  const s = BTN_SIZES[size] || BTN_SIZES.sm;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      onPress={disabled ? undefined : onPress}
+      style={({ pressed }) => [
+        {
+          height: s.height,
+          paddingVertical: s.paddingVertical,
+          paddingHorizontal: s.paddingHorizontal,
+          borderRadius: s.radius,
+          borderWidth: s.border,
+          borderColor: disabled ? c.border : c.blue,
+          backgroundColor: c.surface,
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: pressed ? 0.85 : 1,
+        },
+        style,
+      ]}
+    >
+      <Txt style={{ fontSize: s.fontSize, fontWeight: s.weight, color: disabled ? c.ink3 : c.blue }}>
+        {children}
+      </Txt>
+    </Pressable>
+  );
+}
+
+// Заливка. Выключенная кнопка не «включённая с прозрачностью», а свой серый:
+// полупрозрачный оранжевый на светлом фоне остаётся оранжевым и продолжает звать нажать.
+export function FilledButton({ children, onPress, disabled = false, color = 'green', size = 'lg', style }) {
+  const { c } = useTheme();
+  const s = BTN_SIZES[size] || BTN_SIZES.lg;
+  const bg = { green: c.green, blue: c.blue, red: c.red }[color] || c.green;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      onPress={disabled ? undefined : onPress}
+      style={({ pressed }) => [
+        {
+          height: s.height,
+          paddingVertical: s.paddingVertical,
+          paddingHorizontal: s.paddingHorizontal,
+          borderRadius: s.radius,
+          backgroundColor: disabled ? c.bg2 : bg,
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: pressed ? 0.9 : 1,
+        },
+        style,
+      ]}
+    >
+      <Txt style={{ fontSize: s.fontSize, fontWeight: s.weight, color: disabled ? c.ink3 : '#fff' }}>
+        {children}
+      </Txt>
+    </Pressable>
+  );
+}
+
+// ─── Checkbox (Figma `checkbox-checked`) ──────────────────────────────────────
+// Квадрат 16px: включённый — заливка фирменным navy с белой галочкой, выключенный —
+// только контур. Подпись входит в зону нажатия: 16 пикселей — не цель для пальца.
+export function Checkbox({ checked, label, onPress, disabled = false }) {
+  const { c } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked, disabled }}
+      accessibilityLabel={label}
+      onPress={disabled ? undefined : onPress}
+      hitSlop={8}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexShrink: 1,
+        minWidth: 0,
+        gap: 6,
+        opacity: disabled ? 0.5 : pressed ? 0.7 : 1,
+      })}
+    >
+      <View
+        style={{
+          width: 16,
+          height: 16,
+          borderRadius: 4,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: checked ? c.blue : 'transparent',
+          borderWidth: checked ? 0 : 1,
+          borderColor: c.inkMuted,
+        }}
+      >
+        {checked ? <Icon name="check" size={10} color="#fff" strokeWidth={3} /> : null}
+      </View>
+      {label ? (
+        <Txt
+          style={{ flexShrink: 1, minWidth: 0, fontSize: 12, fontWeight: '500', color: c.ink2 }}
+          numberOfLines={1}
+        >
+          {label}
+        </Txt>
+      ) : null}
+    </Pressable>
+  );
+}
+
+// ─── SelectPill ───────────────────────────────────────────────────────────────
+// Значение из закрытого списка: подпись и шеврон вниз (Figma — статус ученика и
+// `reason-switcher-pill`). Без `onPress` шеврон пропадает — пилюля становится
+// подписью, а не «выключенной кнопкой»: ровно этим отличается просмотр от правки.
+//
+// `tone` — семантика значения, не цвет: экран не должен знать, каким токеном
+// покрашено «присутствовал».
+const PILL_TONES = {
+  success: (c) => ({ bg: c.attPresentTint, ink: c.attPresentInk, border: c.attPresentInk }),
+  danger: (c) => ({ bg: c.attAbsentTint, ink: c.attAbsentInk, border: c.attAbsentInk }),
+  muted: (c) => ({ bg: c.bg2, ink: c.inkMuted, border: c.inkMuted }),
+  neutral: (c) => ({ bg: c.surface, ink: c.ink2, border: c.border }),
+};
+
+export function SelectPill({ label, tone = 'neutral', onPress, disabled = false, style }) {
+  const { c } = useTheme();
+  const t = (PILL_TONES[tone] || PILL_TONES.neutral)(c);
+  const body = (
+    <>
+      <Txt
+        style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: '600', color: t.ink }}
+        numberOfLines={1}
+      >
+        {label}
+      </Txt>
+      {onPress ? (
+        <Icon name="chevronDown" size={12} color={t.ink} strokeWidth={2.4} />
+      ) : null}
+    </>
+  );
+  // `flexShrink` в RN по умолчанию 0: без него пилюля с длинной подписью занимает
+  // ширину своего текста целиком и выталкивает соседей за край строки, вместо того
+  // чтобы обрезать подпись. `minWidth: 0` нужен там же — иначе сжиматься ей мешает
+  // собственное содержимое.
+  const base = {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
+    minWidth: 0,
+    gap: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: t.border,
+    backgroundColor: t.bg,
+  };
+
+  if (!onPress) {
+    return <View style={[base, style]}>{body}</View>;
+  }
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      accessibilityLabel={label}
+      onPress={disabled ? undefined : onPress}
+      style={({ pressed }) => [base, { opacity: disabled ? 0.5 : pressed ? 0.8 : 1 }, style]}
+    >
+      {body}
     </Pressable>
   );
 }
@@ -382,6 +567,174 @@ export function StateView({
         </Pressable>
       ) : null}
     </View>
+  );
+}
+
+// ─── ConfirmDialog (Figma `modal-backdrop` / `modal-box`) ─────────────────────
+// Вопрос, на который нельзя ответить молчанием: действие уже нельзя будет отменить,
+// поэтому диалог по центру, а не шит снизу, и подложка не закрывается тапом мимо —
+// закрыть его можно только ответив.
+export function ConfirmDialog({
+  visible,
+  title,
+  message,
+  cancelLabel = 'Отмена',
+  confirmLabel = 'Продолжить',
+  busy = false,
+  onCancel,
+  onConfirm,
+}) {
+  const { c } = useTheme();
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: 'rgba(11,8,16,0.6)',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 25,
+        }}
+      >
+        <View
+          style={{
+            width: '100%',
+            maxWidth: 340,
+            backgroundColor: c.surface,
+            borderRadius: 20,
+            padding: 28,
+            gap: 20,
+            ...shadowLg,
+          }}
+        >
+          <View style={{ gap: 8 }}>
+            <Txt style={{ fontSize: 18, fontWeight: '700', color: c.ink }}>{title}</Txt>
+            {message ? (
+              <Txt style={{ fontSize: 14, fontWeight: '400', lineHeight: 21, color: c.ink2 }}>
+                {message}
+              </Txt>
+            ) : null}
+          </View>
+          <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'flex-end' }}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={busy ? undefined : onCancel}
+              style={({ pressed }) => ({
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: c.border,
+                backgroundColor: c.surface,
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <Txt style={{ fontSize: 13, fontWeight: '600', color: c.ink2 }}>{cancelLabel}</Txt>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={busy ? undefined : onConfirm}
+              style={({ pressed }) => ({
+                minWidth: 117,
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                borderRadius: 8,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: c.green,
+                opacity: busy ? 0.7 : pressed ? 0.9 : 1,
+              })}
+            >
+              {busy ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Txt style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>{confirmLabel}</Txt>
+              )}
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ─── PickerSheet ──────────────────────────────────────────────────────────────
+// Выбор одного значения из короткого закрытого списка — то, что на вебе было бы
+// `<select>`. Шит снизу, а не диалог: выбор обратим, и промах мимо списка должен
+// его просто закрывать.
+//
+// `options` — `[{ value, label, hint? }]`; `value` сравнивается строго, поэтому
+// `null` («не указано») — полноправный пункт, а не отсутствие выбора.
+export function PickerSheet({ visible, title, options = [], value, onSelect, onClose }) {
+  const { c } = useTheme();
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable
+        style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.35)', justifyContent: 'flex-end' }}
+        onPress={onClose}
+      >
+        <Pressable
+          onPress={(e) => e.stopPropagation?.()}
+          style={{
+            backgroundColor: c.surface,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            paddingTop: 8,
+            paddingBottom: Math.max(24, insets.bottom + 12),
+            gap: 8,
+          }}
+        >
+          <View style={{ alignItems: 'center', paddingVertical: 4 }}>
+            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: c.stripeIdle }} />
+          </View>
+          {title ? (
+            <Txt style={{ fontSize: 17, fontWeight: '700', color: c.ink, paddingHorizontal: 16 }}>
+              {title}
+            </Txt>
+          ) : null}
+          <ScrollView bounces={false} style={{ maxHeight: 380 }}>
+            {options.map((option) => {
+              const active = option.value === value;
+              return (
+                <Pressable
+                  key={String(option.value)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => onSelect?.(option.value)}
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    paddingHorizontal: 16,
+                    paddingVertical: 14,
+                    backgroundColor: pressed ? c.bg2 : 'transparent',
+                  })}
+                >
+                  <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                    <Txt
+                      style={{
+                        fontSize: 15,
+                        fontWeight: active ? '700' : '500',
+                        color: active ? c.blue : c.ink,
+                      }}
+                    >
+                      {option.label}
+                    </Txt>
+                    {option.hint ? (
+                      <Txt style={{ fontSize: 12, fontWeight: '400', color: c.ink3 }}>
+                        {option.hint}
+                      </Txt>
+                    ) : null}
+                  </View>
+                  {active ? <Icon name="check" size={18} color={c.blue} strokeWidth={2.6} /> : null}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 

@@ -10,10 +10,12 @@ import {
   useParentChildren,
   buildDayStrip,
   startOfWeek,
+  endOfWeek,
   lessonsForDate,
   workingDayOffsets,
   nearestSchoolDay,
 } from '@shared/hooks/useSchedule';
+import { useMyAttendanceMarks } from '@shared/hooks/useAttendance';
 import { localDateKey } from '@shared/api/scheduleMap';
 import { resolveDayState, resolveWeekState } from './ScheduleStates';
 import {
@@ -134,6 +136,20 @@ export function ScheduleScreen({ nav, role = 'student' }) {
   const selectedIndex = children.findIndex((ch) => ch.id === childId);
   const selectedChild = selectedIndex >= 0 ? children[selectedIndex] : null;
 
+  /**
+   * Отметки посещаемости на ту же неделю, что и уроки, — один запрос на весь экран.
+   *
+   * Учителю чипы не запрашиваются вовсе: отметка принадлежит одному ученику, а на
+   * своём расписании учитель смотрит на класс целиком — одна отметка там не значит
+   * ничего. Родителю нужен ребёнок, поэтому до его выбора запрос не уходит.
+   */
+  const { marks, reload: reloadMarks } = useMyAttendanceMarks({
+    dateFrom: weekAnchor,
+    dateTo: endOfWeek(weekAnchor),
+    childId: isParent ? childId : null,
+    enabled: role !== 'teacher' && (!isParent || Boolean(childId)),
+  });
+
   const dayState = resolveDayState({ loading, error, view: data, lessons, dateStr: selectedDate });
   const weekState = resolveWeekState({ loading, error, view: data });
   const grid = useMemo(
@@ -167,11 +183,17 @@ export function ScheduleScreen({ nav, role = 'student' }) {
     setRefreshing(true);
     try {
       // `silent` keeps the current lessons on screen instead of flashing skeletons.
-      await Promise.all([reload?.(true), isParent ? reloadChildren?.() : null]);
+      // Посещаемость обновляется вместе с расписанием: учитель публикует лист уже
+      // после урока, и жест «потянуть» затем и делают, чтобы увидеть отметку.
+      await Promise.all([
+        reload?.(true),
+        reloadMarks?.(),
+        isParent ? reloadChildren?.() : null,
+      ]);
     } finally {
       setRefreshing(false);
     }
-  }, [reload, reloadChildren, isParent]);
+  }, [reload, reloadMarks, reloadChildren, isParent]);
 
   return (
     <Screen
@@ -235,6 +257,7 @@ export function ScheduleScreen({ nav, role = 'student' }) {
           onSelectDay={onSelectDay}
           state={dayState}
           lessons={lessons}
+          marks={marks}
           role={role}
           onRetry={onRetry}
           onOpenLesson={onOpenLesson}

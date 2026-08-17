@@ -6,6 +6,7 @@ import { withNav } from './withNav';
 import { NotificationsScreen } from '@features/notifications';
 import { ScheduleScreen } from '@features/schedule';
 import { LessonCardScreen, StudentLessonScreen } from '@features/lesson';
+import { AttendanceScreen } from '@features/attendance';
 import {
   StudentHome, StudentCheckoutQR, StudentDiary, StudentSubject,
   StudentClubs, StudentClub, StudentTest, StudentAITest, StudentEvents, StudentAchievements,
@@ -151,6 +152,9 @@ export function TeacherApp() {
       <TStack.Screen name="Tabs" component={TeacherTabs} />
       {renderDetails(TStack, [
         { name: 'lesson', comp: LessonCardScreen },
+        // Лист посещаемости открывается из карточки урока и в неё же возвращается —
+        // отдельной вкладки у него нет: это часть урока, а не самостоятельный раздел.
+        { name: 'attendance', comp: AttendanceScreen },
         { name: 'scanner', comp: TeacherScanner },
         { name: 'grade-entry', comp: TeacherGradeEntry },
         { name: 'ai-upload', comp: TeacherAIUpload },

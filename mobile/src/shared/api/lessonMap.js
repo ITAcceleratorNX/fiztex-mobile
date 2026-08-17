@@ -158,6 +158,7 @@ export function mapLessonCard(lesson, { highlight = null } = {}) {
       viewStudents: caps.includes('VIEW_STUDENTS'),
       viewHistory: caps.includes('VIEW_TEACHER_HISTORY') || caps.includes('VIEW_ADMIN_HISTORY'),
       manageStructure: caps.includes('MANAGE_STRUCTURE'),
+      viewAttendance: caps.includes('VIEW_ATTENDANCE'),
       fillAttendance: caps.includes('FILL_ATTENDANCE'),
       submitHomework: caps.includes('SUBMIT_HOMEWORK'),
       // Закрытый период — «только просмотр» по макету. Бэк это пока не проверяет,

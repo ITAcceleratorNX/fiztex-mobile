@@ -8,6 +8,8 @@ import Icon from '@shared/components/Icon';
 import { Card, Banner } from '@shared/components/ui';
 import { ModuleRow } from '@shared/ui/rows';
 import { useLesson, useLessonHomework } from '@shared/hooks/useLesson';
+import { useMyLessonAttendance } from '@shared/hooks/useAttendance';
+import { attendanceLabel } from '@shared/api/attendanceMap';
 import { LessonHero } from './LessonHero';
 import { LessonCardFallback, LessonCardHeader } from './LessonCardStates';
 
@@ -269,6 +271,13 @@ export function StudentLessonScreen({ nav, payload }) {
 
   const { loading, error, forbidden, lesson, reload } = useLesson(lessonId, { childId, highlight });
   const homework = useLessonHomework(lessonId, reload);
+  // Посещаемость живёт своим запросом: она приходит не с карточкой урока, а из
+  // модуля посещаемости, и её отсутствие карточку не ломает.
+  const {
+    loading: attendanceLoading,
+    marking,
+    reload: reloadAttendance,
+  } = useMyLessonAttendance(lessonId, { childId });
 
   const onBack = useCallback(() => nav?.back?.(), [nav]);
 
@@ -276,11 +285,13 @@ export function StudentLessonScreen({ nav, payload }) {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await reload(true);
+      // Посещаемость — свой запрос, и обновлять её надо вместе с карточкой: учитель
+      // публикует лист после урока, и жест «потянуть» затем и делают.
+      await Promise.all([reload(true), reloadAttendance()]);
     } finally {
       setRefreshing(false);
     }
-  }, [reload]);
+  }, [reload, reloadAttendance]);
 
   // Роль — из ответа бэка: клиент не должен решать «я родитель» по тому, что ему
   // передали childId, иначе экран и права разъедутся на первом же нестандартном заходе.
@@ -336,9 +347,20 @@ export function StudentLessonScreen({ nav, payload }) {
           onUndo={homework.undoDone}
         />
 
-        {/* Посещаемость, материалы и оценки — отдельные домены, которых в API ещё нет.
-            Строки показывают пустое состояние из макета и никуда не ведут. */}
-        <ModuleRow icon="userCheck" tint="green" label="Посещаемость" value="Не отмечено" />
+        {/* Посещаемость приходит с бэка; материалы и оценки — отдельные домены,
+            которых в API ещё нет, поэтому их строки остаются пустым состоянием. */}
+        <ModuleRow
+          icon="userCheck"
+          tint="green"
+          label="Посещаемость"
+          // «Не отмечено» покрывает и «учитель ещё не заполнил», и «заполнил, но не
+          // опубликовал»: ученику в обоих случаях смотреть не на что, а объяснять ему
+          // кухню учительского черновика незачем. Отмена — случай другой: там ждать
+          // нечего, и об этом говорится прямо.
+          value={attendanceLoading
+            ? 'Загружаем…'
+            : attendanceLabel(marking, { cancelled: lesson.status === 'CANCELLED' })}
+        />
         <ModuleRow icon="paperclip" tint="blue" label="Материалы" value="Нет материалов" />
         <ModuleRow icon="award" tint="red" label="Оценки" value="Не выставлены" />
       </View>

@@ -12,9 +12,12 @@ import { mapLessonCard } from '@shared/api/lessonMap';
  * поэтому решение принимается здесь, а не в вёрстке.
  *
  * @param {number|null} lessonId  id LessonInstance
- * @param {{ childId?: number|null, highlight?: 'next'|null }} options
+ * @param {{ childId?: number|null, highlight?: 'next'|null, history?: boolean }} options
+ *   `history: false` — карточка нужна только как шапка (экран посещаемости), и счётчик
+ *   истории урока там не показывается: запрос за числом, которое некуда вывести, —
+ *   лишний круг к серверу на каждом открытии.
  */
-export function useLesson(lessonId, { childId = null, highlight = null } = {}) {
+export function useLesson(lessonId, { childId = null, highlight = null, history = true } = {}) {
   const { token } = useAuth();
   const [loading, setLoading] = useState(Boolean(lessonId));
   const [error, setError] = useState(null);
@@ -37,11 +40,13 @@ export function useLesson(lessonId, { childId = null, highlight = null } = {}) {
 
       // Счётчик истории — отдельный и некритичный запрос: карточка не должна
       // падать целиком из-за него, поэтому его ошибка гасится.
-      try {
-        const page = await lessonApi.history(token, lessonId, { size: 1, childId });
-        setHistoryCount(typeof page?.totalElements === 'number' ? page.totalElements : null);
-      } catch {
-        setHistoryCount(null);
+      if (history) {
+        try {
+          const page = await lessonApi.history(token, lessonId, { size: 1, childId });
+          setHistoryCount(typeof page?.totalElements === 'number' ? page.totalElements : null);
+        } catch {
+          setHistoryCount(null);
+        }
       }
     } catch (e) {
       // 404 — «нет доступа»: урок либо исчез, либо был чужим. Показывать старую
@@ -62,7 +67,7 @@ export function useLesson(lessonId, { childId = null, highlight = null } = {}) {
     } finally {
       setLoading(false);
     }
-  }, [token, lessonId, childId, highlight]);
+  }, [token, lessonId, childId, highlight, history]);
 
   useEffect(() => {
     reload();

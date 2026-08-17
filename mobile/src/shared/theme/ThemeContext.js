@@ -48,6 +48,36 @@ const gridDark = {
   dotSubstitute: '#FF453A',
 };
 
+// Чип посещаемости на карточке урока (Figma «Посещаемость – Смешанный день»,
+// node 2086:9882). Заливка одна на обе темы — она полупрозрачная и ложится и на
+// белую карточку, и на тёмную; меняется только контур и текст, иначе на тёмном
+// фоне #16A34A читался бы как грязное пятно.
+//
+// «Освобождён» в макете не нарисован: бэк считает освобождение отдельно от
+// пропусков (attendance-read-contract §8), и красный чип «Пропустил» на нём
+// расходился бы с цифрами месячной сводки. Взят фирменный navy — тот же, что у
+// статуса «Следующий», с заливкой из семейства чипов (12 %).
+const attendance = {
+  attPresentTint: 'rgba(34,197,94,0.12)',
+  attLateTint: 'rgba(245,158,11,0.12)',
+  attAbsentTint: 'rgba(239,68,68,0.12)',
+  attExcusedTint: 'rgba(39,65,133,0.12)',
+};
+
+const attendanceInk = {
+  attPresentInk: '#16A34A',
+  attLateInk: '#FB923C',
+  attAbsentInk: '#DC2626',
+  attExcusedInk: '#274185',
+};
+
+const attendanceInkDark = {
+  attPresentInk: '#4ADE80',
+  attLateInk: '#FBBF6C',
+  attAbsentInk: '#F87171',
+  attExcusedInk: '#88A7F9',
+};
+
 const light = {
   bg: '#FAFBFC',
   bg2: '#F1F5F9',
@@ -70,6 +100,8 @@ const light = {
   // а «готово» без зелёного не читается.
   success: '#065F46',
   successSoft: '#E0FBE3',
+  ...attendance,
+  ...attendanceInk,
   ...hero,
   ...PHYSTECH,
 };
@@ -93,6 +125,8 @@ const dark = {
   goldSoft: '#3A2E0C',
   success: '#4ADE80',
   successSoft: '#123527',
+  ...attendance,
+  ...attendanceInkDark,
   ...hero,
   ...PHYSTECH,
 };

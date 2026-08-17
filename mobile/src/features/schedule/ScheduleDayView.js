@@ -5,7 +5,6 @@ import { Txt } from '@shared/components/Txt';
 import { PhysTechMark } from '@shared/components/Hex';
 import { LessonRow } from '@shared/ui/rows';
 import { InfoBanner, ScheduleSkeleton, ScheduleStateView } from './ScheduleStates';
-import { mockAttendanceFor } from './attendanceMock';
 
 const STRIP_GAP = 8;
 const STRIP_PAD = 16;
@@ -141,6 +140,7 @@ export function ScheduleDayView({
   onSelectDay,
   state,
   lessons,
+  marks = {},
   role = 'student',
   onRetry,
   onOpenLesson,
@@ -165,9 +165,10 @@ export function ScheduleDayView({
                 key={l.lessonId || i}
                 lesson={l}
                 teacherView={isTeacher}
-                // A single attendance mark belongs to one pupil, so it is
-                // meaningless on a teacher's own schedule (a whole class).
-                attendance={isTeacher ? null : mockAttendanceFor(l)}
+                // Отметка принадлежит одному ученику, поэтому на расписании учителя
+                // (класс целиком) её нет — контейнер за неё даже не ходит.
+                // Ключ — id фактического урока: у слота расписания посещаемости нет.
+                attendance={isTeacher ? null : marks[l.lessonInstanceId] || null}
                 onPress={onOpenLesson && l.lessonInstanceId ? () => onOpenLesson(l) : undefined}
               />
             ))}

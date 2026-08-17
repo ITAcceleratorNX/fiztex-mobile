@@ -1,19 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, View, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '@shared/theme/ThemeContext';
-import { Txt } from '@shared/components/Txt';
-import { PrimaryButton } from '@shared/components/ui';
+import { useTheme } from '../theme/ThemeContext';
+import { Txt } from './Txt';
+import { PrimaryButton } from './ui';
 
 /**
- * Bottom sheet для правки учебной части урока — темы и комментария.
+ * Bottom sheet для правки одного текстового поля: тема урока, комментарий для учеников,
+ * комментарий к отметке посещаемости.
  *
- * Оба поля живут по одним правилам, поэтому шит один, а различия приходят пропсами:
- * лимит символов, число строк и заголовок. Пустое значение бэк не принимает
- * (тема и комментарий не могут быть пустыми), поэтому «стереть» — это отдельное
- * действие «Удалить», а не сохранение пустой строки.
+ * Все они живут по одним правилам, поэтому шит один, а различия приходят пропсами:
+ * заголовок, лимит символов, число строк. Пустое значение не сохраняется — «стереть»
+ * это отдельное действие «Удалить», а не сохранение пустой строки: у полей, которые
+ * бэк не принимает пустыми, иначе получалась бы кнопка «Сохранить», ведущая к 400.
+ *
+ * `readOnly` — тот же шит без права правки: комментарий в листе посещаемости виден и
+ * тому, кто заполнять уже не может (бывший заместитель, закрытый период). Отдельный
+ * компонент под просмотр разошёлся бы с этим по вёрстке при первой же правке.
  */
-export function LessonEditSheet({
+export function TextEditSheet({
   visible,
   title,
   label,
@@ -21,6 +26,7 @@ export function LessonEditSheet({
   initialValue = '',
   maxLength,
   multiline = false,
+  readOnly = false,
   saving = false,
   error = null,
   onSave,
@@ -32,7 +38,7 @@ export function LessonEditSheet({
   const [value, setValue] = useState(initialValue);
 
   // Каждое открытие начинается с актуального значения: шит переиспользуется
-  // и для темы, и для комментария, а состояние в нём одно.
+  // разными полями, а состояние в нём одно.
   useEffect(() => {
     if (visible) setValue(initialValue || '');
   }, [visible, initialValue]);
@@ -86,7 +92,7 @@ export function LessonEditSheet({
                 onChangeText={setValue}
                 placeholder={placeholder}
                 placeholderTextColor={c.ink3}
-                editable={!saving}
+                editable={!saving && !readOnly}
                 multiline={multiline}
                 maxLength={maxLength}
                 textAlignVertical={multiline ? 'top' : 'center'}
@@ -99,7 +105,7 @@ export function LessonEditSheet({
                   paddingHorizontal: 14,
                   paddingVertical: 12,
                   fontSize: 14,
-                  color: c.ink,
+                  color: readOnly ? c.ink2 : c.ink,
                 }}
               />
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -108,17 +114,21 @@ export function LessonEditSheet({
                 ) : (
                   <View style={{ flex: 1 }} />
                 )}
-                {maxLength ? (
+                {maxLength && !readOnly ? (
                   <Txt style={{ fontSize: 12, color: c.ink3 }}>{`${value.length}/${maxLength}`}</Txt>
                 ) : null}
               </View>
             </View>
 
-            <PrimaryButton color="blue" onPress={() => canSave && onSave(trimmed)} disabled={!canSave}>
-              {saving ? <ActivityIndicator color="#fff" /> : 'Сохранить'}
-            </PrimaryButton>
+            {readOnly ? (
+              <PrimaryButton color="ghost" onPress={onClose}>Закрыть</PrimaryButton>
+            ) : (
+              <PrimaryButton color="blue" onPress={() => canSave && onSave(trimmed)} disabled={!canSave}>
+                {saving ? <ActivityIndicator color="#fff" /> : 'Сохранить'}
+              </PrimaryButton>
+            )}
 
-            {hadValue && onDelete ? (
+            {!readOnly && hadValue && onDelete ? (
               <Pressable
                 accessibilityRole="button"
                 onPress={saving ? undefined : onDelete}
