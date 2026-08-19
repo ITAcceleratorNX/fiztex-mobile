@@ -10,6 +10,7 @@ import { GradCard, GRAD } from '@shared/components/Grad';
 import { useAppState } from '@shared/state/AppState';
 import { PARENT, ATTENDANCE_LOG, FEEDBACK, TODAY_SCHEDULE, SUBJECTS_DIARY } from '@shared/data/mock';
 import { LessonRow, SubjectRow, ProfileRow, QuickAction, brandColor, softColor } from '@shared/ui/rows';
+import { useMyProfile } from '@shared/hooks/useProfile';
 
 const chunk = (arr, n) => arr.reduce((rows, item, i) => {
   if (i % n === 0) rows.push([]);
@@ -427,34 +428,55 @@ export function ParentService({ nav }) {
 }
 
 // ═══ PROFILE ═══
+// Avatar красится именем из своей палитры, а не произвольным цветом, поэтому здесь
+// перечислены её значения, а не hex-и из макета.
+const CHILD_AVATAR_COLORS = ['blue', 'green', 'gold', 'red'];
+
+/** «Родитель · 2 ребёнка» — число склоняется, иначе строка читается как машинная. */
+function parentSubtitle(count) {
+  if (!count) return 'Родитель';
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  const word = mod10 === 1 && mod100 !== 11 ? 'ребёнок'
+    : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) ? 'ребёнка'
+      : 'детей';
+  return `Родитель · ${count} ${word}`;
+}
+
 export function ParentProfile({ onSignOut }) {
   const { c, dark, toggle } = useTheme();
+  // Дети приходят те же, что и в расписании: связь родитель↔ребёнок в системе одна.
+  const { displayName, children } = useMyProfile();
   return (
     <Screen>
       <View style={{ paddingTop: 14, paddingHorizontal: 16, paddingBottom: 8, alignItems: 'center' }}>
-        <Avatar name={PARENT.name} size={86} color="blue" />
-        <Txt style={{ fontSize: 22, fontWeight: '700', marginTop: 12, letterSpacing: -0.3 }}>{PARENT.name}</Txt>
-        <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 2 }}>Родитель · 2 ребёнка</Txt>
+        <Avatar name={displayName || PARENT.name} size={86} color="blue" />
+        <Txt style={{ fontSize: 22, fontWeight: '700', marginTop: 12, letterSpacing: -0.3 }}>{displayName}</Txt>
+        <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 2 }}>{parentSubtitle(children.length)}</Txt>
       </View>
 
       <SectionTitle title="Мои дети" />
       <Card style={{ marginHorizontal: 16, marginBottom: 12, padding: 0 }}>
-        {PARENT.children.map((ch, i) => (
-          <View
-            key={i}
-            style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: i < PARENT.children.length - 1 ? 1 : 0, borderBottomColor: c.border, gap: 12 }}
-          >
-            <Avatar name={ch.name} size={38} color={ch.avatar} />
-            <View style={{ flex: 1 }}>
-              <Txt style={{ fontSize: 14, fontWeight: '700' }}>{ch.name}</Txt>
-              <Txt style={{ fontSize: 12, color: c.ink3 }}>{ch.grade}</Txt>
-            </View>
-            <Pill color="green">
-              <View style={{ width: 6, height: 6, borderRadius: 999, backgroundColor: c.green }} />
-              <Txt style={{ fontSize: 12, fontWeight: '600' }}> в школе</Txt>
-            </Pill>
+        {children.length === 0 ? (
+          <View style={{ paddingVertical: 18, paddingHorizontal: 16 }}>
+            <Txt style={{ fontSize: 13, color: c.ink3 }}>
+              Детей пока не привязали. Обратитесь к администратору школы.
+            </Txt>
           </View>
-        ))}
+        ) : (
+          children.map((ch, i) => (
+            <View
+              key={ch.studentProfileId}
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: i < children.length - 1 ? 1 : 0, borderBottomColor: c.border, gap: 12 }}
+            >
+              <Avatar name={ch.fullName} size={38} color={CHILD_AVATAR_COLORS[i % CHILD_AVATAR_COLORS.length]} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Txt style={{ fontSize: 14, fontWeight: '700' }} numberOfLines={1}>{ch.fullName}</Txt>
+                <Txt style={{ fontSize: 12, color: c.ink3 }}>{ch.className || 'Класс не назначен'}</Txt>
+              </View>
+            </View>
+          ))
+        )}
       </Card>
 
       <SectionTitle title="Договор и оплата" />

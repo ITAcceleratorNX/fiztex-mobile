@@ -12,6 +12,7 @@ import { useAppState } from '@shared/state/AppState';
 import { useAuth } from '@features/auth/AuthContext';
 import { TEACHER, CLASS_ROSTER, AI_QUESTIONS } from '@shared/data/mock';
 import { LessonRow, ProfileRow, QuickAction, brandColor } from '@shared/ui/rows';
+import { useMyProfile } from '@shared/hooks/useProfile';
 import { useMySchedule } from '@shared/hooks/useSchedule';
 
 const chunk = (arr, n) => arr.reduce((rows, item, i) => {
@@ -535,15 +536,20 @@ export function TeacherFeedbackWrite({ nav }) {
 }
 
 // ═══ PROFILE ═══
+const CLASS_COLORS = ['green', 'blue', 'red', 'gold'];
+
 export function TeacherProfile({ onSignOut }) {
   const { c, dark, toggle } = useTheme();
-  const { fullName, biometricsEnabled, biometricMeta, enableBiometrics, disableBiometrics } = useAuth();
-  const displayName = fullName || TEACHER.name;
-  const classes = [
-    { c: '4 «Б»', sub: 'Кл. руководитель · 24 ученика', color: 'green' },
-    { c: '4 «А»', sub: 'Математика · 22 ученика', color: 'blue' },
-    { c: '4 «В»', sub: 'Математика · 21 ученик', color: 'red' },
-  ];
+  const { biometricsEnabled, biometricMeta, enableBiometrics, disableBiometrics } = useAuth();
+  // Что учитель ведёт в этом году — из его назначений. Разовая замена сюда не попадает:
+  // она даёт урок, а не класс, и в списке «мои классы» выглядела бы постоянной нагрузкой.
+  const { displayName, assignments } = useMyProfile();
+  const classes = assignments.map((a, i) => ({
+    c: a.className,
+    sub: a.subjectName,
+    color: CLASS_COLORS[i % CLASS_COLORS.length],
+  }));
+  const subjectsLine = [...new Set(assignments.map((a) => a.subjectName))].join(' · ');
 
   const toggleBio = async () => {
     if (biometricsEnabled) await disableBiometrics();
@@ -555,7 +561,7 @@ export function TeacherProfile({ onSignOut }) {
       <View style={{ paddingTop: 14, paddingHorizontal: 16, paddingBottom: 8, alignItems: 'center' }}>
         <Avatar name={displayName} size={86} color="red" />
         <Txt style={{ fontSize: 22, fontWeight: '700', marginTop: 12, letterSpacing: -0.3 }}>{displayName}</Txt>
-        <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 2 }}>{TEACHER.subject}</Txt>
+        <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 2 }}>{subjectsLine || TEACHER.subject}</Txt>
       </View>
 
       <SectionTitle title="Мои классы" />

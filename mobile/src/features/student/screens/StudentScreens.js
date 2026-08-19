@@ -23,6 +23,7 @@ import {
   AI_QUESTIONS,
 } from '@shared/data/mock';
 import { LessonRow, SubjectRow, ProfileRow, QRMockup, brandColor } from '@shared/ui/rows';
+import { useMyProfile, useAttendanceRate } from '@shared/hooks/useProfile';
 
 const chunk = (arr, n) => arr.reduce((rows, item, i) => {
   if (i % n === 0) rows.push([]);
@@ -973,17 +974,23 @@ export function StudentShop({ nav }) {
 export function StudentProfile({ nav, onSignOut }) {
   const { c, dark, toggle } = useTheme();
   const state = useAppState();
+  // Имя и класс — свои, а не из мока: звёзды и уровень пока остаются прототипом,
+  // домена геймификации в бэкенде нет вовсе.
+  const { displayName, className, academicYearName } = useMyProfile();
+  const attendanceRate = useAttendanceRate();
   return (
     <Screen>
       <View style={{ paddingTop: 14, paddingHorizontal: 16, paddingBottom: 8, alignItems: 'center' }}>
         <View>
-          <Avatar name={STUDENT.name} size={86} color="green" />
+          <Avatar name={displayName || STUDENT.name} size={86} color="green" />
           <View style={{ position: 'absolute', bottom: -2, right: -2, width: 28, height: 28, borderRadius: 999, backgroundColor: c.gold, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: c.bg }}>
             <Txt style={{ color: '#0F172A', fontWeight: '800', fontSize: 12 }}>{STUDENT.level}</Txt>
           </View>
         </View>
-        <Txt style={{ fontSize: 22, fontWeight: '700', marginTop: 12, letterSpacing: -0.3 }}>{STUDENT.name}</Txt>
-        <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 2 }}>{STUDENT.grade} · {STUDENT.levelTitle}</Txt>
+        <Txt style={{ fontSize: 22, fontWeight: '700', marginTop: 12, letterSpacing: -0.3 }}>{displayName}</Txt>
+        <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 2 }}>
+          {[className, STUDENT.levelTitle].filter(Boolean).join(' · ')}
+        </Txt>
         <View style={{ marginTop: 10, flexDirection: 'row', gap: 6 }}>
           <Pill color="gold"><Icon name="star" size={11} /><Txt style={{ fontSize: 12, fontWeight: '600' }}> {state.stars}</Txt></Pill>
           <Pill color="red"><Icon name="coin" size={11} /><Txt style={{ fontSize: 12, fontWeight: '600' }}> {state.coins}</Txt></Pill>
@@ -1007,10 +1014,14 @@ export function StudentProfile({ nav, onSignOut }) {
 
       <SectionTitle title="О тебе" />
       <Card style={{ marginHorizontal: 16, marginBottom: 12, padding: 0 }}>
-        <ProfileRow icon="user" title="Классный руководитель" value={STUDENT.classTeacher} />
-        <ProfileRow icon="calendar" title="Посещаемость" value="96%" />
-        <ProfileRow icon="book" title="Средний балл" value="4.6" />
-        <ProfileRow icon="bag" title="Кружков" value="2" last />
+        <ProfileRow icon="users" title="Класс" value={className || 'Не назначен'} />
+        <ProfileRow icon="calendar" title="Учебный год" value={academicYearName || '—'} />
+        <ProfileRow
+          icon="userCheck"
+          title="Посещаемость за месяц"
+          value={attendanceRate === null ? '—' : `${attendanceRate}%`}
+          last
+        />
       </Card>
 
       <SectionTitle title="Настройки" />

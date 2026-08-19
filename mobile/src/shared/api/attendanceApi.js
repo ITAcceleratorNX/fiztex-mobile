@@ -45,6 +45,23 @@ export const attendanceApi = {
    * воспроизводить «урок начался, не отменён, все отмечены» на клиенте не нужно и
    * не следует — три реализации одного правила разъедутся.
    */
+  /**
+   * Месячная сводка отметок: сколько было, пропущено, опоздано, освобождено.
+   *
+   * Цифры считает бэкенд — клиент их не выводит из списка отметок: тот же расчёт
+   * показывают веб и журнал учителя, и разойтись им нельзя.
+   *
+   * @param {{month?: string, childId?: number|null}} params `month` — «YYYY-MM»,
+   *   по умолчанию текущий; `childId` — сводка ребёнка для родителя.
+   */
+  summary: (token, { month, childId } = {}) => {
+    const search = new URLSearchParams();
+    if (month) search.set('month', month);
+    if (childId) search.set('childId', String(childId));
+    const qs = search.toString();
+    return request(`/api/attendance/summary${qs ? `?${qs}` : ''}`, { token });
+  },
+
   sheet: (token, lessonId) => request(`/api/lessons/${lessonId}/attendance`, { token }),
 
   /**
