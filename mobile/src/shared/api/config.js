@@ -3,13 +3,26 @@ import Constants from 'expo-constants';
 
 const PORT = 8080;
 
-// Resolution order:
-//   1. EXPO_PUBLIC_API_URL
-//   2. Metro LAN host (real device via Expo Go)
-//   3. Emulator/simulator fallbacks
+/**
+ * Сервер по умолчанию.
+ *
+ * Здесь именно origin, без `/api`: путь каждого запроса уже начинается с `/api`
+ * (`request('/api/homework/my')`), и хвост в базовом адресе дал бы `/api/api/…`.
+ */
+const REMOTE_API_URL = 'https://bestsauda.kz';
+
+// Порядок разрешения:
+//   1. EXPO_PUBLIC_API_URL — ручное указание, перекрывает всё
+//   2. EXPO_PUBLIC_API_LOCAL=1 — локальный бэкенд: LAN-хост Metro (реальное
+//      устройство через Expo Go), иначе адрес эмулятора
+//   3. REMOTE_API_URL
 function resolveBaseUrl() {
   if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
+  if (process.env.EXPO_PUBLIC_API_LOCAL === '1') return localBaseUrl();
+  return REMOTE_API_URL;
+}
 
+function localBaseUrl() {
   const hostUri =
     Constants.expoConfig?.hostUri ||
     Constants.expoGoConfig?.debuggerHost ||
