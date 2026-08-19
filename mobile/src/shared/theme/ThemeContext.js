@@ -78,6 +78,44 @@ const attendanceInkDark = {
   attExcusedInk: '#88A7F9',
 };
 
+// Статусы работы по домашнему заданию (Figma «ДЗ (моб.)», node 853:19518, и карточки
+// 897:26384…). Заливка одна на обе темы — она полупрозрачная и ложится и на белый фон,
+// и на тёмный; меняется только чернило, иначе #16A34A на тёмном читался бы как пятно.
+//
+// Пять слотов, а не четыре статуса: «Не выполнено» — это не пятый
+// HomeworkSubmissionStatus, а NOT_SUBMITTED у закрытого задания, и красным его красит
+// экран, а не бэк.
+const homework = {
+  hwPendingTint: 'rgba(156,163,175,0.12)',
+  hwReviewTint: 'rgba(59,130,246,0.12)',
+  hwReturnedTint: 'rgba(251,146,60,0.12)',
+  hwDoneTint: 'rgba(34,197,94,0.12)',
+  hwFailedTint: 'rgba(239,68,68,0.12)',
+  // Блок обратной связи учителя на возвращённой работе (Figma `feedback-box`).
+  hwFeedbackTint: 'rgba(245,158,11,0.08)',
+};
+
+const homeworkInk = {
+  hwPendingInk: '#6B7280',
+  hwReviewInk: '#2563EB',
+  hwReturnedInk: '#FB923C',
+  hwDoneInk: '#16A34A',
+  hwFailedInk: '#DC2626',
+  hwFeedbackInk: '#D97706',
+  // Подложка чипа вложения (Figma `upload-chip`): чуть теплее общего `bg2`.
+  hwChipBg: '#EEF2F6',
+};
+
+const homeworkInkDark = {
+  hwPendingInk: '#9AA6BC',
+  hwReviewInk: '#93B4FD',
+  hwReturnedInk: '#FBBF6C',
+  hwDoneInk: '#4ADE80',
+  hwFailedInk: '#F87171',
+  hwFeedbackInk: '#FBBF6C',
+  hwChipBg: '#243149',
+};
+
 const light = {
   bg: '#FAFBFC',
   bg2: '#F1F5F9',
@@ -102,6 +140,8 @@ const light = {
   successSoft: '#E0FBE3',
   ...attendance,
   ...attendanceInk,
+  ...homework,
+  ...homeworkInk,
   ...hero,
   ...PHYSTECH,
 };
@@ -127,6 +167,8 @@ const dark = {
   successSoft: '#123527',
   ...attendance,
   ...attendanceInkDark,
+  ...homework,
+  ...homeworkInkDark,
   ...hero,
   ...PHYSTECH,
 };

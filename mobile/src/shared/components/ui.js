@@ -105,6 +105,9 @@ export function Pill({ children, color = 'gray', style }) {
     red: [c.red, c.redSoft],
     gold: [c.goldDeep, c.goldSoft],
     gray: [c.ink2, c.bg2],
+    // `green` в этой палитре — фирменный оранжевый (исторически), поэтому
+    // «успех» нельзя выразить им: для настоящего зелёного есть своя пара.
+    success: [c.success, c.successSoft],
   };
   const [fg, bg] = map[color] || map.gray;
   return (

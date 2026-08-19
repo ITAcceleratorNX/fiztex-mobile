@@ -18,8 +18,12 @@ import {
 } from '@features/parent';
 import {
   TeacherHome, TeacherClass, TeacherScanner, TeacherGradeEntry, TeacherAIUpload,
-  TeacherFeedbackWrite, TeacherProfile,
+  TeacherFeedbackWrite, TeacherProfile, TeacherHomework, TeacherHomeworkSoon,
 } from '@features/teacher';
+import {
+  StudentHomeworkScreen, StudentHomeworkDetailScreen,
+  ParentHomeworkScreen, ParentHomeworkDetailScreen,
+} from '@features/homework';
 
 const tabScreenOptions = { headerShown: false };
 const stackScreenOptions = { headerShown: false };
@@ -61,6 +65,10 @@ function StudentTabs() {
       {renderTabs(STab, [
         { name: 'home', comp: StudentHome, label: 'Главная', icon: 'home' },
         { name: 'schedule', comp: StudentSchedule, label: 'Расписание', icon: 'calendar' },
+        // «Задания» встали третьей вкладкой, как в макете (Figma 853:19518). «Дневник»
+        // при этом остался: в макете его не рисовали, но раздел рабочий, и вытеснять
+        // его ради экрана, который в макете просто занял ту же позицию, не за что.
+        { name: 'homework', comp: StudentHomeworkScreen, label: 'Задания', icon: 'fileText' },
         { name: 'diary', comp: StudentDiary, label: 'Дневник', icon: 'book' },
         { name: 'profile', comp: StudentProfile, label: 'Я', icon: 'user' },
       ])}
@@ -74,6 +82,7 @@ export function StudentApp() {
       <SStack.Screen name="Tabs" component={StudentTabs} />
       {renderDetails(SStack, [
         { name: 'lesson', comp: StudentLessonScreen },
+        { name: 'homework-card', comp: StudentHomeworkDetailScreen },
         { name: 'checkout', comp: StudentCheckoutQR },
         { name: 'subject', comp: StudentSubject },
         { name: 'clubs', comp: StudentClubs },
@@ -101,6 +110,7 @@ function ParentTabs() {
       {renderTabs(PTab, [
         { name: 'home', comp: ParentHome, label: 'Главная', icon: 'home' },
         { name: 'schedule', comp: ParentSchedule, label: 'Расписание', icon: 'calendar' },
+        { name: 'homework', comp: ParentHomeworkScreen, label: 'Задания', icon: 'fileText' },
         { name: 'grades', comp: ParentGrades, label: 'Дневник', icon: 'book' },
         { name: 'profile', comp: ParentProfile, label: 'Я', icon: 'user' },
       ])}
@@ -116,6 +126,9 @@ export function ParentApp() {
         // Родителю тот же экран: карточка одна на всех, а что в ней доступно, решает бэк
         // через capabilities — отдельный «родительский» экран разошёлся бы с ученическим.
         { name: 'lesson', comp: StudentLessonScreen },
+        // Карточка ДЗ у родителя своя, а не общая с учеником: ученическая показывает
+        // ответ и форму отправки, а родителю не положено ни то, ни другое.
+        { name: 'homework-card', comp: ParentHomeworkDetailScreen },
         { name: 'subject', comp: StudentSubject },
         { name: 'attendance', comp: ParentAttendance },
         { name: 'service', comp: ParentService },
@@ -139,6 +152,9 @@ function TeacherTabs() {
       {renderTabs(TTab, [
         { name: 'home', comp: TeacherHome, label: 'Сегодня', icon: 'home' },
         { name: 'schedule', comp: TeacherSchedule, label: 'Расписание', icon: 'calendar' },
+        // «Задания» встали третьей вкладкой, как в макете (Figma 868:247), но «Класс»
+        // не вытеснили: в макете его просто не рисовали, а раздел рабочий.
+        { name: 'homework', comp: TeacherHomework, label: 'Задания', icon: 'fileText' },
         { name: 'class', comp: TeacherClass, label: 'Класс', icon: 'user' },
         { name: 'profile', comp: TeacherProfile, label: 'Я', icon: 'user' },
       ])}
@@ -155,6 +171,9 @@ export function TeacherApp() {
         // Лист посещаемости открывается из карточки урока и в неё же возвращается —
         // отдельной вкладки у него нет: это часть урока, а не самостоятельный раздел.
         { name: 'attendance', comp: AttendanceScreen },
+        // Карточка задания и форма создания — этапы HOMEWORK-001/002/004; список уже ведёт на них.
+        { name: 'homework-card', comp: TeacherHomeworkSoon },
+        { name: 'homework-create', comp: TeacherHomeworkSoon },
         { name: 'scanner', comp: TeacherScanner },
         { name: 'grade-entry', comp: TeacherGradeEntry },
         { name: 'ai-upload', comp: TeacherAIUpload },

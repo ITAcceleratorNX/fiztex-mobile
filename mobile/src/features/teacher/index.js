@@ -7,3 +7,4 @@ export {
   TeacherFeedbackWrite,
   TeacherProfile,
 } from './screens/TeacherScreens';
+export { TeacherHomework, TeacherHomeworkSoon } from './screens/TeacherHomework';
