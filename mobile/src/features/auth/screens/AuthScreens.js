@@ -181,7 +181,13 @@ export function AuthStudentLogin({ onBack, onActivatedHint }) {
   const [mode, setMode] = useState('login'); // login | activate
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [offerBio, setOfferBio] = useState(false);
+  /** Ответ входа, ждущий ответа на предложение биометрии: сессию открываем после него. */
+  const [pending, setPending] = useState(null);
+
+  const enterWith = async (response) => {
+    const next = await signInWithResponse(response);
+    onActivatedHint?.(next.role);
+  };
 
   const submit = async () => {
     if (code.trim().length < 4) {
@@ -199,9 +205,11 @@ export function AuthStudentLogin({ onBack, onActivatedHint }) {
         mode === 'activate'
           ? await authApi.activateStudent(code.trim(), pin)
           : await authApi.studentLogin(code.trim(), pin);
-      const next = await signInWithResponse(res);
-      if (biometricMeta.available) setOfferBio(next.role);
-      else onActivatedHint?.(next.role);
+      // Предложение биометрии показывается ДО открытия сессии: как только она открыта,
+      // корневой навигатор перестраивается под роль и уносит пользователя в приложение —
+      // экран с предложением при этом просто не успевал появиться.
+      if (biometricMeta.available) setPending(res);
+      else await enterWith(res);
     } catch (e) {
       setError(e.message || 'Не удалось войти');
     } finally {
@@ -209,15 +217,15 @@ export function AuthStudentLogin({ onBack, onActivatedHint }) {
     }
   };
 
-  if (offerBio) {
+  if (pending) {
     return (
       <EnableBiometricsScreen
         label={biometricMeta.label}
         onEnable={async () => {
           await enableBiometrics();
-          onActivatedHint?.(offerBio);
+          await enterWith(pending);
         }}
-        onSkip={() => onActivatedHint?.(offerBio)}
+        onSkip={() => enterWith(pending)}
       />
     );
   }
@@ -295,7 +303,12 @@ export function AuthParentTeacherLogin({ onBack, onActivatedHint }) {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [offerBio, setOfferBio] = useState(false);
+  const [pending, setPending] = useState(null);
+
+  const enterWith = async (response) => {
+    const next = await signInWithResponse(response);
+    onActivatedHint?.(next.role);
+  };
 
   const submit = async () => {
     setLoading(true);
@@ -320,9 +333,9 @@ export function AuthParentTeacherLogin({ onBack, onActivatedHint }) {
             ? await authApi.activateTeacher(phone.trim(), code.trim(), password)
             : await authApi.activateParent(phone.trim(), code.trim(), password);
       }
-      const next = await signInWithResponse(res);
-      if (biometricMeta.available) setOfferBio(next.role);
-      else onActivatedHint?.(next.role);
+      // Порядок тот же, что у ученика: сессия открывается после ответа на предложение.
+      if (biometricMeta.available) setPending(res);
+      else await enterWith(res);
     } catch (e) {
       setError(e.message || 'Не удалось войти');
     } finally {
@@ -330,15 +343,15 @@ export function AuthParentTeacherLogin({ onBack, onActivatedHint }) {
     }
   };
 
-  if (offerBio) {
+  if (pending) {
     return (
       <EnableBiometricsScreen
         label={biometricMeta.label}
         onEnable={async () => {
           await enableBiometrics();
-          onActivatedHint?.(offerBio);
+          await enterWith(pending);
         }}
-        onSkip={() => onActivatedHint?.(offerBio)}
+        onSkip={() => enterWith(pending)}
       />
     );
   }
@@ -485,11 +498,19 @@ export function AuthFaceID({ onSuccess, onFail, onBack }) {
     setError(null);
     const result = await unlockWithBiometrics();
     setBusy(false);
-    if (result.success) onSuccess?.();
-    else {
-      setError('Не удалось подтвердить личность');
-      onFail?.(result);
+    if (result.success) {
+      onSuccess?.();
+      return;
     }
+    // «Биометрия недоступна» — не отказ пользователя, а отсутствие того, чем подтверждать
+    // (Face ID сброшен, отпечатки удалены). Повторять здесь нечего, поэтому уводим на
+    // вход по паролю сразу, а не оставляем на экране с бесполезной кнопкой «Повторить».
+    if (result.error === 'unavailable' || result.error === 'no_session') {
+      onBack?.();
+      return;
+    }
+    setError('Не удалось подтвердить личность');
+    onFail?.(result);
   };
 
   useEffect(() => {

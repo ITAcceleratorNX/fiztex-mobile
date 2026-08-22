@@ -8,6 +8,9 @@ import Icon from '@shared/components/Icon';
 import { Card, Banner } from '@shared/components/ui';
 import { ModuleRow } from '@shared/ui/rows';
 import { useLesson, useLessonHomework } from '@shared/hooks/useLesson';
+import { useLessonAssignments } from '@shared/hooks/useHomework';
+import { StatusChip, OverdueTag } from '@features/homework/components';
+import { dueShort, isOverdueOpen } from '@shared/api/homeworkMap';
 import { useMyLessonAttendance } from '@shared/hooks/useAttendance';
 import { attendanceLabel } from '@shared/api/attendanceMap';
 import { LessonHero } from './LessonHero';
@@ -61,14 +64,29 @@ function TopicCard({ topic, comment }) {
 /**
  * Figma `HomeworkCard` — задание и отметка о выполнении.
  *
- * Отметка — единственное действие ученика на этом экране, поэтому её состояние читается
- * с бэка (`homework.completed`), а не из локального стейта: то же «готово» видит родитель
- * и считает учитель, и разъехаться они не должны.
+ * В карточке живут две разные вещи, и это не дубль, а два механизма из разных ТЗ:
  *
- * «Готово ✓» остаётся нажимаемым: промах по кнопке иначе не откатить, а отметку ставит
- * сам ученик — значит, он же вправе её снять.
+ * - `assignments` — задания модуля ДЗ (HOMEWORK-001…005): их учитель выдаёт из веба, по ним
+ *   ученик отправляет работу и получает решение учителя. Открываются своей карточкой;
+ * - `homework` — отметка «сделал» по уроку (LESSON-002 §10): одна запись на урок, без
+ *   ответа и проверки, её считает учитель в журнале.
+ *
+ * Задания идут первыми: сдают работу именно по ним, а отметка — вспомогательная.
+ * «Задание отсутствует» показывается, только когда нет ни того, ни другого, — иначе экран
+ * говорил бы «ничего не задано» поверх выданных заданий.
  */
-function HomeworkCard({ homework, canSubmit, saving, error, onDone, onUndo }) {
+function HomeworkCard({
+  homework,
+  canSubmit,
+  saving,
+  error,
+  onDone,
+  onUndo,
+  assignments = [],
+  assignmentsLoading = false,
+  assignmentsError = null,
+  onOpenAssignment,
+}) {
   const { c } = useTheme();
 
   return (
@@ -105,13 +123,32 @@ function HomeworkCard({ homework, canSubmit, saving, error, onDone, onUndo }) {
         ) : null}
       </View>
 
+      {assignments.length > 0 ? (
+        <View>
+          {assignments.map((row, index) => (
+            <AssignmentRow
+              key={row.id}
+              row={row}
+              first={index === 0}
+              onPress={onOpenAssignment ? () => onOpenAssignment(row.id) : undefined}
+            />
+          ))}
+        </View>
+      ) : null}
+
       {homework ? (
         <Txt style={{ fontSize: 14, fontWeight: '400', lineHeight: 21, color: c.ink }}>
           {homework.body}
         </Txt>
-      ) : (
+      ) : assignmentsLoading ? (
+        <Txt style={{ fontSize: 14, fontWeight: '400', color: c.ink3 }}>Загружаем задания…</Txt>
+      ) : assignmentsError ? (
+        <Txt style={{ fontSize: 14, fontWeight: '400', color: c.ink3 }}>
+          Не удалось загрузить задания урока
+        </Txt>
+      ) : assignments.length === 0 ? (
         <Txt style={{ fontSize: 14, fontWeight: '400', color: c.ink3 }}>Задание отсутствует</Txt>
-      )}
+      ) : null}
 
       {error ? (
         <Txt style={{ fontSize: 12, fontWeight: '500', color: c.red }}>{error}</Txt>
@@ -169,6 +206,45 @@ function HomeworkCard({ homework, canSubmit, saving, error, onDone, onUndo }) {
         )
       ) : null}
     </Card>
+  );
+}
+
+/**
+ * Строка задания урока: название, срок и статус собственной работы.
+ *
+ * Ведёт в ту же карточку задания, что и вкладка «Задания», — у ученика с формой отправки,
+ * у родителя без неё. Второго экрана для «того же задания, но с урока» не заводится.
+ */
+function AssignmentRow({ row, first, onPress }) {
+  const { c } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Открыть задание «${row.title ?? ''}»`}
+      disabled={!onPress}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 12,
+        borderTopWidth: first ? 0 : 1,
+        borderTopColor: c.bg2,
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
+      <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+        <Txt style={{ fontSize: 14, fontWeight: '600', color: c.ink }} numberOfLines={2}>
+          {row.title}
+        </Txt>
+        <Txt style={{ fontSize: 12, fontWeight: '400', color: c.ink3 }}>{dueShort(row)}</Txt>
+      </View>
+      <View style={{ alignItems: 'flex-end', gap: 4 }}>
+        <StatusChip row={row} />
+        {isOverdueOpen(row) ? <OverdueTag /> : null}
+      </View>
+      {onPress ? <Icon name="chevronRight" size={16} color={c.ink3} strokeWidth={2} /> : null}
+    </Pressable>
   );
 }
 
@@ -271,6 +347,9 @@ export function StudentLessonScreen({ nav, payload }) {
 
   const { loading, error, forbidden, lesson, reload } = useLesson(lessonId, { childId, highlight });
   const homework = useLessonHomework(lessonId, reload);
+  // Задания модуля ДЗ приходят своим запросом: карточка урока их не несёт — в `LessonView`
+  // лежит только отметка «сделал» из LESSON-002, а выданные задания живут в модуле ДЗ.
+  const assignments = useLessonAssignments(lessonId, { childId });
   // Посещаемость живёт своим запросом: она приходит не с карточкой урока, а из
   // модуля посещаемости, и её отсутствие карточку не ломает.
   const {
@@ -287,11 +366,11 @@ export function StudentLessonScreen({ nav, payload }) {
     try {
       // Посещаемость — свой запрос, и обновлять её надо вместе с карточкой: учитель
       // публикует лист после урока, и жест «потянуть» затем и делают.
-      await Promise.all([reload(true), reloadAttendance()]);
+      await Promise.all([reload(true), reloadAttendance(), assignments.reload(true)]);
     } finally {
       setRefreshing(false);
     }
-  }, [reload, reloadAttendance]);
+  }, [reload, reloadAttendance, assignments]);
 
   // Роль — из ответа бэка: клиент не должен решать «я родитель» по тому, что ему
   // передали childId, иначе экран и права разъедутся на первом же нестандартном заходе.
@@ -345,6 +424,13 @@ export function StudentLessonScreen({ nav, payload }) {
           error={homework.error}
           onDone={homework.markDone}
           onUndo={homework.undoDone}
+          assignments={assignments.rows}
+          assignmentsLoading={assignments.loading}
+          assignmentsError={assignments.error}
+          // Карточка задания у ученика и родителя разная, но маршрут один: какой экран за
+          // ним стоит, решает навигатор роли, а не этот экран.
+          onOpenAssignment={(homeworkId) =>
+            nav('homework-card', childId ? { homeworkId, childId } : { homeworkId })}
         />
 
         {/* Посещаемость приходит с бэка; материалы и оценки — отдельные домены,

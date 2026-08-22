@@ -17,6 +17,38 @@ const MOBILE_ROLES = new Set(['STUDENT', 'PARENT', 'TEACHER']);
 
 const AuthContext = createContext(null);
 
+/**
+ * Момент, до которого токен действителен, — из его же полезной нагрузки.
+ *
+ * Читается локально и без проверки подписи: доверять этому значению нельзя и не нужно —
+ * настоящую проверку делает бэкенд. Здесь оно решает единственный вопрос: стоит ли вообще
+ * входить в приложение с этим токеном или сразу показать вход.
+ */
+function tokenExpiresAt(token) {
+  const payload = String(token || '').split('.')[1];
+  if (!payload) return null;
+  try {
+    const json = decodeBase64Url(payload);
+    const exp = JSON.parse(json)?.exp;
+    return typeof exp === 'number' ? exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+function decodeBase64Url(value) {
+  const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+  if (typeof atob === 'function') return atob(padded);
+  return Buffer.from(padded, 'base64').toString('binary');
+}
+
+/** Токен без `exp` считаем годным: решать за бэкенд по отсутствию поля — хуже, чем спросить. */
+export function isTokenExpired(token) {
+  const expiresAt = tokenExpiresAt(token);
+  return expiresAt != null && expiresAt <= Date.now();
+}
+
 async function readProfile() {
   const raw = await SecureStore.getItemAsync(PROFILE_KEY);
   if (!raw) return null;
@@ -82,12 +114,16 @@ export function AuthProvider({ children }) {
           types: availability.types,
         });
         setBiometricsEnabledState(bioOn);
-        if (storedToken && storedProfile) {
+        if (storedToken && storedProfile && !isTokenExpired(storedToken)) {
           setTokenState(storedToken);
           setProfileState(storedProfile);
           // Require Face ID unlock when biometrics are on; otherwise auto-enter.
           setUnlocked(!bioOn);
         } else {
+          // Протухший токен выбрасывается здесь, а не в первом же запросе экрана: иначе
+          // приложение открывалось внутри, тут же ловило 401 и возвращало на вход —
+          // со стороны это выглядит как «вход срабатывает только со второй попытки».
+          if (storedToken) await clearLocal();
           setUnlocked(false);
         }
       } finally {

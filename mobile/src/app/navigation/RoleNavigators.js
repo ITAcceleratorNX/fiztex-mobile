@@ -18,7 +18,9 @@ import {
 } from '@features/parent';
 import {
   TeacherHome, TeacherClass, TeacherScanner, TeacherGradeEntry, TeacherAIUpload,
-  TeacherFeedbackWrite, TeacherProfile, TeacherHomework, TeacherHomeworkSoon,
+  TeacherFeedbackWrite, TeacherProfile, TeacherHomework,
+  TeacherHomeworkCardScreen, TeacherHomeworkFormScreen, TeacherSubmissionScreen,
+  TeacherLessonHomeworkScreen,
 } from '@features/teacher';
 import {
   StudentHomeworkScreen, StudentHomeworkDetailScreen,
@@ -172,8 +174,12 @@ export function TeacherApp() {
         // отдельной вкладки у него нет: это часть урока, а не самостоятельный раздел.
         { name: 'attendance', comp: AttendanceScreen },
         // Карточка задания и форма создания — этапы HOMEWORK-001/002/004; список уже ведёт на них.
-        { name: 'homework-card', comp: TeacherHomeworkSoon },
-        { name: 'homework-create', comp: TeacherHomeworkSoon },
+        { name: 'homework-card', comp: TeacherHomeworkCardScreen },
+        // Один экран на создание и правку: разница только в том, чем его заполняют.
+        { name: 'homework-create', comp: TeacherHomeworkFormScreen },
+        { name: 'homework-submission', comp: TeacherSubmissionScreen },
+        // Задания конкретного урока — вход с его карточки.
+        { name: 'lesson-homework', comp: TeacherLessonHomeworkScreen },
         { name: 'scanner', comp: TeacherScanner },
         { name: 'grade-entry', comp: TeacherGradeEntry },
         { name: 'ai-upload', comp: TeacherAIUpload },

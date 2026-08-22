@@ -1,8 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { View, Pressable, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
+import Icon from '@shared/components/Icon';
 import { Pill, ScreenHeader, StateView } from '@shared/components/ui';
 import { useAuth } from '@features/auth/AuthContext';
 import { homeworkApi } from '@shared/api/homeworkApi';
@@ -59,6 +61,16 @@ export function TeacherHomework({ nav }) {
     load();
   }, [load]);
 
+  // Возврат с формы или карточки: там задание могли создать, опубликовать или завершить.
+  // Первый показ пропускается — список только что загрузился сам.
+  const focusedBefore = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (focusedBefore.current) load(true);
+      else focusedBefore.current = true;
+    }, [load]),
+  );
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await load(true);
@@ -67,7 +79,20 @@ export function TeacherHomework({ nav }) {
 
   return (
     <Screen>
-      <ScreenHeader title="Задания" large />
+      <ScreenHeader
+        title="Задания"
+        large
+        right={
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Создать задание"
+            onPress={() => nav('homework-create')}
+            hitSlop={8}
+          >
+            <Icon name="plus" size={22} color={c.ink} />
+          </Pressable>
+        }
+      />
 
       <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
         <ScopeTabs value={scope} onChange={setScope} />
@@ -200,33 +225,6 @@ function Body({ state, scope, onRetry, onOpen, onCreate }) {
         <HomeworkRow key={row.id} row={row} onPress={() => onOpen(row.id)} />
       ))}
     </View>
-  );
-}
-
-/**
- * Карточка задания и форма создания — этапы HOMEWORK-001/002/004, в 005.1 они не входят.
- *
- * Экран-заглушка нужен, чтобы переход из списка вёл в понятное «пока нет», а не ронял
- * навигацию несуществующим маршрутом: список по ТЗ обязан открывать задание (§4.4), и
- * молча отключённый тап читался бы как сломанная строка.
- */
-export function TeacherHomeworkSoon({ nav, payload }) {
-  return (
-    <Screen>
-      <ScreenHeader title={payload?.homeworkId ? 'Домашнее задание' : 'Новое задание'} back={nav.back} />
-      <StateView
-        style={{ marginTop: 96 }}
-        icon="clock"
-        title="Скоро"
-        subtitle={
-          payload?.homeworkId
-            ? 'Карточка задания и проверка работ реализуются отдельным этапом'
-            : 'Форма создания задания реализуется отдельным этапом'
-        }
-        actionLabel="К списку"
-        onAction={nav.back}
-      />
-    </Screen>
   );
 }
 

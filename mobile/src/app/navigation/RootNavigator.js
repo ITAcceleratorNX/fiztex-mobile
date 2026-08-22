@@ -85,7 +85,12 @@ function FaceIDScreen() {
   const { role } = useAuth();
   return (
     <AuthFaceID
-      onBack={() => navigation.goBack()}
+      // При запертой сессии Face ID — стартовый экран, и «назад» с него вести некуда:
+      // `goBack()` там молча ничего не делает, и выйти на вход по паролю нельзя вовсе.
+      // Отказ биометрии (палец не читается, Face ID сброшен) превращался в тупик, из
+      // которого помогала только повторная попытка распознавания.
+      onBack={() =>
+        navigation.canGoBack() ? navigation.goBack() : resetTo(navigation, 'SignIn')}
       onSuccess={() => resetTo(navigation, ROLE_ROUTE[role] || 'StudentApp')}
     />
   );

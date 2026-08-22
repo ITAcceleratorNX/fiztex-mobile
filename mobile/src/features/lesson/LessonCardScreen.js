@@ -10,6 +10,7 @@ import { Pill, Banner } from '@shared/components/ui';
 import { EditableField, LessonActionTile } from '@shared/ui/rows';
 import { useLesson, useLessonEditing } from '@shared/hooks/useLesson';
 import { useLessonAttendanceSheet } from '@shared/hooks/useAttendance';
+import { useTeacherLessonHomework } from '@shared/hooks/useTeacherHomework';
 import { sheetStateLabel } from '@shared/api/attendanceMap';
 import { TextEditSheet } from '@shared/components/TextEditSheet';
 import { LessonCardFallback, LessonCardHeader } from './LessonCardStates';
@@ -44,6 +45,28 @@ function MetaRow({ icon, children, changed }) {
  * `payload` приходит из расписания: строка урока с `lessonInstanceId` (id LessonInstance,
  * а не слота расписания) и статусом, по которому понятно, что урок — следующий.
  */
+/**
+ * Подпись плитки ДЗ: сколько заданий у урока и сколько из них ещё черновики. Черновик
+ * назван отдельно потому, что для учеников его не существует — «2 задания» на уроке, где
+ * опубликовано одно, ввело бы в заблуждение самого учителя.
+ */
+function homeworkTileValue(state) {
+  if (state.loading) return 'Загружаем…';
+  if (state.error) return 'Нет данных';
+  if (state.rows.length === 0) return 'Заданий нет';
+  const drafts = state.rows.filter((row) => row.status === 'DRAFT').length;
+  const total = `${state.rows.length} ${plural(state.rows.length, ['задание', 'задания', 'заданий'])}`;
+  return drafts > 0 ? `${total} · ${drafts} черн.` : total;
+}
+
+function plural(n, forms) {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return forms[0];
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return forms[1];
+  return forms[2];
+}
+
 export function LessonCardScreen({ nav, payload }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
@@ -67,6 +90,12 @@ export function LessonCardScreen({ nav, payload }) {
     reload: reloadAttendance,
   } = useLessonAttendanceSheet(lessonId, {
     enabled: Boolean(lesson?.can.viewAttendance),
+  });
+  // Задания урока приходят своим запросом: в карточке урока лежит только отметка «сделал»
+  // из LESSON-002, а выданные задания живут в модуле ДЗ. Спрашиваем их лишь у того, кто
+  // урок ведёт: остальным этот список бэкенд не отдаёт.
+  const lessonHomework = useTeacherLessonHomework(lessonId, {
+    enabled: Boolean(lesson?.can.editTeaching),
   });
   const [sheet, setSheet] = useState(null); // 'topic' | 'comment' | null
 
@@ -221,14 +250,21 @@ export function LessonCardScreen({ nav, payload }) {
                 : undefined}
               soon={!lesson.can.viewAttendance}
             />
+            {/* Плитка ведёт в задания этого урока: их выдают и проверяют там же, где
+                в вебе. Подпись — реальное состояние, а не «выдано / не выдано»: у урока
+                заданий бывает несколько, и число говорит больше, чем факт наличия. */}
             <LessonActionTile
               icon="bookOpen"
               tint="gold"
               label="Домашнее задание"
-              // Задание уже приходит в карточке (его видит ученик), а вот выдача и правка
-              // из приложения — следующий заход, поэтому плитка остаётся неактивной.
-              value={lesson.homework ? 'Выдано' : 'Не выдано'}
-              soon
+              value={homeworkTileValue(lessonHomework)}
+              onPress={lesson.can.editTeaching
+                ? () => nav?.('lesson-homework', {
+                    lessonInstanceId: lessonId,
+                    subjectName: lesson.subjectName,
+                  })
+                : undefined}
+              soon={!lesson.can.editTeaching}
             />
           </View>
           <View style={{ flexDirection: 'row', gap: 10 }}>

@@ -101,7 +101,12 @@ export async function request(path, { method = 'GET', body, token, keepalive = f
 
   if (res.status === 401) {
     if (!skipSessionExpiry) notifySessionExpired();
-    throw new ApiError(401, 'Сессия истекла. Войдите снова.');
+    // На входе 401 означает «неверный код или пароль», а не конец сессии: показать там
+    // «Сессия истекла. Войдите снова.» — значит объяснить неудачу тем, чего не было,
+    // и человек пробует то же самое второй раз вместо того, чтобы исправить ввод.
+    throw skipSessionExpiry
+      ? await parseError(res)
+      : new ApiError(401, 'Сессия истекла. Войдите снова.');
   }
 
   if (res.status === 204) return null;
@@ -136,7 +141,9 @@ export async function requestMultipart(path, formData, { token, skipSessionExpir
 
   if (res.status === 401) {
     if (!skipSessionExpiry) notifySessionExpired();
-    throw new ApiError(401, 'Сессия истекла. Войдите снова.');
+    throw skipSessionExpiry
+      ? await parseError(res)
+      : new ApiError(401, 'Сессия истекла. Войдите снова.');
   }
 
   if (!res.ok) throw await parseError(res);

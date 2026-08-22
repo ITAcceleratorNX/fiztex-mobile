@@ -61,6 +61,57 @@ export function useHomeworkList({ childId } = {}) {
   return { ...state, scope, setScope, reload: load, refresh, refreshing };
 }
 
+/**
+ * Задания одного урока — то, что ученик и родитель видят на карточке урока.
+ *
+ * Обе вкладки сразу: у урока вкладок нет, а завершённое задание с урока никуда не девается
+ * и остаётся частью ответа на вопрос «что задавали». Источник тот же, что у вкладки
+ * «Задания» (`/api/homework/my`), только сужен уроком: собирать список урока вторым
+ * правилом видимости нельзя — оно разошлось бы с лентой.
+ *
+ * Ошибка здесь не ломает карточку урока: задания — блок внутри неё, и их недоступность
+ * не повод прятать тему, посещаемость и всё остальное.
+ *
+ * @param {{childId?: number|null}} options `childId` — родительский режим (см. `useHomeworkList`)
+ */
+export function useLessonAssignments(lessonId, { childId } = {}) {
+  const { token } = useAuth();
+  const [state, setState] = useState({ loading: Boolean(lessonId), error: null, rows: [] });
+
+  const parentMode = childId !== undefined && childId !== null;
+
+  const load = useCallback(async (silent = false) => {
+    if (!token || !lessonId) {
+      setState({ loading: false, error: null, rows: [] });
+      return;
+    }
+    if (!silent) setState((prev) => ({ ...prev, loading: true, error: null }));
+    const params = { lessonId, size: PAGE_SIZE };
+    const fetchScope = (scope) => (parentMode
+      ? homeworkApi.children(token, childId, { ...params, scope })
+      : homeworkApi.my(token, { ...params, scope }));
+    try {
+      const [actual, history] = await Promise.all([
+        fetchScope('ACTUAL'),
+        fetchScope('HISTORY'),
+      ]);
+      // Отбор делает сервер, и повторять его здесь нельзя: к уроку относится не только
+      // задание с его `lessonId`, но и задание без привязки, срок которого приходится на
+      // этот урок, — у такой строки `lessonId` пустой (правило см. LessonHomeworkScope).
+      const rows = [...(actual?.content ?? []), ...(history?.content ?? [])];
+      setState({ loading: false, error: null, rows });
+    } catch (e) {
+      setState({ loading: false, error: errorKind(e), rows: [] });
+    }
+  }, [token, lessonId, parentMode, childId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return { ...state, reload: load };
+}
+
 /** Карточка задания вместе со своей работой (003 §3). */
 export function useMyHomework(homeworkId) {
   const { token } = useAuth();
