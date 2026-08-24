@@ -12,6 +12,8 @@ import { useLesson, useLessonEditing } from '@shared/hooks/useLesson';
 import { useLessonAttendanceSheet } from '@shared/hooks/useAttendance';
 import { useTeacherLessonHomework } from '@shared/hooks/useTeacherHomework';
 import { sheetStateLabel } from '@shared/api/attendanceMap';
+import { sheetBadge } from '@shared/api/gradesMap';
+import { useLessonGrades } from '@shared/hooks/useGrades';
 import { TextEditSheet } from '@shared/components/TextEditSheet';
 import { LessonCardFallback, LessonCardHeader } from './LessonCardStates';
 
@@ -67,6 +69,22 @@ function plural(n, forms) {
   return forms[2];
 }
 
+/**
+ * Подпись плитки оценок: скольким ученикам уже что-то поставили.
+ *
+ * Считается по строкам листа, а не по числу оценок: за урок ученику ставят до трёх, и
+ * «7 оценок» на классе из 25 не отвечает на вопрос «кого я ещё не оценил».
+ */
+function gradesTileValue(lesson, sheet, loading) {
+  if (lesson?.status === 'CANCELLED') return 'Недоступны — урок отменён';
+  if (!lesson?.can?.viewGrades) return 'Нет доступа';
+  if (loading) return 'Загружаем…';
+  if (!sheet) return 'Не выставлены';
+  const rows = sheet.students || [];
+  if (rows.length === 0) return 'В уроке нет учеников';
+  return rows.some((row) => (row.grades || []).length > 0) ? sheetBadge(sheet) : 'Не выставлены';
+}
+
 export function LessonCardScreen({ nav, payload }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
@@ -90,6 +108,11 @@ export function LessonCardScreen({ nav, payload }) {
     reload: reloadAttendance,
   } = useLessonAttendanceSheet(lessonId, {
     enabled: Boolean(lesson?.can.viewAttendance),
+  });
+  // Лист оценок — тоже отдельный запрос и тоже только при праве на него: подпись
+  // плитки должна говорить «оценено 7 из 25», а не «оценки», иначе переход слепой.
+  const { loading: gradesLoading, sheet: gradesSheet } = useLessonGrades(lessonId, {
+    enabled: Boolean(lesson?.can.viewGrades),
   });
   // Задания урока приходят своим запросом: в карточке урока лежит только отметка «сделал»
   // из LESSON-002, а выданные задания живут в модуле ДЗ. Спрашиваем их лишь у того, кто
@@ -269,7 +292,16 @@ export function LessonCardScreen({ nav, payload }) {
           </View>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <LessonActionTile icon="paperclip" tint="blue" label="Материалы" value="Нет файлов" soon />
-            <LessonActionTile icon="award" tint="red" label="Оценки" value="Не выставлены" soon />
+            <LessonActionTile
+              icon="award"
+              tint="red"
+              label="Оценки"
+              value={gradesTileValue(lesson, gradesSheet, gradesLoading)}
+              onPress={lesson.can.viewGrades
+                ? () => nav?.('lesson-grades', { lessonInstanceId: lessonId })
+                : undefined}
+              soon={!lesson.can.viewGrades}
+            />
           </View>
         </View>
 

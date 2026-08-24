@@ -741,6 +741,63 @@ export function PickerSheet({ visible, title, options = [], value, onSelect, onC
   );
 }
 
+// ─── SegmentedSwitch (Figma `segmented-toggle`) ──────────────────────────────
+/**
+ * Переключатель двух равноправных наборов данных на всю ширину.
+ *
+ * Отличается от {@link PickerSheet} тем, что весь выбор виден сразу: вариантов два, и
+ * прятать их за шитом значило бы делать лишний шаг там, где его нет в макете.
+ */
+export function SegmentedSwitch({ value, options = [], onChange, style }) {
+  const { c } = useTheme();
+  return (
+    <View
+      accessibilityRole="tablist"
+      style={[
+        {
+          flexDirection: 'row',
+          backgroundColor: c.bg2,
+          borderRadius: 12,
+          padding: 3,
+          gap: 3,
+        },
+        style,
+      ]}
+    >
+      {options.map((option) => {
+        const active = option.value === value;
+        return (
+          <Pressable
+            key={String(option.value)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            onPress={() => onChange?.(option.value)}
+            style={({ pressed }) => ({
+              flex: 1,
+              height: 29,
+              borderRadius: 9,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: active ? c.surface : 'transparent',
+              opacity: pressed ? 0.8 : 1,
+            })}
+          >
+            <Txt
+              style={{
+                fontSize: 14,
+                fontWeight: active ? '700' : '500',
+                color: active ? c.ink : c.ink3,
+              }}
+            >
+              {option.label}
+            </Txt>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 // ─── SectionTitle ─────────────────────────────────────────────────────────────
 export function SectionTitle({ title, right }) {
   return (

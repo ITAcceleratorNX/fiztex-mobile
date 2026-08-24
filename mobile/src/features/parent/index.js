@@ -1,7 +1,6 @@
 export {
   ParentHome,
   ParentAttendance,
-  ParentGrades,
   ParentFeedback,
   ParentService,
   ParentProfile,

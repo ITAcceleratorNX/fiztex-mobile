@@ -8,7 +8,7 @@ import {
   ChildPickerSheet,
   ChildSubtitle,
   ChildSwitcherPill,
-} from '@features/schedule/ChildSwitcher';
+} from '@shared/ui/childSwitcher';
 import { HomeworkRow, ScopeTabs } from './components';
 import {
   HomeworkEmpty,

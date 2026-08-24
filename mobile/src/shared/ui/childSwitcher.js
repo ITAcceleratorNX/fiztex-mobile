@@ -5,8 +5,13 @@ import { useTheme } from '@shared/theme/ThemeContext';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 
-// Figma cycles a fixed palette across the child rows so siblings stay
-// distinguishable at a glance (nodes 2022:13440…13471).
+/*
+ * Переключатель ребёнка — общий для расписания, заданий и оценок: у родителя это одна и
+ * та же шапка на всех разделах, и три её копии разошлись бы в подписях и цветах.
+ *
+ * Figma cycles a fixed palette across the child rows so siblings stay
+ * distinguishable at a glance (nodes 2022:13440…13471).
+ */
 const CHILD_COLORS = ['#274185', '#FB923C', '#10B981', '#8B5CF6', '#EC4899'];
 
 export function childColor(index) {

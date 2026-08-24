@@ -30,7 +30,7 @@ export function TeacherHome({ nav }) {
   const nowLesson = lessons.find((l) => l.status === 'now') || lessons.find((l) => l.status === 'upcoming');
   const actions = [
     { icon: 'qr', color: 'green', label: 'Сканировать QR', to: 'scanner' },
-    { icon: 'pencil', color: 'blue', label: 'Выставить оценки', to: 'grade-entry' },
+    { icon: 'pencil', color: 'blue', label: 'Выставить оценки', to: 'journal' },
     { icon: 'sparkle', color: 'red', label: 'AI-тест', to: 'ai-upload' },
     { icon: 'chat', color: 'gold', label: 'Фидбек', to: 'feedback-write' },
   ];
@@ -97,6 +97,24 @@ export function TeacherHome({ nav }) {
           <Txt style={{ color: c.ink3, fontSize: 14 }}>{error || emptyMessage || 'Нет уроков'}</Txt>
         ) : null}
       </View>
+
+      {/* Плитка «Оценки» из макета (Figma `glavnaya-teacher`, 2098:5234): вход в
+          журнал и итоги четверти с главной, а не только через вкладку. */}
+      <Card
+        style={{ marginHorizontal: 16, marginBottom: 18, padding: 16 }}
+        onPress={() => nav('journal')}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <HexBadge size={44} fill={c.blue} icon="award" iconColor="#fff" iconSize={20} />
+          <View style={{ flex: 1 }}>
+            <Txt style={{ fontSize: 15, fontWeight: '700' }}>Оценки</Txt>
+            <Txt style={{ fontSize: 12, color: c.ink3, marginTop: 2 }}>
+              Журнал и итоги четверти
+            </Txt>
+          </View>
+          <Icon name="chevronRight" size={18} color={c.ink3} />
+        </View>
+      </Card>
 
       <SectionTitle title="Нужно сделать" />
       <Card style={{ marginHorizontal: 16, marginBottom: 100, padding: 18 }} onPress={() => nav('feedback-write')}>
@@ -263,62 +281,6 @@ export function TeacherScanner({ nav }) {
 }
 
 // ═══ GRADE ENTRY ═══
-export function TeacherGradeEntry({ nav }) {
-  const { c } = useTheme();
-  const appState = useAppState();
-  const [grades, setGrades] = useState({});
-  const set = (name, g) => setGrades((p) => ({ ...p, [name]: g }));
-  const count = Object.keys(grades).length;
-  return (
-    <Screen>
-      <ScreenHeader title="Выставить оценки" back={() => nav.back()} />
-      <View style={{ paddingHorizontal: 16, paddingBottom: 14 }}>
-        <Card style={{ padding: 14 }}>
-          <Txt style={{ fontSize: 11, fontWeight: '600', color: c.ink3, textTransform: 'uppercase', letterSpacing: 0.3 }}>Урок</Txt>
-          <Txt style={{ fontSize: 16, fontWeight: '700', marginTop: 2 }}>Чтение · 4 «Б»</Txt>
-          <Txt style={{ fontSize: 12, color: c.ink3, marginTop: 2 }}>26 мая · 10:20</Txt>
-        </Card>
-      </View>
-
-      <View style={{ gap: 6, marginHorizontal: 16, marginBottom: 18 }}>
-        {CLASS_ROSTER.slice(0, 8).map((s, i) => {
-          const g = grades[s.name];
-          return (
-            <Card key={i} style={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <Avatar name={s.name} size={36} color={s.avatar} />
-              <Txt style={{ flex: 1, fontSize: 14, fontWeight: '600' }}>{s.name}</Txt>
-              <View style={{ flexDirection: 'row', gap: 5 }}>
-                {[2, 3, 4, 5].map((n) => {
-                  const on = g === n;
-                  const bg = on ? (n >= 4 ? c.green : n === 3 ? c.goldDeep : c.red) : c.bg2;
-                  return (
-                    <Pressable key={n} onPress={() => set(s.name, n)} style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
-                      <Txt style={{ fontWeight: '700', fontSize: 15, color: on ? '#fff' : c.ink2 }}>{n}</Txt>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </Card>
-          );
-        })}
-      </View>
-
-      <View style={{ paddingHorizontal: 16, paddingBottom: 100 }}>
-        <PrimaryButton
-          color="green"
-          disabled={count === 0}
-          onPress={() => {
-            appState.toast(`Сохранено · ${count} оценок`);
-            setTimeout(() => nav.back(), 800);
-          }}
-        >
-          {count === 0 ? 'Выставите оценки' : `Сохранить (${count})`}
-        </PrimaryButton>
-      </View>
-    </Screen>
-  );
-}
-
 // ═══ AI TEST UPLOAD ═══
 export function TeacherAIUpload({ nav }) {
   const { c } = useTheme();

@@ -12,6 +12,8 @@ import { useLessonAssignments } from '@shared/hooks/useHomework';
 import { StatusChip, OverdueTag } from '@features/homework/components';
 import { dueShort, isOverdueOpen } from '@shared/api/homeworkMap';
 import { useMyLessonAttendance } from '@shared/hooks/useAttendance';
+import { useMyDiaryGrades } from '@shared/hooks/useGrades';
+import { lessonGradesSummary } from '@shared/api/gradesMap';
 import { attendanceLabel } from '@shared/api/attendanceMap';
 import { LessonHero } from './LessonHero';
 import { LessonCardFallback, LessonCardHeader } from './LessonCardStates';
@@ -358,6 +360,21 @@ export function StudentLessonScreen({ nav, payload }) {
     reload: reloadAttendance,
   } = useMyLessonAttendance(lessonId, { childId });
 
+  /**
+   * Оценки за этот урок — из дневника за его же день.
+   *
+   * Отдельного «моя оценка за урок» в API нет и не нужно: дневник отвечает ровно на этот
+   * вопрос, только диапазоном, и тем же запросом пользуется расписание. Дата берётся у
+   * самого урока — она приходит в карточке.
+   */
+  const { grades: diaryGrades, reload: reloadGrades } = useMyDiaryGrades({
+    dateFrom: lesson?.date,
+    dateTo: lesson?.date,
+    childStudentProfileId: childId,
+    enabled: Boolean(lesson?.date),
+  });
+  const lessonGrades = lessonId ? diaryGrades[lessonId] : null;
+
   const onBack = useCallback(() => nav?.back?.(), [nav]);
 
   const [refreshing, setRefreshing] = useState(false);
@@ -366,11 +383,13 @@ export function StudentLessonScreen({ nav, payload }) {
     try {
       // Посещаемость — свой запрос, и обновлять её надо вместе с карточкой: учитель
       // публикует лист после урока, и жест «потянуть» затем и делают.
-      await Promise.all([reload(true), reloadAttendance(), assignments.reload(true)]);
+      await Promise.all([
+        reload(true), reloadAttendance(), reloadGrades(), assignments.reload(true),
+      ]);
     } finally {
       setRefreshing(false);
     }
-  }, [reload, reloadAttendance, assignments]);
+  }, [reload, reloadAttendance, reloadGrades, assignments]);
 
   // Роль — из ответа бэка: клиент не должен решать «я родитель» по тому, что ему
   // передали childId, иначе экран и права разъедутся на первом же нестандартном заходе.
@@ -433,8 +452,8 @@ export function StudentLessonScreen({ nav, payload }) {
             nav('homework-card', childId ? { homeworkId, childId } : { homeworkId })}
         />
 
-        {/* Посещаемость приходит с бэка; материалы и оценки — отдельные домены,
-            которых в API ещё нет, поэтому их строки остаются пустым состоянием. */}
+        {/* Посещаемость и оценки приходят с бэка; материалы — отдельный домен,
+            которого в API ещё нет, поэтому его строка остаётся пустым состоянием. */}
         <ModuleRow
           icon="userCheck"
           tint="green"
@@ -448,7 +467,16 @@ export function StudentLessonScreen({ nav, payload }) {
             : attendanceLabel(marking, { cancelled: lesson.status === 'CANCELLED' })}
         />
         <ModuleRow icon="paperclip" tint="blue" label="Материалы" value="Нет материалов" />
-        <ModuleRow icon="award" tint="red" label="Оценки" value="Не выставлены" />
+        <ModuleRow
+          icon="award"
+          tint="red"
+          label="Оценки"
+          // Сами баллы, а не качественное слово: «отлично» для «4+» — уже трактовка, а
+          // ученик открывает урок, чтобы увидеть, что ему поставили.
+          value={lesson.status === 'CANCELLED'
+            ? 'Урок отменён'
+            : lessonGradesSummary(lessonGrades)}
+        />
       </View>
     </Screen>
   );

@@ -141,6 +141,7 @@ export function ScheduleDayView({
   state,
   lessons,
   marks = {},
+  grades = {},
   role = 'student',
   onRetry,
   onOpenLesson,
@@ -169,6 +170,8 @@ export function ScheduleDayView({
                 // (класс целиком) её нет — контейнер за неё даже не ходит.
                 // Ключ — id фактического урока: у слота расписания посещаемости нет.
                 attendance={isTeacher ? null : marks[l.lessonInstanceId] || null}
+                // Оценки за урок — там же и по тем же правилам, что отметка.
+                grades={isTeacher ? null : grades[l.lessonInstanceId] || null}
                 onPress={onOpenLesson && l.lessonInstanceId ? () => onOpenLesson(l) : undefined}
               />
             ))}
