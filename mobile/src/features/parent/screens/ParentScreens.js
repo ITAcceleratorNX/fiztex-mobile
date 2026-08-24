@@ -8,8 +8,8 @@ import { HexBadge } from '@shared/components/Hex';
 import { Card, Pill, Avatar, PrimaryButton, AppHeader, ScreenHeader, SectionTitle, CircleButton } from '@shared/components/ui';
 import { GradCard, GRAD } from '@shared/components/Grad';
 import { useAppState } from '@shared/state/AppState';
-import { PARENT, ATTENDANCE_LOG, FEEDBACK, TODAY_SCHEDULE, SUBJECTS_DIARY } from '@shared/data/mock';
-import { LessonRow, SubjectRow, ProfileRow, QuickAction, brandColor, softColor } from '@shared/ui/rows';
+import { PARENT, ATTENDANCE_LOG, FEEDBACK, TODAY_SCHEDULE } from '@shared/data/mock';
+import { LessonRow, ProfileRow, QuickAction, brandColor, softColor } from '@shared/ui/rows';
 import { useMyProfile } from '@shared/hooks/useProfile';
 
 const chunk = (arr, n) => arr.reduce((rows, item, i) => {
@@ -105,11 +105,13 @@ export function ParentHome({ nav }) {
         ))}
       </View>
 
+      {/* Раздел «Оценки» из макета (Figma `glavnaya-Родитель-home`): ссылка ведёт в
+          настоящий раздел, сами карточки ниже пока мок — как и вся эта главная. */}
       <SectionTitle
         title="Свежие оценки"
         right={
           <Pressable onPress={() => nav('grades')}>
-            <Txt style={{ color: c.green, fontSize: 14, fontWeight: '600' }}>Дневник →</Txt>
+            <Txt style={{ color: c.green, fontSize: 14, fontWeight: '600' }}>Оценки →</Txt>
           </Pressable>
         }
       />
@@ -213,43 +215,6 @@ export function ParentAttendance() {
             </View>
           );
         })}
-      </View>
-    </Screen>
-  );
-}
-
-// ═══ GRADES ═══
-export function ParentGrades({ nav }) {
-  const { c } = useTheme();
-  const bars = [4.2, 4.3, 4.4, 4.5, 4.5, 4.6, 4.7];
-  const months = ['Окт', 'Ноя', 'Дек', 'Янв', 'Фев', 'Мар', 'Май'];
-  return (
-    <Screen>
-      <ScreenHeader title="Дневник" large sub="Айкоркем · средний балл 4.6" />
-
-      <Card style={{ marginHorizontal: 16, marginBottom: 16, padding: 18 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 80 }}>
-          {bars.map((v, i) => (
-            <View key={i} style={{ flex: 1, justifyContent: 'flex-end', height: '100%' }}>
-              <View style={{ width: '100%', height: `${((v - 3.5) / 1.6) * 100}%`, backgroundColor: i === 6 ? c.green : c.greenSoft, borderRadius: 6 }} />
-            </View>
-          ))}
-        </View>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-          {months.map((m, i) => (
-            <Txt key={i} style={{ fontSize: 11, color: c.ink3 }}>{m}</Txt>
-          ))}
-        </View>
-        <View style={{ marginTop: 12, padding: 12, backgroundColor: c.greenSoft, borderRadius: 12 }}>
-          <Txt style={{ fontSize: 13, color: c.greenDeep, fontWeight: '500' }}>↑ Прогресс за полугодие: +0.5 балла</Txt>
-        </View>
-      </Card>
-
-      <SectionTitle title="Предметы" />
-      <View style={{ gap: 8, marginHorizontal: 16, marginBottom: 100 }}>
-        {SUBJECTS_DIARY.map((s, i) => (
-          <SubjectRow key={i} subject={s} onPress={() => nav('subject', s)} />
-        ))}
       </View>
     </Screen>
   );

@@ -1,8 +1,6 @@
 export {
   StudentHome,
   StudentCheckoutQR,
-  StudentDiary,
-  StudentSubject,
   StudentClubs,
   StudentClub,
   StudentTest,

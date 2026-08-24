@@ -8,16 +8,20 @@ import { ScheduleScreen } from '@features/schedule';
 import { LessonCardScreen, StudentLessonScreen } from '@features/lesson';
 import { AttendanceScreen } from '@features/attendance';
 import {
-  StudentHome, StudentCheckoutQR, StudentDiary, StudentSubject,
+  JournalScreen, JournalStudentScreen, LessonGradesScreen,
+  ParentGradesScreen, StudentGradesScreen, StudentSubjectGradesScreen,
+} from '@features/grades';
+import {
+  StudentHome, StudentCheckoutQR,
   StudentClubs, StudentClub, StudentTest, StudentAITest, StudentEvents, StudentAchievements,
   StudentMap, StudentShop, StudentProfile,
 } from '@features/student';
 import { StudentHeroes } from '@features/journey';
 import {
-  ParentHome, ParentAttendance, ParentGrades, ParentFeedback, ParentService, ParentProfile,
+  ParentHome, ParentAttendance, ParentFeedback, ParentService, ParentProfile,
 } from '@features/parent';
 import {
-  TeacherHome, TeacherClass, TeacherScanner, TeacherGradeEntry, TeacherAIUpload,
+  TeacherHome, TeacherClass, TeacherScanner, TeacherAIUpload,
   TeacherFeedbackWrite, TeacherProfile, TeacherHomework,
   TeacherHomeworkCardScreen, TeacherHomeworkFormScreen, TeacherSubmissionScreen,
   TeacherLessonHomeworkScreen,
@@ -71,7 +75,9 @@ function StudentTabs() {
         // при этом остался: в макете его не рисовали, но раздел рабочий, и вытеснять
         // его ради экрана, который в макете просто занял ту же позицию, не за что.
         { name: 'homework', comp: StudentHomeworkScreen, label: 'Задания', icon: 'fileText' },
-        { name: 'diary', comp: StudentDiary, label: 'Дневник', icon: 'book' },
+        // «Оценки» вместо прежнего мокового дневника: раздел показывает предметы,
+        // оценки и средние с бэка (Figma `student-grades-subjects`).
+        { name: 'diary', comp: StudentGradesScreen, label: 'Оценки', icon: 'book' },
         { name: 'profile', comp: StudentProfile, label: 'Я', icon: 'user' },
       ])}
     </STab.Navigator>
@@ -86,7 +92,7 @@ export function StudentApp() {
         { name: 'lesson', comp: StudentLessonScreen },
         { name: 'homework-card', comp: StudentHomeworkDetailScreen },
         { name: 'checkout', comp: StudentCheckoutQR },
-        { name: 'subject', comp: StudentSubject },
+        { name: 'subject', comp: StudentSubjectGradesScreen },
         { name: 'clubs', comp: StudentClubs },
         { name: 'club', comp: StudentClub },
         { name: 'test', comp: StudentTest },
@@ -113,7 +119,9 @@ function ParentTabs() {
         { name: 'home', comp: ParentHome, label: 'Главная', icon: 'home' },
         { name: 'schedule', comp: ParentSchedule, label: 'Расписание', icon: 'calendar' },
         { name: 'homework', comp: ParentHomeworkScreen, label: 'Задания', icon: 'fileText' },
-        { name: 'grades', comp: ParentGrades, label: 'Дневник', icon: 'book' },
+        // «Оценки» вместо мокового дневника: тот же ученический раздел в контексте
+        // выбранного ребёнка (Figma `parent-multi-grades`).
+        { name: 'grades', comp: ParentGradesScreen, label: 'Оценки', icon: 'book' },
         { name: 'profile', comp: ParentProfile, label: 'Я', icon: 'user' },
       ])}
     </PTab.Navigator>
@@ -131,7 +139,7 @@ export function ParentApp() {
         // Карточка ДЗ у родителя своя, а не общая с учеником: ученическая показывает
         // ответ и форму отправки, а родителю не положено ни то, ни другое.
         { name: 'homework-card', comp: ParentHomeworkDetailScreen },
-        { name: 'subject', comp: StudentSubject },
+        { name: 'subject', comp: StudentSubjectGradesScreen },
         { name: 'attendance', comp: ParentAttendance },
         { name: 'service', comp: ParentService },
         { name: 'clubs', comp: StudentClubs },
@@ -157,6 +165,9 @@ function TeacherTabs() {
         // «Задания» встали третьей вкладкой, как в макете (Figma 868:247), но «Класс»
         // не вытеснили: в макете его просто не рисовали, а раздел рабочий.
         { name: 'homework', comp: TeacherHomework, label: 'Задания', icon: 'fileText' },
+        // Журнал — вкладка, как в макете (Figma `mobile-journal-list`): это
+        // самостоятельный раздел, а не часть урока, и открывают его чаще, чем класс.
+        { name: 'journal', comp: JournalScreen, label: 'Журнал', icon: 'book' },
         { name: 'class', comp: TeacherClass, label: 'Класс', icon: 'user' },
         { name: 'profile', comp: TeacherProfile, label: 'Я', icon: 'user' },
       ])}
@@ -173,6 +184,10 @@ export function TeacherApp() {
         // Лист посещаемости открывается из карточки урока и в неё же возвращается —
         // отдельной вкладки у него нет: это часть урока, а не самостоятельный раздел.
         { name: 'attendance', comp: AttendanceScreen },
+        // Оценки урока открываются с его карточки и в неё же возвращаются: это часть
+        // урока. Журнал живёт отдельной вкладкой — у него другой вход и другой контекст.
+        { name: 'lesson-grades', comp: LessonGradesScreen },
+        { name: 'journal-student', comp: JournalStudentScreen },
         // Карточка задания и форма создания — этапы HOMEWORK-001/002/004; список уже ведёт на них.
         { name: 'homework-card', comp: TeacherHomeworkCardScreen },
         // Один экран на создание и правку: разница только в том, чем его заполняют.
@@ -181,7 +196,6 @@ export function TeacherApp() {
         // Задания конкретного урока — вход с его карточки.
         { name: 'lesson-homework', comp: TeacherLessonHomeworkScreen },
         { name: 'scanner', comp: TeacherScanner },
-        { name: 'grade-entry', comp: TeacherGradeEntry },
         { name: 'ai-upload', comp: TeacherAIUpload },
         { name: 'feedback-write', comp: TeacherFeedbackWrite },
         { name: 'notifications', comp: NotificationsScreen },

@@ -159,6 +159,10 @@ export function mapLessonCard(lesson, { highlight = null } = {}) {
       viewHistory: caps.includes('VIEW_TEACHER_HISTORY') || caps.includes('VIEW_ADMIN_HISTORY'),
       manageStructure: caps.includes('MANAGE_STRUCTURE'),
       viewAttendance: caps.includes('VIEW_ATTENDANCE'),
+      // GRADES-002 §4: смотреть оценки урока может и админ, и замещающий без
+      // разрешения. Можно ли их менять — отдельный вопрос, и на него отвечает
+      // сам лист оценок (`writeState`), а не карточка.
+      viewGrades: caps.includes('VIEW_GRADES'),
       fillAttendance: caps.includes('FILL_ATTENDANCE'),
       submitHomework: caps.includes('SUBMIT_HOMEWORK'),
       // Закрытый период — «только просмотр» по макету. Бэк это пока не проверяет,

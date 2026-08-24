@@ -7,6 +7,7 @@ import { HexBadge } from '@shared/components/Hex';
 import Icon from '@shared/components/Icon';
 import { SUBJECT_COLORS } from '@shared/data/mock';
 import { shadowSm } from '@shared/components/Screen';
+import { GradeChip } from '@shared/ui/grades';
 
 // Resolve a brand colour-name to a theme hex (falls back to muted ink).
 export function brandColor(c, name) {
@@ -137,7 +138,7 @@ function ClassBadge({ label }) {
  * Accepts both API rows (`teacherShort`/`roomLabel` from scheduleMap) and the
  * legacy mock rows (`teacher`/`room`) still used by the home previews.
  */
-export function LessonRow({ lesson, onPress, teacherView = false, attendance = null }) {
+export function LessonRow({ lesson, onPress, teacherView = false, attendance = null, grades = null }) {
   const { c } = useTheme();
   const status = lesson.status || 'upcoming';
   const done = status === 'done';
@@ -229,6 +230,15 @@ export function LessonRow({ lesson, onPress, teacherView = false, attendance = n
             <StatusBadge label="Следующий" color={c.blue} tint="rgba(39,65,133,0.08)" />
           ) : null}
           {done && !cancelled && attendance ? <AttendanceBadge status={attendance} /> : null}
+          {/* Оценки за этот урок (Figma «Расписание - дневник»): чипы стоят там же, где
+              бейдж посещаемости, — обе подписи отвечают на вопрос «что было на уроке». */}
+          {!cancelled && grades && grades.length > 0 ? (
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              {grades.map((code, index) => (
+                <GradeChip key={`${code}-${index}`} value={code} size={28} />
+              ))}
+            </View>
+          ) : null}
         </View>
         {meta ? (
           <Txt style={{ fontSize: 13, fontWeight: '500', color: c.inkMuted }} numberOfLines={2}>

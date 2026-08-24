@@ -16,6 +16,7 @@ import {
   nearestSchoolDay,
 } from '@shared/hooks/useSchedule';
 import { useMyAttendanceMarks } from '@shared/hooks/useAttendance';
+import { useMyDiaryGrades } from '@shared/hooks/useGrades';
 import { localDateKey } from '@shared/api/scheduleMap';
 import { resolveDayState, resolveWeekState } from './ScheduleStates';
 import {
@@ -23,7 +24,7 @@ import {
   ChildSubtitle,
   ChildSwitcherPill,
   childShortLabel,
-} from './ChildSwitcher';
+} from '@shared/ui/childSwitcher';
 import { ScheduleDayView } from './ScheduleDayView';
 import { ScheduleWeekGrid } from './ScheduleWeekGrid';
 import { ViewModeToggle, VIEW_MODES } from './ViewModeToggle';
@@ -150,6 +151,20 @@ export function ScheduleScreen({ nav, role = 'student' }) {
     enabled: role !== 'teacher' && (!isParent || Boolean(childId)),
   });
 
+  /**
+   * Оценки за ту же неделю — чипы на карточках уроков (Figma «Расписание - дневник»).
+   *
+   * Условия те же, что у отметок, и по той же причине: оценка принадлежит одному
+   * ученику, а учитель смотрит на класс целиком. Запрос отдельный от расписания —
+   * его ошибка не должна гасить сами уроки.
+   */
+  const { grades: diaryGrades, reload: reloadGrades } = useMyDiaryGrades({
+    dateFrom: weekAnchor,
+    dateTo: endOfWeek(weekAnchor),
+    childStudentProfileId: isParent ? childId : null,
+    enabled: role !== 'teacher' && (!isParent || Boolean(childId)),
+  });
+
   const dayState = resolveDayState({ loading, error, view: data, lessons, dateStr: selectedDate });
   const weekState = resolveWeekState({ loading, error, view: data });
   const grid = useMemo(
@@ -188,12 +203,14 @@ export function ScheduleScreen({ nav, role = 'student' }) {
       await Promise.all([
         reload?.(true),
         reloadMarks?.(),
+        // Оценку тоже выставляют после урока, и жест «потянуть» делают ровно за этим.
+        reloadGrades?.(),
         isParent ? reloadChildren?.() : null,
       ]);
     } finally {
       setRefreshing(false);
     }
-  }, [reload, reloadMarks, reloadChildren, isParent]);
+  }, [reload, reloadMarks, reloadGrades, reloadChildren, isParent]);
 
   return (
     <Screen
@@ -258,6 +275,7 @@ export function ScheduleScreen({ nav, role = 'student' }) {
           state={dayState}
           lessons={lessons}
           marks={marks}
+          grades={diaryGrades}
           role={role}
           onRetry={onRetry}
           onOpenLesson={onOpenLesson}

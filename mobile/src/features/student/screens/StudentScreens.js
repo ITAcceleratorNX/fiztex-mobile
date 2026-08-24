@@ -11,9 +11,7 @@ import { GradCard, GRAD } from '@shared/components/Grad';
 import { useAppState } from '@shared/state/AppState';
 import {
   STUDENT,
-  SUBJECT_COLORS,
   TODAY_SCHEDULE,
-  SUBJECTS_DIARY,
   CLUBS,
   ACHIEVEMENTS,
   EVENTS,
@@ -22,7 +20,7 @@ import {
   AI_TESTS_DONE,
   AI_QUESTIONS,
 } from '@shared/data/mock';
-import { LessonRow, SubjectRow, ProfileRow, QRMockup, brandColor } from '@shared/ui/rows';
+import { LessonRow, ProfileRow, QRMockup, brandColor } from '@shared/ui/rows';
 import { useMyProfile, useAttendanceRate } from '@shared/hooks/useProfile';
 
 const chunk = (arr, n) => arr.reduce((rows, item, i) => {
@@ -39,7 +37,7 @@ export function StudentHome({ nav }) {
 
   const tiles = [
     { id: 'schedule', label: 'Расписание', sub: 'Дни и уроки', icon: 'calendar', color: 'blue' },
-    { id: 'diary', label: 'Дневник', sub: 'Оценки', icon: 'book', color: 'green' },
+    { id: 'diary', label: 'Оценки', sub: 'По предметам', icon: 'book', color: 'green' },
     { id: 'events', label: 'Ивенты', sub: 'Школьные события', icon: 'star', color: 'red' },
     { id: 'checkout', label: 'QR', sub: 'Вход и уход', icon: 'qr', color: 'gold' },
     { id: 'map', label: 'Карта', sub: 'Найти кабинет', icon: 'map', color: 'green' },
@@ -188,88 +186,6 @@ export function StudentCheckoutQR({ nav }) {
         <Pressable onPress={() => nav.back()} style={{ marginTop: 18 }}>
           <Txt style={{ color: c.ink2, fontSize: 14, fontWeight: '600' }}>Закрыть</Txt>
         </Pressable>
-      </View>
-    </Screen>
-  );
-}
-
-// ═══ DIARY ═══
-export function StudentDiary({ nav }) {
-  const { c } = useTheme();
-  return (
-    <Screen>
-      <ScreenHeader title="Дневник" large sub="Средний балл · 4.6" />
-      <View style={{ marginHorizontal: 16, marginTop: 4, marginBottom: 18 }}>
-        <Card style={{ padding: 16, backgroundColor: c.surface2, borderStyle: 'dashed', borderColor: c.borderStrong }}>
-          <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-            <HexBadge size={40} fill={c.blue} icon="sparkle" iconColor="#fff" iconSize={18} />
-            <View style={{ flex: 1 }}>
-              <Txt style={{ fontSize: 14, fontWeight: '600' }}>Бета-версия дневника</Txt>
-              <Txt style={{ fontSize: 12, color: c.ink2 }}>Скоро: расширенные оценки и аналитика</Txt>
-            </View>
-          </View>
-        </Card>
-      </View>
-
-      <SectionTitle title="Предметы" />
-      <View style={{ gap: 8, marginHorizontal: 16, marginBottom: 100 }}>
-        {SUBJECTS_DIARY.map((s, i) => (
-          <SubjectRow key={i} subject={s} onPress={() => nav('subject', s)} />
-        ))}
-      </View>
-    </Screen>
-  );
-}
-
-// ═══ SUBJECT DETAIL ═══
-export function StudentSubject({ nav, payload }) {
-  const { c } = useTheme();
-  const s = payload || SUBJECTS_DIARY[0];
-  const subInfo = SUBJECT_COLORS[s.name] || { color: 'gray', emoji: '◇' };
-  const grades = [
-    { d: '24 мая', g: 5, kind: 'Контрольная работа' },
-    { d: '20 мая', g: 5, kind: 'Урок' },
-    { d: '17 мая', g: 4, kind: 'Урок' },
-    { d: '15 мая', g: 5, kind: 'Домашнее задание' },
-  ];
-  return (
-    <Screen>
-      <ScreenHeader title={s.name} back={() => nav.back()} />
-      <GradCard colors={[brandColor(c, subInfo.color), brandColor(c, subInfo.color)]} withPattern style={{ marginHorizontal: 16, marginBottom: 18, borderRadius: 26 }} padding={22} patternSize={26}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View>
-            <Txt style={{ fontSize: 12, opacity: 0.85 }}>Средний балл</Txt>
-            <Txt style={{ fontSize: 56, fontWeight: '800', marginTop: 4 }}>{s.avg}</Txt>
-            <Txt style={{ fontSize: 12, opacity: 0.85, marginTop: 6 }}>↑ +0.2 за месяц</Txt>
-          </View>
-          <HexBadge size={80} fill="rgba(255,255,255,0.18)">
-            <Txt style={{ fontSize: 32, color: '#fff' }}>{subInfo.emoji}</Txt>
-          </HexBadge>
-        </View>
-      </GradCard>
-
-      <SectionTitle title="Последние оценки" />
-      <View style={{ gap: 8, marginHorizontal: 16, marginBottom: 18 }}>
-        {grades.map((row, i) => (
-          <Card key={i} style={{ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={{ width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: row.g === 5 ? c.greenSoft : c.goldSoft }}>
-              <Txt style={{ fontSize: 20, fontWeight: '700', color: row.g === 5 ? c.green : c.goldDeep }}>{row.g}</Txt>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Txt style={{ fontSize: 14, fontWeight: '600' }}>{row.kind}</Txt>
-              <Txt style={{ fontSize: 12, color: c.ink3 }}>{row.d}</Txt>
-            </View>
-          </Card>
-        ))}
-      </View>
-
-      <SectionTitle title="Домашние задания" />
-      <View style={{ gap: 8, marginHorizontal: 16, marginBottom: 100 }}>
-        <Card style={{ padding: 14 }}>
-          <Pill color="gold">До завтра</Pill>
-          <Txt style={{ fontSize: 15, fontWeight: '600', marginTop: 6 }}>№ 215, 217 на стр. 88</Txt>
-          <Txt style={{ fontSize: 12, color: c.ink2, marginTop: 2 }}>Айгерим Болатовна</Txt>
-        </Card>
       </View>
     </Screen>
   );
