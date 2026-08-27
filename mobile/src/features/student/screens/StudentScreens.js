@@ -22,6 +22,7 @@ import {
 } from '@shared/data/mock';
 import { LessonRow, ProfileRow, QRMockup, brandColor } from '@shared/ui/rows';
 import { useMyProfile, useAttendanceRate } from '@shared/hooks/useProfile';
+import { useAuth } from '@features/auth/AuthContext';
 
 const chunk = (arr, n) => arr.reduce((rows, item, i) => {
   if (i % n === 0) rows.push([]);
@@ -887,46 +888,29 @@ export function StudentShop({ nav }) {
 }
 
 // ═══ PROFILE ═══
-export function StudentProfile({ nav, onSignOut }) {
+export function StudentProfile({ onSignOut }) {
   const { c, dark, toggle } = useTheme();
-  const state = useAppState();
-  // Имя и класс — свои, а не из мока: звёзды и уровень пока остаются прототипом,
-  // домена геймификации в бэкенде нет вовсе.
+  const { biometricsEnabled, biometricMeta, enableBiometrics, disableBiometrics } = useAuth();
+  // Всё на экране — своё, с бэка: имя, класс и учебный год из профиля, посещаемость из
+  // сводки. Уровень, звёзды, монеты и ачивки отсюда убраны: домена геймификации в
+  // бэкенде нет вовсе, а мок в «Я» неотличим от настоящих цифр.
   const { displayName, className, academicYearName } = useMyProfile();
   const attendanceRate = useAttendanceRate();
+
+  const toggleBio = async () => {
+    if (biometricsEnabled) await disableBiometrics();
+    else if (biometricMeta.available) await enableBiometrics();
+  };
+
   return (
     <Screen>
       <View style={{ paddingTop: 14, paddingHorizontal: 16, paddingBottom: 8, alignItems: 'center' }}>
-        <View>
-          <Avatar name={displayName || STUDENT.name} size={86} color="green" />
-          <View style={{ position: 'absolute', bottom: -2, right: -2, width: 28, height: 28, borderRadius: 999, backgroundColor: c.gold, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: c.bg }}>
-            <Txt style={{ color: '#0F172A', fontWeight: '800', fontSize: 12 }}>{STUDENT.level}</Txt>
-          </View>
-        </View>
+        <Avatar name={displayName} size={86} color="green" />
         <Txt style={{ fontSize: 22, fontWeight: '700', marginTop: 12, letterSpacing: -0.3 }}>{displayName}</Txt>
-        <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 2 }}>
-          {[className, STUDENT.levelTitle].filter(Boolean).join(' · ')}
-        </Txt>
-        <View style={{ marginTop: 10, flexDirection: 'row', gap: 6 }}>
-          <Pill color="gold"><Icon name="star" size={11} /><Txt style={{ fontSize: 12, fontWeight: '600' }}> {state.stars}</Txt></Pill>
-          <Pill color="red"><Icon name="coin" size={11} /><Txt style={{ fontSize: 12, fontWeight: '600' }}> {state.coins}</Txt></Pill>
-          <Pill color="green"><Icon name="flame" size={11} /><Txt style={{ fontSize: 12, fontWeight: '600' }}> {STUDENT.streak}</Txt></Pill>
-        </View>
+        {className ? (
+          <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 2 }}>{className}</Txt>
+        ) : null}
       </View>
-
-      <GradCard colors={GRAD.gold} ink="#0F172A" patternColor="rgba(20,17,13,0.10)" patternSize={24} style={{ marginHorizontal: 16, marginVertical: 12 }} padding={18} onPress={() => nav('achievements')}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-          <HexBadge size={52} fill="rgba(20,17,13,0.18)" icon="trophy" iconColor="#0F172A" iconSize={24} />
-          <View style={{ flex: 1 }}>
-            <Txt style={{ fontSize: 12, fontWeight: '600', letterSpacing: 0.3, textTransform: 'uppercase', opacity: 0.7 }}>Достижения</Txt>
-            <Txt style={{ fontSize: 17, fontWeight: '700', marginTop: 2 }}>Уровень {STUDENT.level} · {ACHIEVEMENTS.filter((a) => a.earned).length} ачивок</Txt>
-            <View style={{ marginTop: 8, height: 6, backgroundColor: 'rgba(20,17,13,0.18)', borderRadius: 999, overflow: 'hidden' }}>
-              <View style={{ width: `${STUDENT.levelProgress * 100}%`, height: '100%', backgroundColor: '#0F172A' }} />
-            </View>
-          </View>
-          <Icon name="chevronRight" size={20} color="#0F172A" />
-        </View>
-      </GradCard>
 
       <SectionTitle title="О тебе" />
       <Card style={{ marginHorizontal: 16, marginBottom: 12, padding: 0 }}>
@@ -945,8 +929,14 @@ export function StudentProfile({ nav, onSignOut }) {
         <Pressable onPress={toggle}>
           <ProfileRow icon="settings" title="Тёмная тема" value={dark ? 'Вкл' : 'Выкл'} />
         </Pressable>
-        <ProfileRow icon="bell" title="Уведомления" />
-        <ProfileRow icon="face" title="Face ID" value="Включён" last />
+        <Pressable onPress={toggleBio}>
+          <ProfileRow
+            icon="face"
+            title={biometricMeta.label || 'Face ID'}
+            value={biometricsEnabled ? 'Вкл' : biometricMeta.available ? 'Выкл' : 'Нет'}
+            last
+          />
+        </Pressable>
       </Card>
 
       <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 100 }}>

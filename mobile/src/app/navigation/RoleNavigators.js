@@ -12,16 +12,16 @@ import {
   ParentGradesScreen, StudentGradesScreen, StudentSubjectGradesScreen,
 } from '@features/grades';
 import {
-  StudentHome, StudentCheckoutQR,
+  StudentCheckoutQR,
   StudentClubs, StudentClub, StudentTest, StudentAITest, StudentEvents, StudentAchievements,
   StudentMap, StudentShop, StudentProfile,
 } from '@features/student';
 import { StudentHeroes } from '@features/journey';
 import {
-  ParentHome, ParentAttendance, ParentFeedback, ParentService, ParentProfile,
+  ParentAttendance, ParentFeedback, ParentService, ParentProfile,
 } from '@features/parent';
 import {
-  TeacherHome, TeacherClass, TeacherScanner, TeacherAIUpload,
+  TeacherScanner, TeacherAIUpload,
   TeacherFeedbackWrite, TeacherProfile, TeacherHomework,
   TeacherHomeworkCardScreen, TeacherHomeworkFormScreen, TeacherSubmissionScreen,
   TeacherLessonHomeworkScreen,
@@ -30,6 +30,9 @@ import {
   StudentHomeworkScreen, StudentHomeworkDetailScreen,
   ParentHomeworkScreen, ParentHomeworkDetailScreen,
 } from '@features/homework';
+// Главные экраны трёх ролей живут отдельным модулем: они делят шапку, карточку
+// расписания и плитку оценок, и все три читают бэкенд, а не макетные данные.
+import { StudentHomeScreen, ParentHomeScreen, TeacherHomeScreen } from '@features/home';
 
 const tabScreenOptions = { headerShown: false };
 const stackScreenOptions = { headerShown: false };
@@ -69,7 +72,7 @@ function StudentTabs() {
   return (
     <STab.Navigator tabBar={(p) => <CustomTabBar {...p} />} screenOptions={tabScreenOptions}>
       {renderTabs(STab, [
-        { name: 'home', comp: StudentHome, label: 'Главная', icon: 'home' },
+        { name: 'home', comp: StudentHomeScreen, label: 'Главная', icon: 'home' },
         { name: 'schedule', comp: StudentSchedule, label: 'Расписание', icon: 'calendar' },
         // «Задания» встали третьей вкладкой, как в макете (Figma 853:19518). «Дневник»
         // при этом остался: в макете его не рисовали, но раздел рабочий, и вытеснять
@@ -116,7 +119,7 @@ function ParentTabs() {
   return (
     <PTab.Navigator tabBar={(p) => <CustomTabBar {...p} />} screenOptions={tabScreenOptions}>
       {renderTabs(PTab, [
-        { name: 'home', comp: ParentHome, label: 'Главная', icon: 'home' },
+        { name: 'home', comp: ParentHomeScreen, label: 'Главная', icon: 'home' },
         { name: 'schedule', comp: ParentSchedule, label: 'Расписание', icon: 'calendar' },
         { name: 'homework', comp: ParentHomeworkScreen, label: 'Задания', icon: 'fileText' },
         // «Оценки» вместо мокового дневника: тот же ученический раздел в контексте
@@ -152,7 +155,7 @@ export function ParentApp() {
   );
 }
 
-// ─── Teacher — Home / Schedule / Class / Profile ──────────────────────────────
+// ─── Teacher — Home / Schedule / Homework / Journal / Profile ──────────────────────────────
 const TStack = createNativeStackNavigator();
 const TTab = createBottomTabNavigator();
 
@@ -160,15 +163,13 @@ function TeacherTabs() {
   return (
     <TTab.Navigator tabBar={(p) => <CustomTabBar {...p} />} screenOptions={tabScreenOptions}>
       {renderTabs(TTab, [
-        { name: 'home', comp: TeacherHome, label: 'Сегодня', icon: 'home' },
+        { name: 'home', comp: TeacherHomeScreen, label: 'Сегодня', icon: 'home' },
         { name: 'schedule', comp: TeacherSchedule, label: 'Расписание', icon: 'calendar' },
-        // «Задания» встали третьей вкладкой, как в макете (Figma 868:247), но «Класс»
-        // не вытеснили: в макете его просто не рисовали, а раздел рабочий.
+        // «Задания» — третья вкладка, как в макете (Figma 868:247).
         { name: 'homework', comp: TeacherHomework, label: 'Задания', icon: 'fileText' },
         // Журнал — вкладка, как в макете (Figma `mobile-journal-list`): это
-        // самостоятельный раздел, а не часть урока, и открывают его чаще, чем класс.
+        // самостоятельный раздел, а не часть урока.
         { name: 'journal', comp: JournalScreen, label: 'Журнал', icon: 'book' },
-        { name: 'class', comp: TeacherClass, label: 'Класс', icon: 'user' },
         { name: 'profile', comp: TeacherProfile, label: 'Я', icon: 'user' },
       ])}
     </TTab.Navigator>

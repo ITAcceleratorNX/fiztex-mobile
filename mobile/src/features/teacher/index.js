@@ -1,6 +1,5 @@
 export {
   TeacherHome,
-  TeacherClass,
   TeacherScanner,
   TeacherAIUpload,
   TeacherFeedbackWrite,

@@ -11,6 +11,7 @@ import { useAppState } from '@shared/state/AppState';
 import { PARENT, ATTENDANCE_LOG, FEEDBACK, TODAY_SCHEDULE } from '@shared/data/mock';
 import { LessonRow, ProfileRow, QuickAction, brandColor, softColor } from '@shared/ui/rows';
 import { useMyProfile } from '@shared/hooks/useProfile';
+import { useAuth } from '@features/auth/AuthContext';
 
 const chunk = (arr, n) => arr.reduce((rows, item, i) => {
   if (i % n === 0) rows.push([]);
@@ -410,12 +411,19 @@ function parentSubtitle(count) {
 
 export function ParentProfile({ onSignOut }) {
   const { c, dark, toggle } = useTheme();
+  const { biometricsEnabled, biometricMeta, enableBiometrics, disableBiometrics } = useAuth();
   // Дети приходят те же, что и в расписании: связь родитель↔ребёнок в системе одна.
   const { displayName, children } = useMyProfile();
+
+  const toggleBio = async () => {
+    if (biometricsEnabled) await disableBiometrics();
+    else if (biometricMeta.available) await enableBiometrics();
+  };
+
   return (
     <Screen>
       <View style={{ paddingTop: 14, paddingHorizontal: 16, paddingBottom: 8, alignItems: 'center' }}>
-        <Avatar name={displayName || PARENT.name} size={86} color="blue" />
+        <Avatar name={displayName} size={86} color="blue" />
         <Txt style={{ fontSize: 22, fontWeight: '700', marginTop: 12, letterSpacing: -0.3 }}>{displayName}</Txt>
         <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 2 }}>{parentSubtitle(children.length)}</Txt>
       </View>
@@ -444,20 +452,19 @@ export function ParentProfile({ onSignOut }) {
         )}
       </Card>
 
-      <SectionTitle title="Договор и оплата" />
-      <Card style={{ marginHorizontal: 16, marginBottom: 12, padding: 0 }}>
-        <ProfileRow icon="user" title="Договор" value="№ 2024-178" />
-        <ProfileRow icon="coin" title="Оплата за месяц" value="Оплачено" />
-        <ProfileRow icon="bag" title="Доп. услуги" value="2 кружка" last />
-      </Card>
-
       <SectionTitle title="Настройки" />
       <Card style={{ marginHorizontal: 16, marginBottom: 12, padding: 0 }}>
         <Pressable onPress={toggle}>
           <ProfileRow icon="settings" title="Тёмная тема" value={dark ? 'Вкл' : 'Выкл'} />
         </Pressable>
-        <ProfileRow icon="bell" title="Уведомления" />
-        <ProfileRow icon="face" title="Face ID" value="Включён" last />
+        <Pressable onPress={toggleBio}>
+          <ProfileRow
+            icon="face"
+            title={biometricMeta.label || 'Face ID'}
+            value={biometricsEnabled ? 'Вкл' : biometricMeta.available ? 'Выкл' : 'Нет'}
+            last
+          />
+        </Pressable>
       </Card>
 
       <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 100 }}>

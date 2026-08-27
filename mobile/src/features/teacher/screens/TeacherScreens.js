@@ -28,6 +28,11 @@ export function TeacherHome({ nav }) {
   const { loading, error, data, emptyMessage } = useMySchedule();
   const lessons = data?.lessons || [];
   const nowLesson = lessons.find((l) => l.status === 'now') || lessons.find((l) => l.status === 'upcoming');
+  // Правило то же, что в расписании: карточка урока грузится по id фактического
+  // урока, и строка без него никуда не ведёт.
+  const openLesson = (lesson) => {
+    if (lesson?.lessonInstanceId) nav('lesson', lesson);
+  };
   const actions = [
     { icon: 'qr', color: 'green', label: 'Сканировать QR', to: 'scanner' },
     { icon: 'pencil', color: 'blue', label: 'Выставить оценки', to: 'journal' },
@@ -60,8 +65,8 @@ export function TeacherHome({ nav }) {
           </Txt>
           <View style={{ marginTop: 14, flexDirection: 'row', alignItems: 'flex-end' }}>
             <View style={{ flex: 1 }} />
-            <Pressable onPress={() => nav('class')} style={{ backgroundColor: 'rgba(255,255,255,0.20)', borderRadius: 999, paddingVertical: 8, paddingHorizontal: 14 }}>
-              <Txt style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Класс →</Txt>
+            <Pressable onPress={() => openLesson(nowLesson)} style={{ backgroundColor: 'rgba(255,255,255,0.20)', borderRadius: 999, paddingVertical: 8, paddingHorizontal: 14 }}>
+              <Txt style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Урок →</Txt>
             </Pressable>
           </View>
         </GradCard>
@@ -90,7 +95,7 @@ export function TeacherHome({ nav }) {
               ...l,
               subject: l.className ? `${l.subject} · ${l.className}` : l.subject,
             }}
-            onPress={() => nav('class')}
+            onPress={() => openLesson(l)}
           />
         ))}
         {!loading && lessons.length === 0 ? (
@@ -130,59 +135,6 @@ export function TeacherHome({ nav }) {
           <Icon name="chevronRight" size={18} color={c.ink3} />
         </View>
       </Card>
-    </Screen>
-  );
-}
-
-// ═══ CLASS ROSTER ═══
-export function TeacherClass({ nav }) {
-  const { c } = useTheme();
-  const present = CLASS_ROSTER.filter((s) => s.present).length;
-  const stats = [
-    { l: 'Присутствует', v: `${present}`, unit: '/24', color: c.green },
-    { l: 'Опоздавших', v: '1', color: c.goldDeep },
-    { l: 'Отсутствует', v: '2', color: c.red },
-  ];
-  return (
-    <Screen>
-      <ScreenHeader
-        title="Чтение · 4 «Б»"
-        back={() => nav.back()}
-        right={
-          <Pressable style={{ width: 38, height: 38, borderRadius: 999, backgroundColor: c.green, alignItems: 'center', justifyContent: 'center' }} onPress={() => nav('scanner')}>
-            <Icon name="qr" size={20} color="#fff" />
-          </Pressable>
-        }
-      />
-      <View style={{ paddingHorizontal: 16, paddingBottom: 14, flexDirection: 'row', gap: 8 }}>
-        {stats.map((s, i) => (
-          <Card key={i} style={{ flex: 1, padding: 12 }}>
-            <Txt style={{ fontSize: 11, color: c.ink3, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3 }}>{s.l}</Txt>
-            <Txt style={{ fontSize: 22, fontWeight: '800', marginTop: 4, color: s.color }}>
-              {s.v}
-              {s.unit ? <Txt style={{ fontSize: 12, color: c.ink3, fontWeight: '600' }}>{s.unit}</Txt> : null}
-            </Txt>
-          </Card>
-        ))}
-      </View>
-
-      <SectionTitle title="Ученики" />
-      <View style={{ gap: 6, marginHorizontal: 16, marginBottom: 100 }}>
-        {CLASS_ROSTER.map((s, i) => (
-          <Card key={i} style={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <Avatar name={s.name} size={38} color={s.avatar} />
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Txt style={{ fontSize: 14, fontWeight: '600' }}>{s.name}</Txt>
-              <Txt style={{ fontSize: 11, color: c.ink3, marginTop: 1 }}>
-                {s.present ? (s.late ? 'Опоздание · 10:24' : 'В классе · 10:18') : 'Отсутствует'}
-              </Txt>
-            </View>
-            {s.present && !s.late ? <Pill color="green"><Icon name="check" size={11} /></Pill> : null}
-            {s.late ? <Pill color="gold"><Icon name="clock" size={11} /></Pill> : null}
-            {!s.present ? <Pill color="red"><Icon name="x" size={11} /></Pill> : null}
-          </Card>
-        ))}
-      </View>
     </Screen>
   );
 }
@@ -523,11 +475,20 @@ export function TeacherProfile({ onSignOut }) {
       <View style={{ paddingTop: 14, paddingHorizontal: 16, paddingBottom: 8, alignItems: 'center' }}>
         <Avatar name={displayName} size={86} color="red" />
         <Txt style={{ fontSize: 22, fontWeight: '700', marginTop: 12, letterSpacing: -0.3 }}>{displayName}</Txt>
-        <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 2 }}>{subjectsLine || TEACHER.subject}</Txt>
+        {subjectsLine ? (
+          <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 2 }}>{subjectsLine}</Txt>
+        ) : null}
       </View>
 
       <SectionTitle title="Мои классы" />
       <Card style={{ marginHorizontal: 16, marginBottom: 12, padding: 0 }}>
+        {classes.length === 0 ? (
+          <View style={{ paddingVertical: 18, paddingHorizontal: 16 }}>
+            <Txt style={{ fontSize: 13, color: c.ink3 }}>
+              Классов пока не назначили. Обратитесь к администратору школы.
+            </Txt>
+          </View>
+        ) : null}
         {classes.map((cl, i) => (
           <View
             key={i}
@@ -540,7 +501,6 @@ export function TeacherProfile({ onSignOut }) {
               <Txt style={{ fontSize: 14, fontWeight: '600' }}>{cl.c}</Txt>
               <Txt style={{ fontSize: 12, color: c.ink3 }}>{cl.sub}</Txt>
             </View>
-            <Icon name="chevronRight" size={14} color={c.ink3} />
           </View>
         ))}
       </Card>
@@ -550,7 +510,6 @@ export function TeacherProfile({ onSignOut }) {
         <Pressable onPress={toggle}>
           <ProfileRow icon="settings" title="Тёмная тема" value={dark ? 'Вкл' : 'Выкл'} />
         </Pressable>
-        <ProfileRow icon="bell" title="Уведомления" />
         <Pressable onPress={toggleBio}>
           <ProfileRow
             icon="face"
