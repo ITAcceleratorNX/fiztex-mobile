@@ -12,14 +12,18 @@ import {
 } from '@features/auth';
 import { EntranceFlow } from '@features/entrance';
 import { useTheme } from '@shared/theme/ThemeContext';
-import { StudentApp, ParentApp, TeacherApp } from './RoleNavigators';
+import { StudentApp, ParentApp, TeacherApp, StaffApp } from './RoleNavigators';
 
 const Root = createNativeStackNavigator();
 
+// Администратор и охрана делят один навигатор: сервисные заявки у них общие, а больше
+// в мобильном приложении у этих ролей ничего нет (ТЗ SERVICE-FE-002 §16).
 const ROLE_ROUTE = {
   STUDENT: 'StudentApp',
   PARENT: 'ParentApp',
   TEACHER: 'TeacherApp',
+  ADMIN: 'StaffApp',
+  SECURITY: 'StaffApp',
 };
 
 function BootSplash() {
@@ -128,6 +132,7 @@ export function RootNavigator() {
       <Root.Screen name="StudentApp" component={StudentApp} />
       <Root.Screen name="ParentApp" component={ParentApp} />
       <Root.Screen name="TeacherApp" component={TeacherApp} />
+      <Root.Screen name="StaffApp" component={StaffApp} />
       <Root.Screen name="EntranceFlow" component={EntranceFlowRoute} />
     </Root.Navigator>
   );

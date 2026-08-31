@@ -13,7 +13,33 @@ import {
 const TOKEN_KEY = 'fiztex.auth.token';
 const PROFILE_KEY = 'fiztex.auth.profile';
 
-const MOBILE_ROLES = new Set(['STUDENT', 'PARENT', 'TEACHER']);
+/**
+ * Кого пускает мобильное приложение.
+ *
+ * Администратор и охрана добавлены ради сервисных заявок (ТЗ SERVICE-FE-002 §16): автор
+ * заявки — учитель, администратор и охрана, и любой из них должен уметь завести её с
+ * телефона. Учебных разделов у двух последних нет и не появится — их приложение состоит
+ * из заявок и профиля.
+ *
+ * Исполнительские роли (`CLEANING`, `TECHNICIAN`) сюда не входят: их экраны — предмет
+ * SERVICE-FE-003, и до тех пор впустить их значило бы открыть приложение, в котором им
+ * нечего делать.
+ */
+const MOBILE_ROLES = new Set(['STUDENT', 'PARENT', 'TEACHER', 'ADMIN', 'SECURITY']);
+
+/**
+ * Пускает ли приложение такую роль.
+ *
+ * Спрашивается на экране входа — до того, как предложить биометрию: отказ, найденный
+ * после согласия на Face ID, оставлял бы включённую биометрию у сессии, которая так и
+ * не открылась.
+ */
+export const ROLE_REJECTED =
+  'Этот аккаунт не поддерживается мобильным приложением — войдите с компьютера.';
+
+export function isMobileRole(role) {
+  return MOBILE_ROLES.has(role);
+}
 
 const AuthContext = createContext(null);
 
@@ -84,7 +110,7 @@ export function AuthProvider({ children }) {
   const persistSession = useCallback(async (loginResponse) => {
     const role = loginResponse.role;
     if (!MOBILE_ROLES.has(role)) {
-      const err = new Error('Этот аккаунт предназначен для веб-админки, не для мобильного приложения.');
+      const err = new Error(ROLE_REJECTED);
       err.status = 403;
       throw err;
     }

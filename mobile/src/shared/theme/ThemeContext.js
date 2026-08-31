@@ -116,6 +116,39 @@ const homeworkInkDark = {
   hwChipBg: '#243149',
 };
 
+// Статусы сервисной заявки (Figma «Сервисные заявки», 1114:7948 и 1118:19046).
+//
+// В макете чипы залиты плотными светлыми цветами (#DCFCE7 «Выполнена», #FEE2E2
+// «Отменена»). Здесь они записаны как те же чернила под 12 % — на белом это ровно
+// макетный оттенок, а на тёмной подложке остаётся читаемым; плотный #DCFCE7 в тёмной
+// теме превратился бы в светлое пятно. Так же сделаны чипы посещаемости и ДЗ.
+//
+// «Экстренная» — не пятый статус, а метка поверх него (§6), и цвет у неё свой: красный
+// уже занят отменённой заявкой, и одинаковыми они читались бы как одно и то же.
+const service = {
+  srNewTint: 'rgba(59,130,246,0.12)',
+  srProgressTint: 'rgba(251,146,60,0.14)',
+  srDoneTint: 'rgba(22,163,74,0.14)',
+  srCancelledTint: 'rgba(239,68,68,0.12)',
+  srUrgentTint: 'rgba(234,179,8,0.16)',
+};
+
+const serviceInk = {
+  srNewInk: '#2563EB',
+  srProgressInk: '#EA580C',
+  srDoneInk: '#16A34A',
+  srCancelledInk: '#EF4444',
+  srUrgentInk: '#A16207',
+};
+
+const serviceInkDark = {
+  srNewInk: '#93B4FD',
+  srProgressInk: '#FBBF6C',
+  srDoneInk: '#4ADE80',
+  srCancelledInk: '#F87171',
+  srUrgentInk: '#EAB308',
+};
+
 const light = {
   bg: '#FAFBFC',
   bg2: '#F1F5F9',
@@ -142,6 +175,8 @@ const light = {
   ...attendanceInk,
   ...homework,
   ...homeworkInk,
+  ...service,
+  ...serviceInk,
   ...hero,
   ...PHYSTECH,
 };
@@ -169,6 +204,8 @@ const dark = {
   ...attendanceInkDark,
   ...homework,
   ...homeworkInkDark,
+  ...service,
+  ...serviceInkDark,
   ...hero,
   ...PHYSTECH,
 };

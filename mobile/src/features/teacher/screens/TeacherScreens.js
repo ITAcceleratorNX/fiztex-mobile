@@ -452,7 +452,7 @@ export function TeacherFeedbackWrite({ nav }) {
 // ═══ PROFILE ═══
 const CLASS_COLORS = ['green', 'blue', 'red', 'gold'];
 
-export function TeacherProfile({ onSignOut }) {
+export function TeacherProfile({ nav, onSignOut }) {
   const { c, dark, toggle } = useTheme();
   const { biometricsEnabled, biometricMeta, enableBiometrics, disableBiometrics } = useAuth();
   // Что учитель ведёт в этом году — из его назначений. Разовая замена сюда не попадает:
@@ -503,6 +503,15 @@ export function TeacherProfile({ onSignOut }) {
             </View>
           </View>
         ))}
+      </Card>
+
+      {/* Вход в сервисные заявки — с профиля, как в макете (Figma «Учитель - профиль»,
+          1112:6611): раздел не учебный, и вкладки в нижней панели ему не досталось. */}
+      <SectionTitle title="Сервис" />
+      <Card style={{ marginHorizontal: 16, marginBottom: 12, padding: 0 }}>
+        <Pressable onPress={() => nav('service-requests')}>
+          <ProfileRow icon="wrench" title="Сервисные заявки" last />
+        </Pressable>
       </Card>
 
       <SectionTitle title="Настройки" />

@@ -37,6 +37,20 @@ export const authApi = {
       skipSessionExpiry: true,
     }),
 
+  /**
+   * Хозяйственные службы и охрана (SERVICE-BE-002 §2) — свой путь активации, а не
+   * учительский: бэкенд проверяет роль вместе с кодом, и чужой эндпоинт откажет.
+   *
+   * Поле называется `phone`, но принимает и почту: у сотрудника без школьного профиля
+   * телефона может не быть вовсе, и бэкенд разбирает контакт сам.
+   */
+  activateStaff: (contact, code, password) =>
+    request('/api/auth/staff/activate', {
+      method: 'POST',
+      body: { phone: contact, code, password },
+      skipSessionExpiry: true,
+    }),
+
   logout: (token) =>
     request('/api/auth/logout', {
       method: 'POST',
