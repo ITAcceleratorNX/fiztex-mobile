@@ -18,6 +18,36 @@ export const SECTION_STATUSES = {
   HISTORY: ['COMPLETED', 'CANCELLED'],
 };
 
+/**
+ * Какую очередь обслуживает роль (SERVICE-FE-003 §3).
+ *
+ * Единственное место, где связь «роль → служба» записана на клиенте. Совпадение имён
+ * `CLEANING`/`TECHNICIAN` у роли и у типа заявки делает соблазн сравнить их по месту
+ * особенно сильным — и такое сравнение молча сломается на первой же роли, чьё имя не
+ * совпадает с типом. То же правило на бэкенде живёт в `ServiceType.servedBy`.
+ */
+const ROLE_SERVICE = {
+  CLEANING: 'CLEANING',
+  TECHNICIAN: 'TECHNICIAN',
+};
+
+export function servedServiceType(role) {
+  return ROLE_SERVICE[role] ?? null;
+}
+
+/** Исполнитель ли эта роль — от этого зависит, есть ли у неё вкладка «Общая очередь». */
+export function isExecutorRole(role) {
+  return servedServiceType(role) != null;
+}
+
+/**
+ * Куда передаётся заявка (§6): служб ровно две, и «другая» определяется однозначно.
+ * Выбирать её списком не из чего — вариант всегда один.
+ */
+export function otherServiceType(serviceType) {
+  return serviceType === 'CLEANING' ? 'TECHNICIAN' : 'CLEANING';
+}
+
 /** §11: окно возврата выполненной заявки. То же значение, что у бэкенда (BE-006 §1). */
 export const RETURN_WINDOW_MS = 48 * 60 * 60 * 1000;
 
@@ -132,6 +162,68 @@ export function canReturnCompleted(request, accountId, now = Date.now()) {
   return now - completedAt.getTime() < RETURN_WINDOW_MS;
 }
 
+/**
+ * §4: можно ли взять заявку из очереди.
+ *
+ * Состояние проверяется здесь только чтобы не рисовать заведомо мёртвую кнопку. Право
+ * на действие остаётся за бэкендом, и проигравший гонку получит 409 «уже взята» —
+ * именно поэтому экран обязан обработать конфликт, а не считать проверку достаточной.
+ */
+export function canClaim(request, role) {
+  return Boolean(
+    request
+      && request.status === 'NEW'
+      && !request.assignedToId
+      && request.serviceType === servedServiceType(role),
+  );
+}
+
+/**
+ * §6: рабочие действия исполнителя — вернуть в очередь, передать, выполнить.
+ *
+ * Одно правило на три действия: бэкенд задаёт им дословно одинаковые условия допуска
+ * (`ServiceRequestCapability.EXECUTE`), и разводить их значило бы завести три копии
+ * одного условия.
+ */
+export function canExecute(request, accountId) {
+  return Boolean(
+    request
+      && request.status === 'IN_PROGRESS'
+      && accountId != null
+      && request.assignedToId === accountId,
+  );
+}
+
+/**
+ * §5: склейка «мои заявки» из двух выдач без дубля.
+ *
+ * Заявка, где сотрудник и автор, и исполнитель, приходит из обеих — и должна остаться
+ * одной карточкой. Порядок задаётся вызывающим: здесь только устранение повтора.
+ */
+export function mergeById(...lists) {
+  const byId = new Map();
+  for (const list of lists) {
+    for (const item of list ?? []) {
+      if (item?.id != null && !byId.has(item.id)) byId.set(item.id, item);
+    }
+  }
+  return [...byId.values()];
+}
+
+/**
+ * §5: кем сотрудник приходится этой заявке. Показывается на карточке, чтобы одна и та же
+ * строка в «Моих заявках» читалась однозначно.
+ */
+export function viewerContext(request, accountId) {
+  if (accountId == null || !request) return null;
+  const author = request.authorId === accountId;
+  const assignee = request.assignedToId === accountId;
+  if (author && assignee) return 'Вы автор и исполнитель';
+  if (assignee) return 'Вы исполнитель';
+  if (author) return 'Вы автор';
+  return null;
+}
+
 /** §10: удалить можно только свою и только новую заявку. */
 export function canCancel(request, accountId) {
   return Boolean(request)
@@ -244,6 +336,29 @@ export function fieldErrors(error) {
     if (violation?.field && !map[violation.field]) map[violation.field] = violation.message;
   }
   return map;
+}
+
+/**
+ * Отказ при взятии заявки в работу (§4).
+ *
+ * Здесь, в отличие от прочих действий, показывается сообщение сервера, а не своё: на
+ * конфликт он отвечает разбором свежей строки и различает «заявку уже взял другой
+ * сотрудник» и «взять можно только новую заявку». Заменить это общим «статус изменился»
+ * значило бы огрубить готовый ответ до бесполезного.
+ *
+ * Отдельный код бэкенд для этого не заводит — конфликт приходит тем же
+ * `SERVICE_REQUEST_STATUS_CONFLICT`, поэтому различает случаи не код, а место вызова.
+ */
+export function claimErrorText(error) {
+  // Оба отказа взятия бэкенд формулирует точнее, чем можно вывести из кода: конфликт он
+  // собирает по свежей строке («заявку уже взял другой сотрудник» либо «взять можно
+  // только новую»), а запрет называет службу, которой заявка адресована. Общий разбор
+  // огрубил бы и то и другое — а FORBIDDEN он и вовсе объяснил бы правами автора,
+  // хотя здесь речь о чужой службе.
+  const verbatim = error?.code === 'SERVICE_REQUEST_STATUS_CONFLICT'
+    || error?.code === 'SERVICE_REQUEST_FORBIDDEN';
+  if (verbatim && error.message) return error.message;
+  return actionErrorText(error);
 }
 
 function toDate(instant) {

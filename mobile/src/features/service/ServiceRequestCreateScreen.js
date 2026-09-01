@@ -13,8 +13,10 @@ import {
   MAX_PHOTOS,
   SERVICE_TYPES,
   floorLabel,
+  servedServiceType,
   serviceTypeMeta,
 } from '@shared/api/serviceRequestsMap';
+import { useAuth } from '@features/auth/AuthContext';
 import { useServiceRequestAction } from '@shared/hooks/useServiceRequests';
 import { NoticeBanner, ServiceHeader } from './components';
 import { pickFromCamera, pickFromLibrary } from './photos';
@@ -33,7 +35,10 @@ import { pickFromCamera, pickFromLibrary } from './photos';
 export function ServiceRequestCreateScreen({ nav }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
-  const { create, busy, errorText, fields: serverFields, clearError } = useServiceRequestAction();
+  const { role } = useAuth();
+  const {
+    create, createAndClaim, busy, errorText, fields: serverFields, clearError,
+  } = useServiceRequestAction();
 
   const [step, setStep] = useState(1);
   const [serviceType, setServiceType] = useState(null);
@@ -91,10 +96,19 @@ export function ServiceRequestCreateScreen({ nav }) {
     if (result.error) setPhotoError(result.error);
   }, [photos.length]);
 
-  const submit = useCallback(async () => {
+  /**
+   * §8: «Создать и взять в работу» показывается, только когда заведённая заявка
+   * относится к службе самого сотрудника. Клинер, заводящий техническую заявку, взять её
+   * не может — и кнопки у него нет: бэкенд всё равно откажет, а неактивная кнопка
+   * объясняет меньше, чем её отсутствие.
+   */
+  const ownService = serviceType != null && serviceType === servedServiceType(role);
+
+  const submit = useCallback(async (claimIt = false) => {
     setTouched(true);
     if (!stepTwoValid) return;
-    const created = await create({
+    const send = claimIt ? createAndClaim : create;
+    const created = await send({
       serviceType,
       emergency,
       buildingText: buildingText.trim(),
@@ -109,9 +123,12 @@ export function ServiceRequestCreateScreen({ nav }) {
     //
     // `replace`, а не переход: форма не должна остаться в стеке под карточкой — иначе
     // «назад» вернуло бы к полям уже созданной заявки.
-    nav.replace('service-request', { requestId: created.id, notice: 'Заявка успешно создана' });
-  }, [stepTwoValid, create, serviceType, emergency, buildingText, floorText, locationText,
-      description, photos, nav]);
+    nav.replace('service-request', {
+      requestId: created.id,
+      notice: claimIt ? 'Заявка создана и взята в работу' : 'Заявка успешно создана',
+    });
+  }, [stepTwoValid, create, createAndClaim, serviceType, emergency, buildingText, floorText,
+      locationText, description, photos, nav]);
 
   const errorFor = (field, value, message) => serverFields[field]
     || ((touched || blurred[field]) && !value.trim() ? message : null);
@@ -305,7 +322,7 @@ export function ServiceRequestCreateScreen({ nav }) {
           {step === 1 ? (
             <PrimaryAction onPress={goNext} disabled={!stepOneValid}>Далее</PrimaryAction>
           ) : (
-            <PrimaryAction onPress={submit} disabled={!stepTwoValid || busy}>
+            <PrimaryAction onPress={() => submit(false)} disabled={!stepTwoValid || busy}>
               {busy ? 'Отправляем…' : 'Создать заявку'}
             </PrimaryAction>
           )}

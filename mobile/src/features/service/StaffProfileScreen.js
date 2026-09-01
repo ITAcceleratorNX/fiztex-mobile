@@ -11,6 +11,8 @@ import { useMyProfile } from '@shared/hooks/useProfile';
 const ROLE_LABEL = {
   ADMIN: 'Администратор школы',
   SECURITY: 'Охрана',
+  CLEANING: 'Служба уборки',
+  TECHNICIAN: 'Техническая служба',
 };
 
 /**

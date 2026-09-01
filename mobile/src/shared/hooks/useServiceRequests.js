@@ -2,10 +2,17 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@features/auth/AuthContext';
 import { serviceRequestsApi } from '@shared/api/serviceRequestsApi';
 import {
-  SECTION_STATUSES, actionErrorText, byRecency, fieldErrors,
+  SECTION_STATUSES, actionErrorText, byRecency, fieldErrors, mergeById,
 } from '@shared/api/serviceRequestsMap';
 
 const PAGE_SIZE = 50;
+
+/**
+ * Назначенные заявки берутся одной страницей с запасом: фильтра по статусу у эндпоинта
+ * нет, и раздел собирается разбором выдачи. Меньший размер означал бы, что выполненные
+ * заявки вытеснят активные из среза, и «Мои заявки» покажут неполный список.
+ */
+const ASSIGNED_PAGE_SIZE = 200;
 
 /**
  * Ошибка экрана одним словом. 403 — не сбой сети, а «не ваша заявка», и предлагать
@@ -27,13 +34,13 @@ function errorKind(e) {
  *
  * @param {'ACTIVE'|'HISTORY'} section
  */
-export function useServiceRequestList(section) {
+export function useServiceRequestList(section, { enabled = true } = {}) {
   const { token } = useAuth();
-  const [state, setState] = useState({ loading: true, error: null, rows: [] });
+  const [state, setState] = useState({ loading: enabled, error: null, rows: [] });
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async (silent = false) => {
-    if (!token) {
+    if (!token || !enabled) {
       setState({ loading: false, error: null, rows: [] });
       return;
     }
@@ -48,7 +55,101 @@ export function useServiceRequestList(section) {
     } catch (e) {
       setState({ loading: false, error: errorKind(e), rows: [] });
     }
-  }, [token, section]);
+  }, [token, section, enabled]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    await load(true);
+    setRefreshing(false);
+  }, [load]);
+
+  return { ...state, reload: load, refresh, refreshing };
+}
+
+/**
+ * Общая очередь своей службы (SERVICE-FE-003 §3).
+ *
+ * Порядок приходит готовым и здесь не трогается: бэкенд сортирует экстренные выше, а
+ * внутри группы старые раньше. Вторая сортировка на клиенте рассыпала бы постраничную
+ * выдачу и разошлась бы с тем, что видят остальные сотрудники.
+ */
+export function useServiceQueue({ enabled = true } = {}) {
+  const { token } = useAuth();
+  const [state, setState] = useState({ loading: enabled, error: null, rows: [] });
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async (silent = false) => {
+    if (!token || !enabled) {
+      setState({ loading: false, error: null, rows: [] });
+      return;
+    }
+    if (!silent) setState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      const page = await serviceRequestsApi.queue(token, { size: PAGE_SIZE });
+      setState({ loading: false, error: null, rows: page?.content ?? [] });
+    } catch (e) {
+      setState({ loading: false, error: errorKind(e), rows: [] });
+    }
+  }, [token, enabled]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    await load(true);
+    setRefreshing(false);
+  }, [load]);
+
+  return { ...state, reload: load, refresh, refreshing };
+}
+
+/**
+ * Раздел сотрудника службы (§5, §10).
+ *
+ * Он видит заявки с двух сторон сразу: те, где он исполнитель, и те, что завёл сам. Обе
+ * выдачи склеиваются по идентификатору — заявка, где он и автор, и исполнитель, приходит
+ * из обеих и обязана остаться одной карточкой (§5).
+ *
+ * Возвращённые в очередь и переданные другой службе сюда не попадают, и отдельного
+ * правила для этого не нужно: вместе со снятием исполнителя они уходят из `assigned/my`
+ * сами (§10).
+ *
+ * Назначенные заявки приходится разбирать по статусу на клиенте — у `assigned/my` нет
+ * фильтра. Это единственное место в модуле, где так делается, и размер страницы поэтому
+ * взят с запасом: разбирать срез можно, только если срез покрывает всё.
+ *
+ * @param {'ACTIVE'|'HISTORY'} section
+ */
+export function useExecutorRequests(section, { enabled = true } = {}) {
+  const { token } = useAuth();
+  const [state, setState] = useState({ loading: enabled, error: null, rows: [] });
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async (silent = false) => {
+    if (!token || !enabled) {
+      setState({ loading: false, error: null, rows: [] });
+      return;
+    }
+    if (!silent) setState((prev) => ({ ...prev, loading: true, error: null }));
+    const statuses = SECTION_STATUSES[section];
+    try {
+      const [assigned, ...authored] = await Promise.all([
+        serviceRequestsApi.assignedToMe(token, { size: ASSIGNED_PAGE_SIZE }),
+        ...statuses.map((status) => serviceRequestsApi.my(token, { status, size: PAGE_SIZE })),
+      ]);
+      const mine = (assigned?.content ?? []).filter((row) => statuses.includes(row.status));
+      const rows = mergeById(mine, ...authored.map((page) => page?.content ?? [])).sort(byRecency);
+      setState({ loading: false, error: null, rows });
+    } catch (e) {
+      setState({ loading: false, error: errorKind(e), rows: [] });
+    }
+  }, [token, section, enabled]);
 
   useEffect(() => {
     load();
@@ -142,5 +243,13 @@ export function useServiceRequestAction() {
     cancel: (id) => run((t) => serviceRequestsApi.cancel(t, id)),
     reopen: (id, comment) => run((t) => serviceRequestsApi.reopen(t, id, comment)),
     create: (payload) => run((t) => serviceRequestsApi.create(t, payload)),
+    // Исполнительские действия (§4, §6, §8). Отказ хранится тем же способом: у взятия
+    // он тоже содержательный — бэкенд объясняет, чем именно кончилась гонка.
+    claim: (id) => run((t) => serviceRequestsApi.claim(t, id)),
+    createAndClaim: (payload) => run((t) => serviceRequestsApi.createAndClaim(t, payload)),
+    returnToQueue: (id, comment) => run((t) => serviceRequestsApi.returnToQueue(t, id, comment)),
+    transfer: (id, target, comment) =>
+      run((t) => serviceRequestsApi.transfer(t, id, target, comment)),
+    complete: (id, payload) => run((t) => serviceRequestsApi.complete(t, id, payload)),
   }), [busy, error, run]);
 }

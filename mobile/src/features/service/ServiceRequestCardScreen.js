@@ -11,17 +11,24 @@ import { serviceRequestFiles } from '@shared/api/serviceRequestsApi';
 import {
   assigneeName,
   canCancel,
+  canClaim,
+  canExecute,
   canReturnCompleted,
+  claimErrorText,
   historyEventLabel,
   locationLine,
+  otherServiceType,
   returnWindowLeft,
+  serviceTypeMeta,
   stamp,
 } from '@shared/api/serviceRequestsMap';
 import { useMyProfile } from '@shared/hooks/useProfile';
 import { useServiceRequest, useServiceRequestAction } from '@shared/hooks/useServiceRequests';
 import {
-  ConfirmSheet, NoticeBanner, ReasonSheet, ServiceHeader, ServiceTypeLine, StatusChip,
+  CompleteSheet, ConfirmSheet, NoticeBanner, ReasonSheet, ServiceHeader, ServiceTypeLine,
+  StatusChip,
 } from './components';
+import { pickFromCamera, pickFromLibrary } from './photos';
 import { ServiceCardError, ServiceCardMissing, ServiceCardSkeleton } from './ServiceStates';
 
 /**
@@ -38,7 +45,7 @@ import { ServiceCardError, ServiceCardMissing, ServiceCardSkeleton } from './Ser
 export function ServiceRequestCardScreen({ nav, payload }) {
   const requestId = payload?.requestId;
   const { c } = useTheme();
-  const { token } = useAuth();
+  const { token, role } = useAuth();
   const insets = useSafeAreaInsets();
   const { profile } = useMyProfile();
   const { loading, error, request, history, reload } = useServiceRequest(requestId);
@@ -47,6 +54,11 @@ export function ServiceRequestCardScreen({ nav, payload }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [returning, setReturning] = useState(false);
   const [zoomed, setZoomed] = useState(null);
+  // Исполнительские шиты (§6): у каждого своя обязательная часть, поэтому и состояние
+  // раздельное — общий «шит с причиной» пришлось бы каждый раз спрашивать, чей он.
+  const [sheet, setSheet] = useState(null); // 'return' | 'transfer' | 'complete'
+  const [resultPhotos, setResultPhotos] = useState([]);
+  const [photoError, setPhotoError] = useState(null);
   // Плашка удачи приходит из формы создания (§14) и ставится сама после возврата в
   // работу — оба раза человек уже на этой карточке и ждёт подтверждения, что вышло.
   const [notice, setNotice] = useState(payload?.notice ?? null);
@@ -63,6 +75,53 @@ export function ServiceRequestCardScreen({ nav, payload }) {
     // «удалить», и остаться на ней значило бы ответить не на то, что он просил.
     nav.back();
   }, [action, requestId, nav]);
+
+  /** §4: взятие из очереди. Отказ показываем сообщением сервера — оно точнее общего. */
+  const onClaim = useCallback(async () => {
+    const updated = await action.claim(requestId);
+    if (!updated) return;
+    setNotice('Заявка взята в работу');
+    await reload(true);
+  }, [action, requestId, reload]);
+
+  /** §6: вернуть в очередь своей службы. Причина обязательна, фотографий здесь нет. */
+  const onReturnToQueue = useCallback(async (reason) => {
+    const updated = await action.returnToQueue(requestId, reason);
+    if (!updated) return false;
+    setSheet(null);
+    // §6: заявка уходит из активного списка бывшего исполнителя — оставаться на её
+    // карточке незачем, доступа к ней у него больше нет.
+    nav.back();
+    return true;
+  }, [action, requestId, nav]);
+
+  /** §6: передача другой службе. Служб ровно две, поэтому цель однозначна. */
+  const onTransfer = useCallback(async (reason) => {
+    const target = otherServiceType(request?.serviceType);
+    const updated = await action.transfer(requestId, target, reason);
+    if (!updated) return false;
+    setSheet(null);
+    nav.back();
+    return true;
+  }, [action, requestId, request?.serviceType, nav]);
+
+  /** §7: выполнение — текст результата и/или до трёх снимков. */
+  const onComplete = useCallback(async (comment) => {
+    const updated = await action.complete(requestId, { comment, photos: resultPhotos });
+    if (!updated) return false;
+    setSheet(null);
+    setResultPhotos([]);
+    setNotice('Заявка выполнена');
+    await reload(true);
+    return true;
+  }, [action, requestId, resultPhotos, reload]);
+
+  const addResultPhoto = useCallback(async (pick) => {
+    setPhotoError(null);
+    const result = await pick(resultPhotos.length);
+    if (result.photos.length > 0) setResultPhotos((prev) => [...prev, ...result.photos]);
+    if (result.error) setPhotoError(result.error);
+  }, [resultPhotos.length]);
 
   const onReturn = useCallback(async (reason) => {
     const updated = await action.reopen(requestId, reason);
@@ -105,6 +164,9 @@ export function ServiceRequestCardScreen({ nav, payload }) {
   const executor = assigneeName(request, history);
   const deletable = canCancel(request, accountId);
   const returnable = canReturnCompleted(request, accountId);
+  const claimable = canClaim(request, role);
+  const executable = canExecute(request, accountId);
+  const transferTitle = `Передать в «${serviceTypeMeta(otherServiceType(request.serviceType))?.label ?? ''}»`;
   const windowLeft = returnable ? returnWindowLeft(request) : null;
   // §8: «Фото» — это снимки создания, а не все снимки заявки. `request.photos` содержит
   // и фотографии результата, которые приложил исполнитель, — их место в ленте, под
@@ -189,7 +251,36 @@ export function ServiceRequestCardScreen({ nav, payload }) {
           </View>
         ) : null}
 
-        {/* §9: действия задаёт статус. У «В работе» и «Отменена» их нет — только просмотр. */}
+        {/* §4: свободную заявку своей службы можно открыть целиком и взять отсюда же. */}
+      {claimable ? (
+        <View style={{ paddingHorizontal: 16, gap: 8 }}>
+          <Divider />
+          <ActionButton onPress={onClaim} disabled={action.busy}>
+            {action.busy ? 'Берём…' : 'Взять в работу'}
+          </ActionButton>
+        </View>
+      ) : null}
+
+      {/* §6: три действия текущего исполнителя. Условие допуска у них общее — бэкенд
+          задаёт им одну и ту же возможность, — поэтому и блок один. */}
+      {executable ? (
+        <View style={{ paddingHorizontal: 16, gap: 8 }}>
+          <Divider />
+          <ActionButton onPress={() => setSheet('complete')} disabled={action.busy}>
+            Выполнить
+          </ActionButton>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <ActionButton tone="outline" onPress={() => setSheet('return')} disabled={action.busy}>
+              Вернуть в очередь
+            </ActionButton>
+            <ActionButton tone="outline" onPress={() => setSheet('transfer')} disabled={action.busy}>
+              Передать
+            </ActionButton>
+          </View>
+        </View>
+      ) : null}
+
+      {/* §9: действия автора задаёт статус. У «В работе» и «Отменена» их нет — только просмотр. */}
         {deletable ? (
           <>
             <Divider />
@@ -254,6 +345,52 @@ export function ServiceRequestCardScreen({ nav, payload }) {
         busy={action.busy}
         onConfirm={onDelete}
         onCancel={() => setConfirmDelete(false)}
+      />
+
+      <ReasonSheet
+        visible={sheet === 'return'}
+        title="Вернуть заявку в очередь"
+        label="Причина"
+        placeholder="Почему заявка возвращается в очередь?"
+        submitLabel="Вернуть в очередь"
+        busy={action.busy}
+        error={action.errorText}
+        onSubmit={onReturnToQueue}
+        onClose={() => {
+          action.clearError();
+          setSheet(null);
+        }}
+      />
+
+      <ReasonSheet
+        visible={sheet === 'transfer'}
+        title={transferTitle}
+        label="Причина"
+        placeholder="Почему заявка передаётся другой службе?"
+        submitLabel="Передать"
+        busy={action.busy}
+        error={action.errorText}
+        onSubmit={onTransfer}
+        onClose={() => {
+          action.clearError();
+          setSheet(null);
+        }}
+      />
+
+      <CompleteSheet
+        visible={sheet === 'complete'}
+        busy={action.busy}
+        error={photoError || action.errorText}
+        photos={resultPhotos}
+        onPickCamera={() => addResultPhoto(pickFromCamera)}
+        onPickLibrary={() => addResultPhoto(pickFromLibrary)}
+        onRemovePhoto={(index) => setResultPhotos((prev) => prev.filter((_, i) => i !== index))}
+        onSubmit={onComplete}
+        onClose={() => {
+          action.clearError();
+          setPhotoError(null);
+          setSheet(null);
+        }}
       />
 
       <ReasonSheet
@@ -458,6 +595,45 @@ function InfoRow({ label, value, tone, muted, last }) {
         {value}
       </Txt>
     </View>
+  );
+}
+
+/**
+ * Кнопка действия исполнителя. Выключенная — свой серый, а не полупрозрачная включённая:
+ * приглушённый оранжевый остаётся оранжевым и продолжает звать нажать.
+ */
+function ActionButton({ children, onPress, disabled, tone = 'filled' }) {
+  const { c } = useTheme();
+  const outline = tone === 'outline';
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: Boolean(disabled) }}
+      onPress={disabled ? undefined : onPress}
+      style={({ pressed }) => ({
+        flex: outline ? 1 : undefined,
+        height: 52,
+        borderRadius: 12,
+        borderWidth: outline ? 1.5 : 0,
+        borderColor: disabled ? c.border : c.blue,
+        backgroundColor: outline ? c.surface : disabled ? c.border : c.green,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 12,
+        opacity: pressed ? 0.9 : 1,
+      })}
+    >
+      <Txt
+        numberOfLines={1}
+        style={{
+          fontSize: 15,
+          fontWeight: '700',
+          color: outline ? (disabled ? c.ink3 : c.blue) : disabled ? c.ink3 : '#fff',
+        }}
+      >
+        {children}
+      </Txt>
+    </Pressable>
   );
 }
 

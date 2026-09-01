@@ -8,7 +8,9 @@ import { useTheme } from '@shared/theme/ThemeContext';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import {
+  MAX_PHOTOS,
   assigneeName,
+  viewerContext,
   locationLine,
   serviceTypeMeta,
   shortDate,
@@ -115,6 +117,27 @@ export function EmergencyTag({ style }) {
   );
 }
 
+/** «Вы автор» / «Вы исполнитель» — контекст сотрудника на строке списка (§5). */
+export function ContextTag({ label, style }) {
+  const { c } = useTheme();
+  return (
+    <View
+      style={[
+        {
+          alignSelf: 'flex-start',
+          paddingVertical: 3,
+          paddingHorizontal: 8,
+          borderRadius: 12,
+          backgroundColor: c.srNewTint,
+        },
+        style,
+      ]}
+    >
+      <Txt style={{ fontSize: 10, fontWeight: '700', color: c.srNewInk }}>{label}</Txt>
+    </View>
+  );
+}
+
 /** Строка «иконка + название службы» — она же в карточке списка и в детали. */
 export function ServiceTypeLine({ serviceType, size = 14 }) {
   const { c } = useTheme();
@@ -136,12 +159,13 @@ export function ServiceTypeLine({ serviceType, size = 14 }) {
  * на строку: у заявки без исполнителя левая половина нижней строки просто пуста — так
  * же, как у отменённой в макете.
  */
-export function ServiceRequestCard({ request, headers, onPress }) {
+export function ServiceRequestCard({ request, headers, accountId, onPress }) {
   const { c } = useTheme();
   const photo = request.photos?.[0] ?? null;
   const place = locationLine(request);
   const executor = assigneeName(request);
   const extraPhotos = Math.max(0, (request.photos?.length ?? 0) - 1);
+  const context = viewerContext(request, accountId);
 
   return (
     <Pressable
@@ -164,6 +188,10 @@ export function ServiceRequestCard({ request, headers, onPress }) {
         {request.emergency ? <EmergencyTag /> : null}
         <StatusChip status={request.status} />
       </View>
+
+      {/* §5: одна карточка на заявку, где сотрудник и автор, и исполнитель — подпись
+          говорит, с какой стороны он к ней причастен. */}
+      {context ? <ContextTag label={context} /> : null}
 
       <ServiceTypeLine serviceType={request.serviceType} />
 
@@ -221,12 +249,11 @@ export function ServiceRequestCard({ request, headers, onPress }) {
 }
 
 /** Пилюли «Мои заявки / История» на серой дорожке (Figma `segmented-toggle`). */
-export function SectionTabs({ value, onChange }) {
+export function SectionTabs({ value, onChange, tabs }) {
   const { c } = useTheme();
-  const tabs = [
-    { value: 'ACTIVE', label: 'Мои заявки' },
-    { value: 'HISTORY', label: 'История' },
-  ];
+  // Три подписи вместо двух не влезают тем же кеглем: у исполнителя добавляется «Общая
+  // очередь», и на 390 точках строка иначе обрезается посередине слова.
+  const dense = tabs.length > 2;
   return (
     <View
       accessibilityRole="tablist"
@@ -245,13 +272,15 @@ export function SectionTabs({ value, onChange }) {
               alignItems: 'center',
               justifyContent: 'center',
               paddingVertical: 6,
+              paddingHorizontal: 2,
               borderRadius: 6,
               backgroundColor: selected ? c.green : 'transparent',
             }}
           >
             <Txt
+              numberOfLines={1}
               style={{
-                fontSize: 13,
+                fontSize: dense ? 12 : 13,
                 fontWeight: selected ? '700' : '500',
                 color: selected ? '#fff' : c.ink2,
               }}
@@ -556,6 +585,170 @@ function SheetButton({ children, tone = 'primary', busy, disabled, onPress }) {
       ) : (
         <Txt style={{ fontSize: 16, fontWeight: '700', color: t.ink }}>{children}</Txt>
       )}
+    </Pressable>
+  );
+}
+
+/**
+ * Выполнение заявки (SERVICE-FE-003 §7).
+ *
+ * Отличается от {@link ReasonSheet} тем, что обязательно не поле, а сам факт результата:
+ * §7 разрешает отправить только текст, только снимки или и то и другое. Поэтому кнопка
+ * включается, когда есть хоть что-то, — правило записано здесь один раз, а не собрано
+ * из двух отдельных проверок на экране.
+ */
+export function CompleteSheet({
+  visible, busy, error, photos, onPickCamera, onPickLibrary, onRemovePhoto, onSubmit, onClose,
+}) {
+  const { c } = useTheme();
+  const insets = useSafeAreaInsets();
+  const [comment, setComment] = React.useState('');
+
+  const submit = async () => {
+    if (await onSubmit(comment.trim())) setComment('');
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        style={{ flex: 1, justifyContent: 'flex-end' }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.45)' }} onPress={onClose} />
+        <View
+          style={{
+            backgroundColor: c.surface,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            paddingHorizontal: 16,
+            paddingTop: 10,
+            paddingBottom: Math.max(24, insets.bottom + 12),
+            gap: 14,
+          }}
+        >
+          <View style={{ alignItems: 'center' }}>
+            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: c.borderStrong }} />
+          </View>
+          <Txt style={{ fontSize: 20, fontWeight: '700', color: c.ink }}>Выполнить заявку</Txt>
+          <Txt style={{ fontSize: 13, color: c.ink2 }}>
+            Опишите результат, приложите фото — или сделайте и то, и другое.
+          </Txt>
+
+          <TextInput
+            value={comment}
+            onChangeText={setComment}
+            placeholder="Что было сделано"
+            placeholderTextColor={c.ink3}
+            multiline
+            maxLength={1000}
+            style={{
+              minHeight: 110,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: c.border,
+              paddingHorizontal: 14,
+              paddingTop: 14,
+              fontSize: 16,
+              color: c.ink,
+              backgroundColor: c.surface2,
+              textAlignVertical: 'top',
+            }}
+          />
+
+          <PhotoRow
+            photos={photos}
+            onCamera={onPickCamera}
+            onLibrary={onPickLibrary}
+            onRemove={onRemovePhoto}
+          />
+
+          {error ? <Txt style={{ fontSize: 13, color: c.red }}>{error}</Txt> : null}
+
+          <SheetButton
+            tone="primary"
+            busy={busy}
+            disabled={comment.trim().length === 0 && photos.length === 0}
+            onPress={submit}
+          >
+            Выполнить
+          </SheetButton>
+          <SheetButton tone="ghost" onPress={busy ? undefined : onClose}>Отмена</SheetButton>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+/** Полоса снимков результата: превью, удаление до отправки и две кнопки источника (§7). */
+function PhotoRow({ photos, onCamera, onLibrary, onRemove }) {
+  const { c } = useTheme();
+  return (
+    <View style={{ gap: 8 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {photos.map((photo, index) => (
+          <View key={`${photo.uri}-${index}`}>
+            <Image
+              source={{ uri: photo.uri }}
+              style={{ width: 64, height: 64, borderRadius: 8, backgroundColor: c.bg2 }}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Убрать фотографию"
+              onPress={() => onRemove(index)}
+              style={{
+                position: 'absolute',
+                top: -7,
+                right: -7,
+                width: 22,
+                height: 22,
+                borderRadius: 11,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: c.ink,
+              }}
+            >
+              <Icon name="x" size={11} color="#fff" strokeWidth={3} />
+            </Pressable>
+          </View>
+        ))}
+      </View>
+
+      {photos.length < MAX_PHOTOS ? (
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <SourceButton icon="camera" label="Камера" onPress={onCamera} />
+          <SourceButton icon="upload" label="Галерея" onPress={onLibrary} />
+        </View>
+      ) : null}
+
+      <Txt style={{ fontSize: 12, color: c.ink3 }}>
+        До {MAX_PHOTOS} фото, JPG, PNG или HEIC, не больше 10 МБ каждое.
+      </Txt>
+    </View>
+  );
+}
+
+function SourceButton({ icon, label, onPress }) {
+  const { c } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        height: 44,
+        borderRadius: 12,
+        borderWidth: 1.5,
+        borderColor: c.blue,
+        backgroundColor: c.surface,
+        opacity: pressed ? 0.85 : 1,
+      })}
+    >
+      <Icon name={icon} size={16} color={c.blue} strokeWidth={2} />
+      <Txt style={{ fontSize: 14, fontWeight: '700', color: c.blue }}>{label}</Txt>
     </Pressable>
   );
 }
