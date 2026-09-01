@@ -16,9 +16,11 @@ import {
 import { TextEditSheet } from '@shared/components/TextEditSheet';
 import { useLesson } from '@shared/hooks/useLesson';
 import { useAttendanceEditor, useAttendanceHistory } from '@shared/hooks/useAttendance';
+import { useAttendanceQr } from '@shared/hooks/useAttendanceQr';
 import { formatStamp } from '@shared/api/lessonMap';
 import { REASON_OPTIONS, STATUS_OPTIONS, historyLine, sheetBadge } from '@shared/api/attendanceMap';
 import { AttendanceStudentRow } from './AttendanceStudentRow';
+import { QrPosterModal } from './QrPosterModal';
 import { AttendanceCancelled, AttendanceEmptyRoster, AttendanceSkeleton } from './AttendanceStates';
 
 const COMMENT_MAX = 500;
@@ -200,6 +202,23 @@ export function AttendanceScreen({ nav, payload }) {
     [rows, picker],
   );
 
+  // Право показать код — то же, что право заполнять лист.
+  const canEditSheet = Boolean(sheet?.canFill);
+  const qr = useAttendanceQr(lessonId, { enabled: canEditSheet });
+  const [qrOpen, setQrOpen] = useState(false);
+
+  const openQr = useCallback(async () => {
+    setQrOpen(true);
+    await qr.open();
+  }, [qr]);
+
+  const closeQr = useCallback(async () => {
+    // Оверлей не держим: код всё равно погаснет в конце урока, и оставлять учителя в
+    // полноэкранном режиме из-за сетевой ошибки нельзя.
+    setQrOpen(false);
+    await qr.close();
+  }, [qr]);
+
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -254,7 +273,7 @@ export function AttendanceScreen({ nav, payload }) {
   // сказать: она пройдёт сама. Остальные («нет прав», «урок отменён») уже видны из
   // бейджа и тела экрана.
   const notStartedYet = !sheet?.canFill && !cancelled && lesson?.temporalStatus === 'UPCOMING';
-  const canEdit = Boolean(sheet?.canFill);
+  const canEdit = canEditSheet;
   const showList = !cancelled && rows.length > 0;
   const saving = busy === 'draft';
   const publishing = busy === 'publish';
@@ -327,6 +346,19 @@ export function AttendanceScreen({ nav, payload }) {
           }}
         >
           <Txt style={{ fontSize: 16, fontWeight: '700', color: c.ink }}>Список учеников</Txt>
+          {/* Причина недоступности пишется словами: неактивная кнопка без объяснения —
+              тупик, а «урок ещё не начался» пройдёт само. */}
+          {canEditSheet && qr.session ? (
+            qr.session.canOpen ? (
+              <OutlineButton onPress={openQr} disabled={qr.busy}>
+                Показать QR
+              </OutlineButton>
+            ) : (
+              <Txt style={{ fontSize: 13, fontWeight: '500', color: c.inkMuted }}>
+                {qr.session.status === 'EXPIRED' ? 'Урок закончился' : 'Код — с начала урока'}
+              </Txt>
+            )
+          ) : null}
           {editing && canEdit && showList ? (
             <OutlineButton onPress={() => markAllPresent()} disabled={busy === 'bulk'}>
               {busy === 'bulk' ? 'Отмечаем…' : 'Все присутствуют'}
@@ -479,6 +511,16 @@ export function AttendanceScreen({ nav, payload }) {
           closePicker();
         }}
         onClose={closePicker}
+      />
+
+      <QrPosterModal
+        visible={qrOpen}
+        payload={qr.session?.status === 'ACTIVE' ? qr.session.payload : null}
+        lessonTitle={[lesson?.subject, lesson?.className].filter(Boolean).join(' · ') || 'Урок'}
+        lessonEndsAt={qr.session?.lessonEndsAt ?? null}
+        busy={qr.busy}
+        onReissue={() => qr.open()}
+        onClose={closeQr}
       />
 
       <ConfirmDialog

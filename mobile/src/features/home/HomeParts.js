@@ -310,6 +310,61 @@ export function GradesTile({ title, subtitle, onPress }) {
   );
 }
 
+/**
+ * «Отметиться на уроке» — вход в сканер (ТЗ ATTENDANCE-QR-FE-002 §2).
+ *
+ * Стоит первой на главной, сразу под приветствием: сканируют в начале урока, и это
+ * первое, зачем ученик открывает приложение на перемене. Ниже — список сегодняшних
+ * уроков, то есть контекст на месте.
+ *
+ * Не плавающая кнопка: она перекрыла бы этот список ради действия, которое совершают
+ * раз в день.
+ */
+export function ScanQrTile({ onPress }) {
+  const { c } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Отметиться на уроке: открыть сканер QR-кода"
+      onPress={onPress}
+      style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          minHeight: 64,
+          borderRadius: 16,
+          paddingHorizontal: 14,
+          paddingVertical: 12,
+          backgroundColor: c.green,
+        }}
+      >
+        <View
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: 'rgba(255,255,255,0.22)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Icon name="qr" size={22} color="#fff" strokeWidth={2} />
+        </View>
+        <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
+          <Txt style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>Отметиться на уроке</Txt>
+          <Txt style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.85)' }}>
+            Сканируйте QR-код учителя
+          </Txt>
+        </View>
+        <Icon name="chevronRight" size={20} color="rgba(255,255,255,0.9)" strokeWidth={2} />
+      </View>
+    </Pressable>
+  );
+}
+
 /** Плитка «Оценки» учителя: заливка без рамки, иконка и шеврон в одну строку сверху. */
 export function TeacherGradesTile({ title, subtitle, onPress }) {
   const { c } = useTheme();

@@ -7,7 +7,7 @@ import { useMySchedule } from '@shared/hooks/useSchedule';
 import { useMyProfile } from '@shared/hooks/useProfile';
 import { useMyDiaryGrades, useMySubjectGrades } from '@shared/hooks/useGrades';
 import {
-  HomeHeader, HomeSectionTitle, LearnerLessonsCard, GradesTile,
+  HomeHeader, HomeSectionTitle, LearnerLessonsCard, GradesTile, ScanQrTile,
 } from './HomeParts';
 import { formatHomeDate, greetingName, todayKey } from './homeDate';
 import { latestGradeLine } from './latestGrade';
@@ -74,6 +74,8 @@ export function StudentHomeScreen({ nav }) {
         title={`Привет, ${greetingName(profile, displayName)}!`}
         subtitle={formatHomeDate(data?.date)}
       />
+
+      <ScanQrTile onPress={() => nav?.('attendance-scan')} />
 
       <View style={{ gap: 10 }}>
         <HomeSectionTitle>Сегодня</HomeSectionTitle>

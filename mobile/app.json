@@ -32,6 +32,13 @@
           "photosPermission": "Галерея нужна для фото-ответов на вступительном тесте."
         }
       ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Камера нужна, чтобы отсканировать QR-код учителя и отметиться на уроке.",
+          "recordAudioAndroid": false
+        }
+      ],
       "expo-secure-store",
       [
         "expo-local-authentication",

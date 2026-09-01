@@ -6,7 +6,7 @@ import { withNav } from './withNav';
 import { NotificationsScreen } from '@features/notifications';
 import { ScheduleScreen } from '@features/schedule';
 import { LessonCardScreen, StudentLessonScreen } from '@features/lesson';
-import { AttendanceScreen } from '@features/attendance';
+import { AttendanceScreen, QrScanScreen } from '@features/attendance';
 import {
   JournalScreen, JournalStudentScreen, LessonGradesScreen,
   ParentGradesScreen, StudentGradesScreen, StudentSubjectGradesScreen,
@@ -93,6 +93,7 @@ export function StudentApp() {
       <SStack.Screen name="Tabs" component={StudentTabs} />
       {renderDetails(SStack, [
         { name: 'lesson', comp: StudentLessonScreen },
+        { name: 'attendance-scan', comp: QrScanScreen },
         { name: 'homework-card', comp: StudentHomeworkDetailScreen },
         { name: 'checkout', comp: StudentCheckoutQR },
         { name: 'subject', comp: StudentSubjectGradesScreen },
