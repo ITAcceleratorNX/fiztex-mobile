@@ -12,14 +12,22 @@ import {
 } from '@features/auth';
 import { EntranceFlow } from '@features/entrance';
 import { useTheme } from '@shared/theme/ThemeContext';
-import { StudentApp, ParentApp, TeacherApp } from './RoleNavigators';
+import { StudentApp, ParentApp, TeacherApp, StaffApp } from './RoleNavigators';
 
 const Root = createNativeStackNavigator();
 
+// Четыре роли делят один навигатор: сервисные заявки у них общие, а больше в мобильном
+// приложении у них ничего нет (SERVICE-FE-002 §16, SERVICE-FE-003 §2). Различает их не
+// набор экранов, а то, что показывает сам раздел: у службы к своим заявкам добавляется
+// общая очередь, а у администратора и охраны — нет.
 const ROLE_ROUTE = {
   STUDENT: 'StudentApp',
   PARENT: 'ParentApp',
   TEACHER: 'TeacherApp',
+  ADMIN: 'StaffApp',
+  SECURITY: 'StaffApp',
+  CLEANING: 'StaffApp',
+  TECHNICIAN: 'StaffApp',
 };
 
 function BootSplash() {
@@ -128,6 +136,7 @@ export function RootNavigator() {
       <Root.Screen name="StudentApp" component={StudentApp} />
       <Root.Screen name="ParentApp" component={ParentApp} />
       <Root.Screen name="TeacherApp" component={TeacherApp} />
+      <Root.Screen name="StaffApp" component={StaffApp} />
       <Root.Screen name="EntranceFlow" component={EntranceFlowRoute} />
     </Root.Navigator>
   );

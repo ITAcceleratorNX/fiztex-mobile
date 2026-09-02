@@ -33,8 +33,25 @@ import {
 // Главные экраны трёх ролей живут отдельным модулем: они делят шапку, карточку
 // расписания и плитку оценок, и все три читают бэкенд, а не макетные данные.
 import { StudentHomeScreen, ParentHomeScreen, TeacherHomeScreen } from '@features/home';
+// Сервисные заявки: один и тот же авторский модуль у учителя, администратора и охраны
+// (ТЗ SERVICE-FE-002 §16). Роль решает, откуда в него входят, а не что внутри.
+import {
+  ServiceRequestsScreen, ServiceRequestCreateScreen, ServiceRequestCardScreen, StaffProfileScreen,
+} from '@features/service';
 
 const tabScreenOptions = { headerShown: false };
+
+/**
+ * Экраны сервисных заявок, общие для всех авторских ролей.
+ *
+ * Набор один, потому что сценарий один (§16): различается только вход — у учителя это
+ * профиль, у администратора и охраны сам раздел стоит вкладкой.
+ */
+const SERVICE_DETAILS = [
+  { name: 'service-requests', comp: ServiceRequestsScreen },
+  { name: 'service-request', comp: ServiceRequestCardScreen },
+  { name: 'service-request-create', comp: ServiceRequestCreateScreen },
+];
 const stackScreenOptions = { headerShown: false };
 
 function StudentSchedule(props) {
@@ -201,7 +218,50 @@ export function TeacherApp() {
         { name: 'ai-upload', comp: TeacherAIUpload },
         { name: 'feedback-write', comp: TeacherFeedbackWrite },
         { name: 'notifications', comp: NotificationsScreen },
+        ...SERVICE_DETAILS,
       ])}
     </TStack.Navigator>
+  );
+}
+
+// ─── Служебные роли — Заявки / Я ──────────────────────────────────────────────
+// Учебных разделов у этих ролей нет: ни расписания, ни журнала, ни класса. Их
+// приложение — сервисные заявки и профиль, поэтому список стоит вкладкой, а не
+// открывается из профиля, как у учителя.
+//
+// Навигатор один на четыре роли — администратора, охрану, уборку и техслужбу. Экраны у
+// них те же; различает их сам раздел: службе он показывает ещё и общую очередь своей
+// службы (SERVICE-FE-003 §2), а остальным — нет. Вторая копия навигатора отличалась бы
+// только подписью роли, а её показывает профиль.
+const StackStaff = createNativeStackNavigator();
+const TabStaff = createBottomTabNavigator();
+
+function StaffServiceRequests(props) {
+  // `root` — экран открыт вкладкой: «Назад» с него вести некуда, и место под ним
+  // занимает панель вкладок.
+  return <ServiceRequestsScreen {...props} root />;
+}
+
+function StaffTabs() {
+  return (
+    <TabStaff.Navigator tabBar={(p) => <CustomTabBar {...p} />} screenOptions={tabScreenOptions}>
+      {renderTabs(TabStaff, [
+        { name: 'service-requests', comp: StaffServiceRequests, label: 'Заявки', icon: 'clipboardCheck' },
+        { name: 'profile', comp: StaffProfileScreen, label: 'Я', icon: 'user' },
+      ])}
+    </TabStaff.Navigator>
+  );
+}
+
+export function StaffApp() {
+  return (
+    <StackStaff.Navigator screenOptions={stackScreenOptions}>
+      <StackStaff.Screen name="Tabs" component={StaffTabs} />
+      {renderDetails(StackStaff, [
+        { name: 'service-request', comp: ServiceRequestCardScreen },
+        { name: 'service-request-create', comp: ServiceRequestCreateScreen },
+        { name: 'notifications', comp: NotificationsScreen },
+      ])}
+    </StackStaff.Navigator>
   );
 }

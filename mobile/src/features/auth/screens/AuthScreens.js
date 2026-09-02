@@ -15,7 +15,7 @@ import { HexBadge, PhysTechMark } from '@shared/components/Hex';
 import { Card, PrimaryButton, ScreenHeader, PhysTechWordmark } from '@shared/components/ui';
 import { GradCard, GRAD } from '@shared/components/Grad';
 import { authApi } from '@shared/api/authApi';
-import { useAuth } from '../AuthContext';
+import { useAuth, isMobileRole, ROLE_REJECTED } from '../AuthContext';
 
 function BrandEmblem() {
   const { c } = useTheme();
@@ -126,7 +126,7 @@ export function AuthSignIn({ onBack, onStudent, onParentTeacher, onFaceId, canUs
           Как ты заходишь?
         </Txt>
         <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 8 }}>
-          Ученик — по коду и PIN. Родитель и учитель — по телефону или email.
+          Ученик — по коду и PIN. Остальные — по телефону или email.
         </Txt>
 
         {canUseFaceId ? (
@@ -163,7 +163,10 @@ export function AuthSignIn({ onBack, onStudent, onParentTeacher, onFaceId, canUs
         >
           <HexBadge size={52} fill={c.blue} icon="user" iconColor="#fff" iconSize={26} />
           <View style={{ flex: 1 }}>
-            <Txt style={{ fontSize: 18, fontWeight: '700' }}>Родитель или учитель</Txt>
+            {/* «Сотрудник», а не «учитель»: этой же дверью заходят администратор и
+                охрана — им нужны сервисные заявки (SERVICE-FE-002 §16), и вход,
+                названный чужой ролью, они бы просто не нашли. */}
+            <Txt style={{ fontSize: 18, fontWeight: '700' }}>Родитель или сотрудник</Txt>
             <Txt style={{ fontSize: 13, color: c.ink2, marginTop: 2 }}>Телефон / email и пароль</Txt>
           </View>
           <Icon name="chevronRight" size={20} color={c.ink3} />
@@ -218,14 +221,22 @@ export function AuthStudentLogin({ onBack, onActivatedHint }) {
   };
 
   if (pending) {
+    // Обработчики предложения биометрии живут вне `submit`, и без своего catch любой
+    // отказ здесь становится непойманным промисом: экран просто остаётся на месте.
+    const finish = async (enable) => {
+      try {
+        if (enable) await enableBiometrics();
+        await enterWith(pending);
+      } catch (e) {
+        setPending(null);
+        setError(e.message || 'Не удалось войти');
+      }
+    };
     return (
       <EnableBiometricsScreen
         label={biometricMeta.label}
-        onEnable={async () => {
-          await enableBiometrics();
-          await enterWith(pending);
-        }}
-        onSkip={() => enterWith(pending)}
+        onEnable={() => finish(true)}
+        onSkip={() => finish(false)}
       />
     );
   }
@@ -296,7 +307,7 @@ export function AuthParentTeacherLogin({ onBack, onActivatedHint }) {
   const { c } = useTheme();
   const { signInWithResponse, biometricMeta, enableBiometrics } = useAuth();
   const [tab, setTab] = useState('login'); // login | activate
-  const [role, setRole] = useState('parent'); // parent | teacher — only for activate
+  const [role, setRole] = useState('parent'); // parent | teacher | staff — only for activate
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
@@ -328,11 +339,20 @@ export function AuthParentTeacherLogin({ onBack, onActivatedHint }) {
           setLoading(false);
           return;
         }
-        res =
-          role === 'teacher'
-            ? await authApi.activateTeacher(phone.trim(), code.trim(), password)
-            : await authApi.activateParent(phone.trim(), code.trim(), password);
+        // Путь активации выбирает роль, а не общий эндпоинт: бэкенд проверяет роль
+        // вместе с кодом, и учительский путь охране откажет (SERVICE-BE-002 §2).
+        const activate = {
+          teacher: authApi.activateTeacher,
+          staff: authApi.activateStaff,
+          parent: authApi.activateParent,
+        }[role] ?? authApi.activateParent;
+        res = await activate(phone.trim(), code.trim(), password);
       }
+      // Роль спрашивается здесь, а не в `persistSession`: до правки отказ всплывал уже
+      // после согласия на Face ID — вне try/catch, — и экран замирал на предложении
+      // биометрии, ничего не сообщив. Супер-админ и исполнительские роли в приложение
+      // не входят, и узнать об этом надо на кнопке «Войти».
+      if (!isMobileRole(res.role)) throw new Error(ROLE_REJECTED);
       // Порядок тот же, что у ученика: сессия открывается после ответа на предложение.
       if (biometricMeta.available) setPending(res);
       else await enterWith(res);
@@ -344,14 +364,22 @@ export function AuthParentTeacherLogin({ onBack, onActivatedHint }) {
   };
 
   if (pending) {
+    // Обработчики предложения биометрии живут вне `submit`, и без своего catch любой
+    // отказ здесь становится непойманным промисом: экран просто остаётся на месте.
+    const finish = async (enable) => {
+      try {
+        if (enable) await enableBiometrics();
+        await enterWith(pending);
+      } catch (e) {
+        setPending(null);
+        setError(e.message || 'Не удалось войти');
+      }
+    };
     return (
       <EnableBiometricsScreen
         label={biometricMeta.label}
-        onEnable={async () => {
-          await enableBiometrics();
-          await enterWith(pending);
-        }}
-        onSkip={() => enterWith(pending)}
+        onEnable={() => finish(true)}
+        onSkip={() => finish(false)}
       />
     );
   }
@@ -359,7 +387,7 @@ export function AuthParentTeacherLogin({ onBack, onActivatedHint }) {
   return (
     <Screen>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScreenHeader title="Родитель / учитель" back={onBack} />
+        <ScreenHeader title="Родитель / сотрудник" back={onBack} />
         <View style={{ paddingHorizontal: 20, paddingBottom: 40 }}>
           <Txt style={{ fontSize: 26, fontWeight: '700', letterSpacing: -0.4, lineHeight: 31 }}>
             {tab === 'login' ? 'Вход' : 'Активация'}
@@ -401,6 +429,9 @@ export function AuthParentTeacherLogin({ onBack, onActivatedHint }) {
                 {[
                   { id: 'parent', label: 'Родитель' },
                   { id: 'teacher', label: 'Учитель' },
+                  // Охрана и хозяйственные службы: школьного профиля у них нет, а код
+                  // активации выдаётся так же (SERVICE-BE-002 §2).
+                  { id: 'staff', label: 'Сотрудник' },
                 ].map((r) => (
                   <Pressable
                     key={r.id}
@@ -416,11 +447,23 @@ export function AuthParentTeacherLogin({ onBack, onActivatedHint }) {
                       backgroundColor: role === r.id ? c.greenSoft : c.surface,
                     }}
                   >
-                    <Txt style={{ fontWeight: '600', color: role === r.id ? c.green : c.ink2 }}>{r.label}</Txt>
+                    <Txt
+                      numberOfLines={1}
+                      style={{ fontSize: 13, fontWeight: '600', color: role === r.id ? c.green : c.ink2 }}
+                    >
+                      {r.label}
+                    </Txt>
                   </Pressable>
                 ))}
               </View>
-              <Field label="Телефон" value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+7…" error={error} />
+              <Field
+                label={role === 'staff' ? 'Телефон или email' : 'Телефон'}
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType={role === 'staff' ? 'email-address' : 'phone-pad'}
+                placeholder={role === 'staff' ? '+7… или почта' : '+7…'}
+                error={error}
+              />
               <Field label="Код активации" value={code} onChangeText={setCode} autoCapitalize="characters" placeholder="Код из школы" error={error} />
               <Field label="Новый пароль" value={password} onChangeText={setPassword} secureTextEntry placeholder="Минимум 8 символов" error={error} />
             </>

@@ -1,5 +1,6 @@
 import { API_BASE_URL } from './config';
 import { request, requestMultipart } from './client';
+import { asUpload, authHeaders } from './upload';
 
 /**
  * Домашние задания (ТЗ HOMEWORK-003, 004, 005.1–005.3).
@@ -204,24 +205,6 @@ export const homeworkFiles = {
     `${API_BASE_URL}/api/homework/${homeworkId}/submissions/${studentProfileId}/review-photos/${photoId}/content`,
 };
 
-export function authHeaders(token) {
-  return token ? { Authorization: `Bearer ${token}` } : undefined;
-}
-
-/**
- * Вложение в форме multipart. React Native ждёт `{uri, name, type}` — не Blob: файл
- * не читается в память, а отдаётся ссылкой на локальный путь, и фотография на 8 МБ
- * не превращается в 8 МБ в куче JS.
- */
-function asUpload(picked) {
-  return {
-    uri: picked.uri,
-    name: picked.name || picked.fileName || fallbackName(picked),
-    type: picked.type || picked.mimeType || 'application/octet-stream',
-  };
-}
-
-function fallbackName(picked) {
-  const ext = (picked.mimeType || picked.type || '').split('/')[1];
-  return `upload.${ext || 'bin'}`;
-}
+// Реэкспорт: экраны ДЗ импортируют `authHeaders` отсюда с самого начала, и менять
+// десяток мест ради переезда в `upload.js` было бы правкой без причины.
+export { authHeaders };

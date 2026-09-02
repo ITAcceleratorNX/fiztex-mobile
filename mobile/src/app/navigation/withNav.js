@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback } from 'react';
-import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
+import { useNavigation, useRoute, CommonActions, StackActions } from '@react-navigation/native';
 import { useAuth } from '@features/auth/AuthContext';
 
 function rootOf(navigation) {
@@ -16,6 +16,15 @@ export function makeNav(navigation) {
     else navigation.navigate('home');
   };
   nav.reset = (screen) => navigation.navigate(screen);
+  /**
+   * Уйти на экран, не оставляя текущий в стеке.
+   *
+   * Нужно там, где возвращаться к пройденному шагу бессмысленно: после создания заявки
+   * открывается её карточка, и «назад» с неё обязано вести в список, а не к форме с
+   * полями уже созданной заявки.
+   */
+  nav.replace = (screen, payload) =>
+    navigation.dispatch(StackActions.replace(screen, payload !== undefined ? { payload } : undefined));
   return nav;
 }
 
