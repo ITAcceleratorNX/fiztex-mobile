@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@features/auth/AuthContext';
 import { homeworkApi } from '@shared/api/homeworkApi';
+import { homeworkAiApi, newIdempotencyKey } from '@shared/api/homeworkAiApi';
+import { isRunning } from '@shared/api/homeworkAiMap';
 import { scheduleApi } from '@shared/api/scheduleApi';
 
 /**
@@ -305,4 +307,147 @@ export function useSubmissionReview(homeworkId, studentProfileId, { onSuccess } 
   }, [token, homeworkId, studentProfileId, sending, onSuccess]);
 
   return { decide, sending, error, clearError: () => setError(null) };
+}
+
+/**
+ * Генерация конспекта: запуск и ожидание.
+ *
+ * <p><b>Задача переживает экран.</b> Она живёт строкой в базе, поэтому шит можно закрыть
+ * и уйти — опрос прекратится, но генерация продолжится, и результат окажется в задании.
+ * Отсюда же `adopt`: карточка, найдя незаконченную задачу, отдаёт её сюда, и ожидание
+ * продолжается там, где его прервали.
+ *
+ * <p><b>Ключ идемпотентности создаётся один раз на открытие.</b> Повторное нажатие на
+ * плохой сети не должно стать вторым платным вызовом модели.
+ */
+export function useHomeworkAiGeneration(homeworkId, { onApplied } = {}) {
+  const { token } = useAuth();
+  const [job, setJob] = useState(null);
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState(null);
+  const key = useRef(null);
+  const handled = useRef(null);
+
+  if (key.current == null) key.current = newIdempotencyKey();
+
+  const start = useCallback(async ({ materialIds, teacherPrompt }) => {
+    if (!token || !homeworkId || starting) return;
+    setStarting(true);
+    setError(null);
+    try {
+      setJob(await homeworkAiApi.start(token, homeworkId, key.current, {
+        kind: 'MATERIAL',
+        materialIds,
+        teacherPrompt: teacherPrompt?.trim() || undefined,
+      }));
+    } catch (e) {
+      setError(e?.message || 'Не удалось запустить генерацию');
+    } finally {
+      setStarting(false);
+    }
+  }, [token, homeworkId, starting]);
+
+  /** Продолжить ожидание задачи, начатой до открытия шита. */
+  const adopt = useCallback((existing) => {
+    setJob((prev) => (prev?.id === existing?.id ? prev : existing));
+  }, []);
+
+  // Опрос идёт, только пока задача не закончилась: у готовой спрашивать нечего.
+  useEffect(() => {
+    if (!token || !isRunning(job) || job?.id == null) return undefined;
+    let alive = true;
+    const timer = setInterval(async () => {
+      try {
+        const next = await homeworkAiApi.job(token, job.id);
+        if (alive) setJob(next);
+      } catch {
+        // Сбой одного опроса не гасит ожидание: следующий тик повторит.
+      }
+    }, 1500);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [token, job]);
+
+  // Результат лёг в задание — карточку надо перечитать. Один раз на задачу: опрос
+  // продолжает возвращать её же.
+  useEffect(() => {
+    if (!job || job.id == null || handled.current === job.id) return;
+    if (isRunning(job)) return;
+    handled.current = job.id;
+    if (job.status === 'DONE' && job.applied) onApplied?.(job);
+  }, [job, onApplied]);
+
+  const reset = useCallback(() => {
+    setJob(null);
+    setError(null);
+    handled.current = null;
+    key.current = newIdempotencyKey();
+  }, []);
+
+  return { job, starting, error, running: isRunning(job), start, adopt, reset };
+}
+
+/**
+ * Незаконченная генерация задания — то, по чему карточка понимает, что задача идёт,
+ * даже если шит закрыли.
+ */
+export function useRunningAiJob(homeworkId, { enabled = true } = {}) {
+  const { token } = useAuth();
+  const [job, setJob] = useState(null);
+
+  const reload = useCallback(async () => {
+    if (!token || !homeworkId || !enabled) return;
+    try {
+      const list = await homeworkAiApi.jobs(token, homeworkId);
+      setJob((Array.isArray(list) ? list : []).find(isRunning) || null);
+    } catch {
+      // Некритично: без этого списка карточка просто не покажет строку «идёт генерация».
+      setJob(null);
+    }
+  }, [token, homeworkId, enabled]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  // Пока задача идёт — обновляем строку сами. Учитель закрыл шит и остался на карточке:
+  // без этого фаза замерла бы на той, что была в момент закрытия, и «идёт генерация»
+  // висело бы вечно — то самое «зависло», против которого весь индикатор и сделан.
+  useEffect(() => {
+    if (!isRunning(job) || job?.id == null || !token) return undefined;
+    let alive = true;
+    const timer = setInterval(async () => {
+      try {
+        const next = await homeworkAiApi.job(token, job.id);
+        if (alive) setJob(isRunning(next) ? next : null);
+      } catch {
+        // Следующий тик повторит.
+      }
+    }, 2000);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [token, job]);
+
+  return { job, reload };
+}
+
+/** Остаток суточной квоты — шит спрашивает его при открытии. */
+export function useHomeworkAiQuota({ enabled = true } = {}) {
+  const { token } = useAuth();
+  const [quota, setQuota] = useState(null);
+
+  useEffect(() => {
+    if (!token || !enabled) return;
+    let alive = true;
+    homeworkAiApi.quota(token)
+      .then((value) => { if (alive) setQuota(value); })
+      .catch(() => { if (alive) setQuota(null); });
+    return () => { alive = false; };
+  }, [token, enabled]);
+
+  return quota;
 }

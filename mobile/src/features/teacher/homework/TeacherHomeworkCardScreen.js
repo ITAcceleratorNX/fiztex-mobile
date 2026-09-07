@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { View, ScrollView, Pressable, RefreshControl } from 'react-native';
+import { ActivityIndicator, View, ScrollView, Pressable, RefreshControl } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
@@ -19,8 +19,12 @@ import { dueLong, homeworkStatusChip, subjectLine } from '@shared/api/homeworkMa
 import {
   homeworkActions,
   useHomeworkActions,
+  useRunningAiJob,
   useTeacherHomeworkCard,
 } from '@shared/hooks/useTeacherHomework';
+import { MathText } from '@shared/math/MathText';
+import { phaseLabel } from '@shared/api/homeworkAiMap';
+import { HomeworkAiSheet } from './HomeworkAiSheet';
 import { pickFiles } from '@features/homework/attachments';
 import { HomeworkCardSkeleton } from '@features/homework/HomeworkStates';
 import { RosterRow, ROSTER_FILTERS, filterRoster, rosterCount } from './roster';
@@ -44,6 +48,12 @@ export function TeacherHomeworkCardScreen({ nav, payload }) {
   const [filter, setFilter] = useState('ALL');
   const [confirm, setConfirm] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+
+  // Генерация переживает закрытый шит: задача идёт на сервере, и карточка обязана о
+  // ней сказать — иначе учитель, вернувшись, увидит пустое описание и решит, что не
+  // получилось. Спрашиваем только у черновика: у остальных генерации не бывает.
+  const runningAi = useRunningAiJob(homeworkId, { enabled: homework?.status === 'DRAFT' });
 
   const onDone = useCallback(async (action, result) => {
     setConfirm(null);
@@ -145,6 +155,12 @@ export function TeacherHomeworkCardScreen({ nav, payload }) {
             <Txt style={{ fontSize: 13, fontWeight: '500', color: c.inkMuted, flex: 1 }} numberOfLines={1}>
               {subjectLine(homework)}
             </Txt>
+            {/* Пометка машинного содержимого — предупреждение, а не метаданные: перед
+                классом отвечает учитель, и помнить об этом он должен, когда жмёт
+                «Опубликовать», а не когда ребёнок принесёт ошибку домой. */}
+            {homework.creationMode && homework.creationMode !== 'MANUAL' ? (
+              <Pill color="blue">Сгенерировано ИИ</Pill>
+            ) : null}
             {chip ? <Pill color={chip.color}>{chip.label}</Pill> : null}
           </View>
 
@@ -157,8 +173,15 @@ export function TeacherHomeworkCardScreen({ nav, payload }) {
             </Txt>
           </View>
 
+          {/* Описание — поле с формулами: модель пишет в него $…$ по прямой инструкции
+              промпта, да и учитель набирает их руками. Сырым текстом здесь стоял бы
+              \frac вместо дроби. Текста без формул это не касается — MathText отдаёт
+              для него обычный Txt. */}
           {homework.description ? (
-            <Txt style={{ fontSize: 14, lineHeight: 21, color: c.ink }}>{homework.description}</Txt>
+            <MathText
+              text={homework.description}
+              style={{ fontSize: 14, lineHeight: 21, color: c.ink }}
+            />
           ) : (
             <Txt style={{ fontSize: 14, color: c.ink3 }}>Описание не заполнено</Txt>
           )}
@@ -188,6 +211,26 @@ export function TeacherHomeworkCardScreen({ nav, payload }) {
               Ученики его не видят. Получатели фиксируются в момент публикации — до неё
               списка работ ещё нет.
             </Txt>
+
+            {/* Генерация — только у черновика: у опубликованного ученики уже видят
+                текст, и подменять его машинным вариантом нельзя. */}
+            {runningAi.job ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Открыть ход генерации"
+                onPress={() => setAiOpen(true)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 4 }}
+              >
+                <ActivityIndicator color={c.blue} size="small" />
+                <Txt style={{ flex: 1, fontSize: 14, fontWeight: '600', color: c.blue }}>
+                  {phaseLabel(runningAi.job)}
+                </Txt>
+              </Pressable>
+            ) : can.edit ? (
+              <OutlineButton size="lg" onPress={() => setAiOpen(true)}>
+                Сгенерировать конспект
+              </OutlineButton>
+            ) : null}
           </Card>
         ) : (
           <RosterCard
@@ -208,6 +251,16 @@ export function TeacherHomeworkCardScreen({ nav, payload }) {
 
         <ActionsCard can={can} busy={actions.busy} onAct={setConfirm} />
       </ScrollView>
+
+      <HomeworkAiSheet
+        visible={aiOpen}
+        homeworkId={homeworkId}
+        lessonId={homework.lessonId ?? null}
+        existingJob={runningAi.job}
+        onClose={() => { setAiOpen(false); runningAi.reload(); }}
+        onApplied={() => { void reload(true); runningAi.reload(); }}
+        onWriteManually={() => nav('homework-create', { homeworkId })}
+      />
 
       <ConfirmDialog
         visible={confirm != null}

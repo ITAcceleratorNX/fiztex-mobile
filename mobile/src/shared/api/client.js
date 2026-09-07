@@ -79,10 +79,17 @@ async function parseError(res) {
 /**
  * Shared JSON request.
  * @param {string} path - absolute API path starting with /api
- * @param {{ method?: string, body?: unknown, token?: string|null, keepalive?: boolean, skipSessionExpiry?: boolean }} options
+ * `extraHeaders` — для тех редких вызовов, где заголовок часть контракта, а не
+ * транспорта: `Idempotency-Key` у генерации ДЗ. Токен и content-type он не
+ * перекрывает — ставятся после него.
+ *
+ * @param {{ method?: string, body?: unknown, token?: string|null, keepalive?: boolean, skipSessionExpiry?: boolean, extraHeaders?: Record<string,string> }} options
  */
-export async function request(path, { method = 'GET', body, token, keepalive = false, skipSessionExpiry = false } = {}) {
-  const headers = { Accept: 'application/json' };
+export async function request(
+  path,
+  { method = 'GET', body, token, keepalive = false, skipSessionExpiry = false, extraHeaders } = {},
+) {
+  const headers = { Accept: 'application/json', ...(extraHeaders || {}) };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (token) headers.Authorization = `Bearer ${token}`;
 
