@@ -27,7 +27,7 @@ import {
   TeacherLessonHomeworkScreen,
 } from '@features/teacher';
 import {
-  StudentHomeworkScreen, StudentHomeworkDetailScreen,
+  StudentHomeworkScreen, StudentHomeworkDetailScreen, StudentHomeworkTestScreen,
   ParentHomeworkScreen, ParentHomeworkDetailScreen,
 } from '@features/homework';
 // Главные экраны трёх ролей живут отдельным модулем: они делят шапку, карточку
@@ -112,6 +112,7 @@ export function StudentApp() {
         { name: 'lesson', comp: StudentLessonScreen },
         { name: 'attendance-scan', comp: QrScanScreen },
         { name: 'homework-card', comp: StudentHomeworkDetailScreen },
+        { name: 'homework-test', comp: StudentHomeworkTestScreen },
         { name: 'checkout', comp: StudentCheckoutQR },
         { name: 'subject', comp: StudentSubjectGradesScreen },
         { name: 'clubs', comp: StudentClubs },

@@ -22,7 +22,9 @@ import { API_BASE_URL } from '../config';
 import { useAnticheat } from '../hooks/useAnticheat';
 import { TestTimer, formatTime } from '../components/TestTimer';
 import { PrivacyOverlay } from '../components/PrivacyOverlay';
-import { QuestionBody, QuestionMeta, SaveStatusChip } from '../components/QuestionBody';
+import { QuestionBody } from '@shared/components/QuestionBody';
+import { QuestionMeta, SaveStatusChip } from '../components/QuestionBody';
+import { PhotoAnswerBlock } from '../components/PhotoAnswerBlock';
 import { MathText } from '@shared/math/MathText';
 import { QuestionFigure } from '@shared/components/QuestionFigure';
 import { EntranceCodeBackground } from '../components/EntranceCodeBackground';
@@ -1290,13 +1292,17 @@ export function EntranceTestScreen({ attempt, onFinished }) {
             value={answer}
             onChange={(next) => updateAnswer(question.id, next)}
             onPhotosChange={(photos) => setPhotos(question.id, photos)}
-            photoProps={{
-              attemptId,
-              questionId: question.id,
-              maxPhotos: question.maxPhotos ?? 1,
-              disabled: submitting,
-              onUploadFailed: () => logConnectionIssue('photo upload failed'),
-            }}
+            renderPhotos={({ photos, onPhotosChange }) => (
+              <PhotoAnswerBlock
+                attemptId={attemptId}
+                questionId={question.id}
+                maxPhotos={question.maxPhotos ?? 1}
+                disabled={submitting}
+                onUploadFailed={() => logConnectionIssue('photo upload failed')}
+                photos={photos}
+                onPhotosChange={onPhotosChange}
+              />
+            )}
           />
 
           <SaveStatusChip

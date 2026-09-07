@@ -48,6 +48,35 @@ export const homeworkApi = {
     return request(`/api/homework/my${query(params)}`, { token });
   },
 
+  /**
+   * Вопросы теста для ученика — **только этот адрес**.
+   *
+   * Учительский `/homework/{id}/questions` отдаёт ключ правильных ответов; обращение к
+   * нему с экрана ученика раскрывает тест целиком. Здесь у вариантов нет признака
+   * правильности, а у открытого вопроса — эталонного ответа.
+   */
+  myQuestions(token, homeworkId) {
+    return request(`/api/homework/${homeworkId}/my-submission/questions`, { token });
+  },
+
+  /**
+   * Сдача теста: ответы по вопросам вместо текста и вложений (HOMEWORK-BE-006 §6).
+   *
+   * Отдельный вход, а не параметр к {@link submit}: у теста нет вложений, и
+   * multipart-запрос с JSON-частью внутри клиенту только мешает. Правила отправки при
+   * этом общие — их держит бэкенд.
+   *
+   * @param {{answers: Array<{questionId: number, selectedOptionIds?: number[],
+   *          openText?: string}>, clientToken?: string}} payload
+   */
+  submitAnswers(token, homeworkId, payload) {
+    return request(`/api/homework/${homeworkId}/my-submission/answers`, {
+      method: 'POST',
+      body: payload,
+      token,
+    });
+  },
+
   /** Карточка задания вместе со своей работой — единственный вход ученика в модуль. */
   myOne(token, homeworkId) {
     return request(`/api/homework/${homeworkId}/my-submission`, { token });

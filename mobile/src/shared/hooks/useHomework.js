@@ -204,6 +204,73 @@ export function useHomeworkSubmit(homeworkId, { onSuccess } = {}) {
   return { submit, sending, error, clearError: () => setError(null) };
 }
 
+/**
+ * Вопросы теста и их отправка.
+ *
+ * <p>Черновик ответов живёт локально и пишется здесь же: серверного черновика ТЗ не
+ * предусматривает, а ребёнку звонят посреди работы. Потерянные ответы он второй раз
+ * вводить не станет — он просто не сдаст задание.
+ *
+ * <p>Ключ идемпотентности живёт до успеха, а не до нажатия: сорвавшийся из-за сети
+ * запрос мог дойти до сервера, и повтор с тем же ключом вернёт уже созданную отправку
+ * вместо второй попытки.
+ */
+export function useHomeworkTest(homeworkId) {
+  const { token } = useAuth();
+  const [state, setState] = useState({ loading: true, error: null, questions: null });
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState(null);
+  const clientToken = useRef(null);
+
+  const load = useCallback(async () => {
+    if (!token || !homeworkId) {
+      setState({ loading: false, error: null, questions: null });
+      return;
+    }
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      const questions = await homeworkApi.myQuestions(token, homeworkId);
+      setState({ loading: false, error: null, questions });
+    } catch (e) {
+      setState({ loading: false, error: errorKind(e), questions: null });
+    }
+  }, [token, homeworkId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const submit = useCallback(async (answers) => {
+    if (!token || !homeworkId || sending) return false;
+    if (!clientToken.current) clientToken.current = newClientToken();
+
+    setSending(true);
+    setSendError(null);
+    try {
+      await homeworkApi.submitAnswers(token, homeworkId, {
+        answers,
+        clientToken: clientToken.current,
+      });
+      clientToken.current = null;
+      return true;
+    } catch (e) {
+      setSendError(e?.message || 'Не удалось отправить ответы');
+      return false;
+    } finally {
+      setSending(false);
+    }
+  }, [token, homeworkId, sending]);
+
+  return {
+    ...state,
+    reload: load,
+    submit,
+    sending,
+    sendError,
+    clearSendError: () => setSendError(null),
+  };
+}
+
 function newClientToken() {
   return `hw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }

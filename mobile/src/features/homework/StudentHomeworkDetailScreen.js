@@ -119,7 +119,10 @@ export function StudentHomeworkDetailScreen({ nav, payload }) {
   }
 
   const notice = closedNotice(data);
-  const showForm = canSubmit;
+  // Тест сдаётся своим экраном: ответы по вопросам, а не текст с вложениями.
+  // Признак приходит с карточкой (`questionCount`), поэтому лишнего запроса нет.
+  const isTest = (data?.questionCount ?? 0) > 0;
+  const showForm = canSubmit && !isTest;
 
   return (
     <Screen scroll={false}>
@@ -193,6 +196,14 @@ export function StudentHomeworkDetailScreen({ nav, payload }) {
             disabled={!hasAnswer}
             busy={sending}
             onPress={() => setConfirming(true)}
+          />
+        ) : null}
+
+        {/* У теста своя кнопка: ответы даются на отдельном экране, а не текстом здесь. */}
+        {canSubmit && isTest ? (
+          <SubmitBar
+            label={submission?.attemptCount > 0 ? 'Пройти заново' : 'Пройти тест'}
+            onPress={() => nav('homework-test', { homeworkId: data.id, title: data.title })}
           />
         ) : null}
       </KeyboardAvoidingView>
@@ -752,7 +763,7 @@ function SuccessNotice({ onHide }) {
 }
 
 /** Кнопка отправки на белой подложке — она не должна теряться в длинной карточке. */
-function SubmitBar({ disabled, busy, onPress }) {
+function SubmitBar({ disabled, busy, onPress, label = 'Отправить' }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   return (
@@ -783,7 +794,7 @@ function SubmitBar({ disabled, busy, onPress }) {
           <ActivityIndicator color="#fff" />
         ) : (
           <Txt style={{ fontSize: 16, fontWeight: '600', color: disabled ? c.ink3 : '#fff' }}>
-            Отправить
+            {label}
           </Txt>
         )}
       </Pressable>
