@@ -3,6 +3,7 @@ import { View, ScrollView, Pressable, Linking } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
+import { MathText } from '@shared/math/MathText';
 import Icon from '@shared/components/Icon';
 import { useAuth } from '@features/auth/AuthContext';
 import { homeworkFiles, authHeaders } from '@shared/api/homeworkApi';
@@ -180,10 +181,18 @@ function DueLine({ homework }) {
   );
 }
 
+/**
+ * Описание задания. Через MathText, а не Txt: конспект от модели приходит с формулами
+ * в $…$ (так велит промпт генерации), и родителю незачем видеть \frac вместо дроби.
+ * Для текста без формул MathText отдаёт тот же обычный Txt.
+ */
 function Description({ text }) {
   const { c } = useTheme();
   return (
-    <Txt style={{ fontSize: 14, fontWeight: '400', lineHeight: 20, color: c.inkMuted }}>{text}</Txt>
+    <MathText
+      text={text}
+      style={{ fontSize: 14, fontWeight: '400', lineHeight: 20, color: c.inkMuted }}
+    />
   );
 }
 

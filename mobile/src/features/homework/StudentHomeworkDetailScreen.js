@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
+import { MathText } from '@shared/math/MathText';
 import Icon from '@shared/components/Icon';
 import { ConfirmDialog } from '@shared/components/ui';
 import { useAuth } from '@features/auth/AuthContext';
@@ -287,10 +288,15 @@ function Assignment({ homework }) {
     <View>
       <View style={{ paddingHorizontal: 16, paddingBottom: 12, gap: 6 }}>
         <Txt style={{ fontSize: 13, fontWeight: '400', color: c.ink3 }}>{dueLong(homework)}</Txt>
+        {/* Описание — поле с формулами: конспект от модели приходит с $…$ по прямой
+            инструкции промпта, да и учитель набирает формулы руками. Без MathText
+            ученик увидел бы \frac вместо дроби. Текста без формул это не касается —
+            MathText отдаёт для него обычный Txt. */}
         {homework?.description ? (
-          <Txt style={{ fontSize: 14, fontWeight: '400', lineHeight: 20, color: c.inkMuted }}>
-            {homework.description}
-          </Txt>
+          <MathText
+            text={homework.description}
+            style={{ fontSize: 14, fontWeight: '400', lineHeight: 20, color: c.inkMuted }}
+          />
         ) : null}
       </View>
 
