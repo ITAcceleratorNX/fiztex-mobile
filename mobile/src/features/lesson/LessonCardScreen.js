@@ -9,6 +9,7 @@ import Icon from '@shared/components/Icon';
 import { Pill, Banner } from '@shared/components/ui';
 import { EditableField, LessonActionTile } from '@shared/ui/rows';
 import { useLesson, useLessonEditing } from '@shared/hooks/useLesson';
+import { countLabel, plural } from '@shared/format';
 import { useLessonAttendanceSheet } from '@shared/hooks/useAttendance';
 import { useTeacherLessonHomework } from '@shared/hooks/useTeacherHomework';
 import { sheetStateLabel } from '@shared/api/attendanceMap';
@@ -61,20 +62,21 @@ function homeworkTileValue(state) {
   return drafts > 0 ? `${total} · ${drafts} черн.` : total;
 }
 
-function plural(n, forms) {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return forms[0];
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return forms[1];
-  return forms[2];
-}
-
 /**
  * Подпись плитки оценок: скольким ученикам уже что-то поставили.
  *
  * Считается по строкам листа, а не по числу оценок: за урок ученику ставят до трёх, и
  * «7 оценок» на классе из 25 не отвечает на вопрос «кого я ещё не оценил».
  */
+/**
+ * Подпись плитки материалов. Ноль назван словами, а не «0 материалов»: плитка всё равно
+ * открывается — там учителю сказано, где их прикладывают.
+ */
+function materialsTileValue(count) {
+  if (!count) return 'Материалов нет';
+  return countLabel(count, ['материал', 'материала', 'материалов']);
+}
+
 function gradesTileValue(lesson, sheet, loading) {
   if (lesson?.status === 'CANCELLED') return 'Недоступны — урок отменён';
   if (!lesson?.can?.viewGrades) return 'Нет доступа';
@@ -254,8 +256,8 @@ export function LessonCardScreen({ nav, payload }) {
           />
         </View>
 
-        {/* Разделы урока. Посещаемость читается с бэка; ДЗ, материалы и оценки —
-            отдельные домены, которых в API ещё нет, поэтому их плитки неактивны. */}
+        {/* Разделы урока. Все четыре плитки читают бэк; каждая ведёт на свой экран,
+            и активна лишь та, чей экран смотрящему положен. */}
         <View style={{ gap: 10 }}>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             {/* Плитка ведёт на лист посещаемости — но только тому, кому он положен:
@@ -291,7 +293,21 @@ export function LessonCardScreen({ nav, payload }) {
             />
           </View>
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <LessonActionTile icon="paperclip" tint="blue" label="Материалы" value="Нет файлов" soon />
+            {/* Подпись — счётчик из карточки: он уже посчитан по правам смотрящего,
+                и отдельный запрос за списком ради числа был бы лишним кругом к серверу
+                на каждом открытии урока. */}
+            <LessonActionTile
+              icon="paperclip"
+              tint="blue"
+              label="Материалы"
+              value={materialsTileValue(lesson.materialCount)}
+              onPress={() => nav?.('lesson-materials', {
+                lessonInstanceId: lessonId,
+                // Пустое состояние учителю и ученику говорит разное, а роль экран
+                // материалов сам не спрашивает — карточка её уже знает.
+                canManage: canEdit,
+              })}
+            />
             <LessonActionTile
               icon="award"
               tint="red"

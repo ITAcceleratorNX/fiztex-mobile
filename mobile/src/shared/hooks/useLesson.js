@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@features/auth/AuthContext';
 import { lessonApi } from '@shared/api/lessonApi';
-import { mapLessonCard } from '@shared/api/lessonMap';
+import { mapLessonCard, mapLessonMaterials } from '@shared/api/lessonMap';
 
 /**
  * Карточка урока плюс счётчик истории.
@@ -153,4 +153,41 @@ export function useLessonEditing(lessonId, reload) {
     saveComment: (body) => run(() => lessonApi.upsertComment(token, lessonId, body)),
     deleteComment: () => run(() => lessonApi.deleteComment(token, lessonId)),
   };
+}
+
+/**
+ * Материалы урока.
+ *
+ * Отдельным запросом, а не полем карточки: у большинства уроков материалов нет вовсе, а
+ * счётчик для подписи плитки уже приходит с карточкой (`LessonView.materialCount`).
+ * Поэтому список спрашивают, только когда его открывают.
+ */
+export function useLessonMaterials(lessonId) {
+  const { token } = useAuth();
+  const [loading, setLoading] = useState(Boolean(lessonId));
+  const [error, setError] = useState(null);
+  const [materials, setMaterials] = useState([]);
+
+  const reload = useCallback(async (silent = false) => {
+    if (!token || !lessonId) {
+      setMaterials([]);
+      setLoading(false);
+      return;
+    }
+    if (!silent) setLoading(true);
+    setError(null);
+    try {
+      setMaterials(mapLessonMaterials(await lessonApi.materials(token, lessonId)));
+    } catch (e) {
+      setError(e?.message || 'Не удалось загрузить материалы');
+    } finally {
+      setLoading(false);
+    }
+  }, [token, lessonId]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  return { loading, error, materials, reload };
 }

@@ -5,7 +5,7 @@ import { CustomTabBar } from './CustomTabBar';
 import { withNav } from './withNav';
 import { NotificationsScreen } from '@features/notifications';
 import { ScheduleScreen } from '@features/schedule';
-import { LessonCardScreen, StudentLessonScreen } from '@features/lesson';
+import { LessonCardScreen, LessonMaterialsScreen, StudentLessonScreen } from '@features/lesson';
 import { AttendanceScreen, QrScanScreen } from '@features/attendance';
 import {
   JournalScreen, JournalStudentScreen, LessonGradesScreen,
@@ -110,6 +110,9 @@ export function StudentApp() {
       <SStack.Screen name="Tabs" component={StudentTabs} />
       {renderDetails(SStack, [
         { name: 'lesson', comp: StudentLessonScreen },
+        // Материалы урока — один экран на все три роли: что показывать, решает бэк,
+        // отдавая ученику только то, что учитель открыл.
+        { name: 'lesson-materials', comp: LessonMaterialsScreen },
         { name: 'attendance-scan', comp: QrScanScreen },
         { name: 'homework-card', comp: StudentHomeworkDetailScreen },
         { name: 'homework-test', comp: StudentHomeworkTestScreen },
@@ -158,6 +161,7 @@ export function ParentApp() {
         // Родителю тот же экран: карточка одна на всех, а что в ней доступно, решает бэк
         // через capabilities — отдельный «родительский» экран разошёлся бы с ученическим.
         { name: 'lesson', comp: StudentLessonScreen },
+        { name: 'lesson-materials', comp: LessonMaterialsScreen },
         // Карточка ДЗ у родителя своя, а не общая с учеником: ученическая показывает
         // ответ и форму отправки, а родителю не положено ни то, ни другое.
         { name: 'homework-card', comp: ParentHomeworkDetailScreen },
@@ -201,6 +205,7 @@ export function TeacherApp() {
       <TStack.Screen name="Tabs" component={TeacherTabs} />
       {renderDetails(TStack, [
         { name: 'lesson', comp: LessonCardScreen },
+        { name: 'lesson-materials', comp: LessonMaterialsScreen },
         // Лист посещаемости открывается из карточки урока и в неё же возвращается —
         // отдельной вкладки у него нет: это часть урока, а не самостоятельный раздел.
         { name: 'attendance', comp: AttendanceScreen },

@@ -11,6 +11,7 @@ import { useLesson, useLessonHomework } from '@shared/hooks/useLesson';
 import { useLessonAssignments } from '@shared/hooks/useHomework';
 import { StatusChip, OverdueTag } from '@features/homework/components';
 import { dueShort, isOverdueOpen } from '@shared/api/homeworkMap';
+import { countLabel } from '@shared/format';
 import { useMyLessonAttendance } from '@shared/hooks/useAttendance';
 import { useMyDiaryGrades } from '@shared/hooks/useGrades';
 import { lessonGradesSummary } from '@shared/api/gradesMap';
@@ -452,8 +453,7 @@ export function StudentLessonScreen({ nav, payload }) {
             nav('homework-card', childId ? { homeworkId, childId } : { homeworkId })}
         />
 
-        {/* Посещаемость и оценки приходят с бэка; материалы — отдельный домен,
-            которого в API ещё нет, поэтому его строка остаётся пустым состоянием. */}
+        {/* Все три раздела читают бэк. */}
         <ModuleRow
           icon="userCheck"
           tint="green"
@@ -466,7 +466,18 @@ export function StudentLessonScreen({ nav, payload }) {
             ? 'Загружаем…'
             : attendanceLabel(marking, { cancelled: lesson.status === 'CANCELLED' })}
         />
-        <ModuleRow icon="paperclip" tint="blue" label="Материалы" value="Нет материалов" />
+        {/* Строки нет, когда материалов нет: «Материалов нет» ребёнку не сообщает
+            ничего, а счётчик в карточке уже посчитан по его правам — скрытые учителем
+            материалы в него не входят. */}
+        {lesson.materialCount > 0 ? (
+          <ModuleRow
+            icon="paperclip"
+            tint="blue"
+            label="Материалы"
+            value={countLabel(lesson.materialCount, ['материал', 'материала', 'материалов'])}
+            onPress={() => nav('lesson-materials', { lessonInstanceId: lessonId })}
+          />
+        ) : null}
         <ModuleRow
           icon="award"
           tint="red"

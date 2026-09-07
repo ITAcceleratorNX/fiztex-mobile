@@ -1,4 +1,5 @@
 import { request } from './client';
+import { API_BASE_URL } from './config';
 
 /**
  * Рабочее пространство урока — одно на все роли (LessonController).
@@ -51,10 +52,30 @@ export const lessonApi = {
   uncompleteHomework: (token, lessonId) =>
     request(`/api/lessons/${lessonId}/homework/completion`, { method: 'DELETE', token }),
 
+  /**
+   * Материалы урока. Список приходит **уже отфильтрованным по роли**: ученику и
+   * родителю бэк не отдаёт скрытые материалы вовсе (`LessonMaterialService`). Отбирать
+   * их ещё раз здесь нельзя — это было бы второе место, где живёт правило видимости.
+   */
+  materials: (token, lessonId) => request(`/api/lessons/${lessonId}/materials`, { token }),
+
   /** Тема — поле урока, поэтому ответом приходит карточка целиком. */
   updateTopic: (token, lessonId, topic) =>
     request(`/api/lessons/${lessonId}/topic`, { method: 'PUT', body: { topic }, token }),
 
   clearTopic: (token, lessonId) =>
     request(`/api/lessons/${lessonId}/topic`, { method: 'DELETE', token }),
+};
+
+/**
+ * Адрес содержимого материала — строкой, а не загрузкой: показывает его `Image` или
+ * `WebView`, и оба ходят сами, вместе с заголовком авторизации.
+ *
+ * Через `Linking.openURL` этот адрес открывать нельзя: эндпоинт без заголовка
+ * `Authorization` отвечает `401`, а системный браузер заголовка не пошлёт — учитель
+ * увидел бы страницу ошибки вместо конспекта.
+ */
+export const lessonFiles = {
+  material: (lessonId, materialId) =>
+    `${API_BASE_URL}/api/lessons/${lessonId}/materials/${materialId}/content`,
 };

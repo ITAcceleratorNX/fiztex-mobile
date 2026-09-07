@@ -65,10 +65,7 @@ export async function pickFiles() {
   return (result.assets ?? []).map(fromDocument);
 }
 
-/** «1,2 МБ» — подпись под именем файла; у неизвестного размера её просто нет. */
-export function sizeLabel(bytes) {
-  if (!bytes || bytes <= 0) return null;
-  if (bytes < 1024) return `${bytes} Б`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} КБ`;
-  return `${(bytes / (1024 * 1024)).toFixed(1).replace('.', ',')} МБ`;
-}
+// Реэкспорт: `sizeLabel` переехал в `shared/api/files.js`, когда размер файла
+// понадобился ещё и материалам урока. Экраны ДЗ импортируют его отсюда с самого
+// начала, и править их ради переезда было бы правкой без причины.
+export { sizeLabel } from '@shared/api/files';

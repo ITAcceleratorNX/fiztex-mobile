@@ -1,4 +1,5 @@
 import { abbreviateTeacherName, formatRoom } from './scheduleMap';
+import { sizeLabel } from './files';
 
 const MONTHS_GENITIVE = [
   'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
@@ -143,6 +144,11 @@ export function mapLessonCard(lesson, { highlight = null } = {}) {
       label: CHANGED_LABELS.ROOM,
     },
 
+    // Счётчик уже посчитан по правам смотрящего: ученику и родителю скрытые материалы
+    // в него не входят. Поэтому подпись плитки честна для всех, а списка ради числа
+    // спрашивать не нужно — у большинства уроков материалов нет вовсе.
+    materialCount: typeof lesson.materialCount === 'number' ? lesson.materialCount : 0,
+
     topic: lesson.topic || null,
     homework: mapHomework(lesson.homework),
     comment: comment
@@ -177,4 +183,39 @@ function parseLocalDate(dateStr) {
   // Полдень, а не полночь: иначе смещение таймзоны увело бы дату на день назад.
   const d = new Date(`${dateStr}T12:00:00`);
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Материал урока для списка.
+ *
+ * **Ролевой фильтрации здесь нет намеренно.** Скрытые материалы отсекает бэкенд
+ * (`LessonMaterialService`: ученику и родителю они не приходят вовсе), и повторить это
+ * правило на клиенте значило бы завести второе место, где живёт видимость. Первое же
+ * расхождение двух реализаций либо покажет ученику чужой файл, либо спрячет свой.
+ *
+ * Отсюда и `hidden`: раз скрытый материал доходит только до того, кому он положен,
+ * пометка рисуется по самому полю, без вопросов о роли смотрящего.
+ */
+export function mapLessonMaterial(raw) {
+  if (!raw || raw.id == null) return null;
+  const kind = raw.kind || 'FILE';
+  const isLink = kind === 'LINK';
+  const contentType = raw.contentType || '';
+  return {
+    id: raw.id,
+    kind,
+    isLink,
+    // Картинку показываем наложением внутри экрана, остальное открываем просмотрщиком:
+    // `kind: PHOTO` ставит загрузка с камеры, а файл с картинкой внутри приходит как
+    // FILE — по одному только `kind` половина изображений открывалась бы как документ.
+    isImage: !isLink && (kind === 'PHOTO' || contentType.startsWith('image/')),
+    title: isLink ? raw.url : raw.fileName || 'Файл',
+    url: raw.url || null,
+    sizeLabel: isLink ? null : sizeLabel(raw.sizeBytes),
+    hidden: raw.visibleToStudents === false,
+  };
+}
+
+export function mapLessonMaterials(list) {
+  return (Array.isArray(list) ? list : []).map(mapLessonMaterial).filter(Boolean);
 }
