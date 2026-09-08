@@ -1,7 +1,12 @@
 # fiztex-mobile
 
-Приложение для трёх ролей (ученик / родитель / учитель). Expo SDK 54,
-React Native 0.81, React Navigation 7. Чистый JS, без TypeScript.
+Приложение для трёх ролей (ученик / родитель / учитель). Expo SDK 57,
+React Native 0.86, React Navigation 7. Чистый JS, без TypeScript.
+
+Версии пакетов держит сам Expo — свои ставить нельзя, иначе связка разъезжается:
+однажды подняли только пакет `expo` до 57, остальные 25 остались на 54, и сборка
+падала на `react-native-svg`, который тянул `buffer` из Node. Проверка — `npx expo
+install --check`, починка — `npx expo install --fix`.
 
 ```bash
 cd mobile && npx expo start        # a — Android, i — iOS, w — web
@@ -71,6 +76,17 @@ cd mobile && node scripts/build-katex-asset.mjs
 ```
 
 Контракт разметки — `fiztex-back/docs/formula-contract.md`.
+
+**Необъявленные имена.** Babel проверяет синтаксис, а не имена: файл с потерянным
+импортом компилируется молча и падает уже на экране (так `QuestionBody` переехал в
+`shared` без `useTheme`). Перед коммитом:
+
+```bash
+cd mobile && node scripts/verify-undefined-names.cjs
+```
+
+Без аргументов проходит по всему `src/`. `Buffer` намеренно не в списке известных
+глобальных: в Hermes его нет, и обращение к нему — находка, а не шум.
 
 **Мок → API.** `shared/data/mock.js` — временные данные прототипа. Экран
 считается готовым, когда данные идут с бэка, а не из мока.

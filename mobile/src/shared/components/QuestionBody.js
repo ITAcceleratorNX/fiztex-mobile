@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Pressable, TextInput } from 'react-native';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
+import { useTheme } from '@shared/theme/ThemeContext';
 import { MathText } from '@shared/math/MathText';
 
 /**

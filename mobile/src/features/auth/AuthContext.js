@@ -71,7 +71,11 @@ function decodeBase64Url(value) {
   const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
   const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
   if (typeof atob === 'function') return atob(padded);
-  return Buffer.from(padded, 'base64').toString('binary');
+  // Раньше здесь стоял `Buffer.from(...)` — ветка на Node. В Hermes `Buffer` не
+  // существует вовсе, и она не запасной путь, а `ReferenceError` в разборе токена.
+  // `atob` есть и в Hermes, и в браузере, и в Node — так что сюда не доходит; но если
+  // дойдёт, честная ошибка попадёт в try/catch выше и токен просто сочтут без срока.
+  throw new Error('Base64 decoding is unavailable in this runtime');
 }
 
 /** Токен без `exp` считаем годным: решать за бэкенд по отсутствию поля — хуже, чем спросить. */
