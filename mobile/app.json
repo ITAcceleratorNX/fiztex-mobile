@@ -45,7 +45,11 @@
         {
           "faceIDPermission": "Вход в Fiztex с помощью Face ID"
         }
-      ]
+      ],
+      "expo-asset",
+      "expo-font",
+      "expo-splash-screen",
+      "expo-status-bar"
     ],
     "web": {
       "bundler": "metro"
