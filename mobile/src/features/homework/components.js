@@ -96,6 +96,10 @@ export function HomeworkRow({ row, onPress }) {
               {row.subjectName}
             </Txt>
             <Txt style={{ fontSize: 13, fontWeight: '400', color: c.ink3 }}>{dueShort(row)}</Txt>
+            {/* Словом, а не иконкой: тест отличается от обычного задания тем, что его
+                проходят в приложении, — и узнать об этом, не открывая каждое задание из
+                двадцати, нужно и ученику, и родителю. */}
+            {row.questionCount > 0 ? <TestTag /> : null}
           </View>
           <Txt style={{ fontSize: 15, fontWeight: '500', color: c.ink }} numberOfLines={1}>
             {row.title}
@@ -108,6 +112,23 @@ export function HomeworkRow({ row, onPress }) {
         </View>
       </Pressable>
       <View style={{ height: 1, backgroundColor: c.bg2 }} />
+    </View>
+  );
+}
+
+/** Пометка «Тест» в строке списка — компактнее пилюли, у которой на 13 кегле свои поля. */
+function TestTag() {
+  const { c } = useTheme();
+  return (
+    <View
+      style={{
+        paddingHorizontal: 6,
+        paddingVertical: 1,
+        borderRadius: 4,
+        backgroundColor: c.blueSoft,
+      }}
+    >
+      <Txt style={{ fontSize: 11, fontWeight: '600', color: c.blue }}>Тест</Txt>
     </View>
   );
 }

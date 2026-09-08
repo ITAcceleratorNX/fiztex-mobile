@@ -438,3 +438,37 @@ export function useMySubjectDetail({
 
   return { loading, error, history, finals, reload };
 }
+
+/**
+ * Оценка за одно задание — карточка ДЗ ученика и родителя.
+ *
+ * Отдельный и некритичный запрос: карточка задания оценки не несёт вовсе, а её отсутствие
+ * не должно ронять экран — ровно так же, как отметка посещаемости в расписании. Сбой
+ * гасится, и карточка остаётся карточкой.
+ *
+ * За задание ставят одну оценку (уникальный индекс на бэке), но приходит список: правило
+ * может измениться, а форма ответа — нет.
+ */
+export function useMyHomeworkGrade(homeworkId, { childStudentProfileId = null } = {}) {
+  const { token } = useAuth();
+  const [grade, setGrade] = useState(null);
+
+  const reload = useCallback(async () => {
+    if (!token || !homeworkId) {
+      setGrade(null);
+      return;
+    }
+    try {
+      const list = await gradesApi.myHomeworkGrades(token, homeworkId, { childStudentProfileId });
+      setGrade((Array.isArray(list) ? list : [])[0] || null);
+    } catch {
+      setGrade(null);
+    }
+  }, [token, homeworkId, childStudentProfileId]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  return { grade, reload };
+}

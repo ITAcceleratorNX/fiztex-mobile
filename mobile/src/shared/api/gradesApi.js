@@ -62,6 +62,15 @@ export const gradesApi = {
    */
   mySubjects: (token, { academicPeriodId, childStudentProfileId } = {}) =>
     request(`/api/grades/my/subjects${query({ academicPeriodId, childStudentProfileId })}`, { token }),
+
+  /**
+   * Оценка за одно задание — карточка ДЗ ученика и родителя.
+   *
+   * Отдельный адрес, а не поле карточки: `ChildHomeworkView` оценки не несёт, а
+   * учительский `/api/homework/{id}/grades` отдаёт весь класс и родителя туда не пускает.
+   */
+  myHomeworkGrades: (token, homeworkId, { childStudentProfileId } = {}) =>
+    request(`/api/grades/my/homework/${homeworkId}${query({ childStudentProfileId })}`, { token }),
 };
 
 /**

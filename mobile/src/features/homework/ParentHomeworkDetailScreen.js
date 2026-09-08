@@ -8,7 +8,11 @@ import Icon from '@shared/components/Icon';
 import { useAuth } from '@features/auth/AuthContext';
 import { homeworkFiles, authHeaders } from '@shared/api/homeworkApi';
 import { closedNotice, dueLong, stamp, subjectLine } from '@shared/api/homeworkMap';
+import { gradeTypeLabel } from '@shared/api/gradesMap';
 import { useChildHomework } from '@shared/hooks/useHomework';
+import { useMyHomeworkGrade } from '@shared/hooks/useGrades';
+import { Pill } from '@shared/components/ui';
+import { plural } from '@shared/format';
 import {
   ChipRow,
   Divider,
@@ -39,6 +43,9 @@ export function ParentHomeworkDetailScreen({ nav, payload }) {
   const childId = payload?.childId;
   const { token } = useAuth();
   const { loading, error, data, reload } = useChildHomework(homeworkId, childId);
+  // Оценка приходит своим запросом: карточка задания её не несёт, а учительский список
+  // по заданию отдаёт весь класс и родителя туда не пускает.
+  const { grade } = useMyHomeworkGrade(homeworkId, { childStudentProfileId: childId });
   const headers = useMemo(() => authHeaders(token), [token]);
 
   if (loading) {
@@ -112,7 +119,7 @@ export function ParentHomeworkDetailScreen({ nav, payload }) {
 
         <Divider style={{ marginHorizontal: 16 }} />
 
-        <Work homework={data} childId={childId} work={work} headers={headers} />
+        <Work homework={data} childId={childId} work={work} headers={headers} grade={grade} />
       </ScrollView>
     </Screen>
   );
@@ -168,6 +175,17 @@ function Header({ homework, row }) {
             Учитель: {homework.teacherName}
           </Txt>
         ) : null}
+        {/* Тест выглядит для родителя иначе не оформлением, а сутью: ребёнок отвечает в
+            приложении, а не в тетради, и «сделал ли» проверяется отправкой, а не
+            фотографией. Число вопросов — единственное, что об этом говорит, и бэк
+            присылает его именно для этого (ChildHomeworkView.questionCount). */}
+        {homework.questionCount > 0 ? (
+          <View style={{ flexDirection: 'row', paddingTop: 2 }}>
+            <Pill color="blue">
+              {`Тест · ${homework.questionCount} ${plural(homework.questionCount, ['вопрос', 'вопроса', 'вопросов'])}`}
+            </Pill>
+          </View>
+        ) : null}
       </View>
       <StatusChip row={row} size="md" />
     </View>
@@ -218,7 +236,7 @@ function MaterialChip({ homeworkId, material }) {
  * именно ребёнок написал и приложил, остаётся между ним и учителем — этого нет ни в
  * ответе бэка, ни здесь.
  */
-function Work({ homework, childId, work, headers }) {
+function Work({ homework, childId, work, headers, grade }) {
   const { c } = useTheme();
   const review = work.lastReview;
   const photos = review?.photos ?? [];
@@ -253,9 +271,44 @@ function Work({ homework, childId, work, headers }) {
         </View>
       ) : null}
 
-      <SubmittedLine work={work} />
+      <GradeLine grade={grade} />
+
+      <SubmittedLine homework={homework} work={work} />
 
       <StatusHint>{waitingFor(homework, work)}</StatusHint>
+    </View>
+  );
+}
+
+/**
+ * Оценка за задание — то, ради чего родитель чаще всего сюда и заходит.
+ *
+ * Оценки может не быть по двум разным причинам — не проверили или её тут не ставят, — и
+ * различить их родителю нечем: бэк не сообщает, собирается ли учитель оценивать это
+ * задание. Поэтому строки просто нет: пустое «Оценка: —» читалось бы как «поставили
+ * ничего».
+ */
+function GradeLine({ grade }) {
+  const { c } = useTheme();
+  if (!grade?.scaleCode) return null;
+  return (
+    <View style={{ paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+      <View
+        style={{
+          minWidth: 34,
+          height: 34,
+          paddingHorizontal: 8,
+          borderRadius: 10,
+          backgroundColor: c.blue,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Txt style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{grade.scaleCode}</Txt>
+      </View>
+      <Txt style={{ fontSize: 13, fontWeight: '500', color: c.inkMuted }}>
+        {gradeTypeLabel(grade.gradeType)}
+      </Txt>
     </View>
   );
 }
@@ -264,15 +317,20 @@ function Work({ homework, childId, work, headers }) {
  * «Отправлено 15 окт, 09:12» — единственный след ответа, доступный родителю. Число
  * попыток рядом только когда их было больше одной: «попытка 1 из 1» ничего не сообщает.
  */
-function SubmittedLine({ work }) {
+function SubmittedLine({ homework, work }) {
   const { c } = useTheme();
   const at = stamp(work.lastSubmittedAt);
   if (!at) return null;
+  // У теста «отправлено» звучит как отправленный файл, хотя ребёнок отвечал на вопросы
+  // в приложении. Слово другое, факт тот же.
+  const isTest = homework?.questionCount > 0;
   return (
     <View style={{ paddingHorizontal: 16 }}>
       <Txt style={{ fontSize: 13, fontWeight: '400', color: c.inkMuted }}>
-        Отправлено: {at}
-        {work.attemptCount > 1 ? ` · отправок: ${work.attemptCount}` : ''}
+        {isTest ? 'Пройден' : 'Отправлено'}: {at}
+        {work.attemptCount > 1
+          ? ` · ${isTest ? 'попыток' : 'отправок'}: ${work.attemptCount}`
+          : ''}
       </Txt>
     </View>
   );
@@ -281,6 +339,7 @@ function SubmittedLine({ work }) {
 /** Чего ждёт эта работа — курсивная строка внизу карточки. */
 function waitingFor(homework, work) {
   if (homework.status === 'CANCELLED') return 'Задание отменено';
+  const isTest = homework.questionCount > 0;
   if (homework.status === 'COMPLETED') {
     return work.status === 'DONE' ? 'Работа принята учителем' : 'Задание закрыто';
   }
@@ -292,6 +351,7 @@ function waitingFor(homework, work) {
     case 'DONE':
       return 'Работа принята учителем';
     default:
-      return 'Ответ пока не отправлен';
+      // Для теста «ответ не отправлен» непонятно: ребёнок его не пишет, а проходит.
+      return isTest ? 'Тест пока не пройден' : 'Ответ пока не отправлен';
   }
 }
