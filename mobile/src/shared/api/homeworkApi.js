@@ -77,6 +77,37 @@ export const homeworkApi = {
     });
   },
 
+  /**
+   * Свои снимки решения по вопросу — те, что ещё не отправлены (AIGRADE-003).
+   *
+   * Фото уезжают до отправки, своим маленьким запросом: класть их в тело сдачи значило бы
+   * отправлять десять мегабайт вместе с ответами, а на школьной сети такой запрос
+   * срывается и уносит с собой набранный текст.
+   */
+  answerPhotos(token, homeworkId, questionId) {
+    return request(`/api/homework/${homeworkId}/my-submission/questions/${questionId}/photos`, {
+      token,
+    });
+  },
+
+  uploadAnswerPhoto(token, homeworkId, questionId, photo) {
+    const form = new FormData();
+    form.append('file', asUpload(photo));
+    return requestMultipart(
+      `/api/homework/${homeworkId}/my-submission/questions/${questionId}/photos`,
+      form,
+      { token },
+    );
+  },
+
+  /** Удалить свой снимок. После отправки работы бэкенд отвечает отказом: попытка неизменяема. */
+  deleteAnswerPhoto(token, homeworkId, photoId) {
+    return request(`/api/homework/${homeworkId}/my-submission/answer-photos/${photoId}`, {
+      method: 'DELETE',
+      token,
+    });
+  },
+
   /** Карточка задания вместе со своей работой — единственный вход ученика в модуль. */
   myOne(token, homeworkId) {
     return request(`/api/homework/${homeworkId}/my-submission`, { token });
@@ -223,6 +254,8 @@ export const homeworkFiles = {
     `${API_BASE_URL}/api/homework/${homeworkId}/materials/${materialId}/content`,
   myAttachment: (homeworkId, attachmentId) =>
     `${API_BASE_URL}/api/homework/${homeworkId}/my-submission/attachments/${attachmentId}/content`,
+  myAnswerPhoto: (homeworkId, photoId) =>
+    `${API_BASE_URL}/api/homework/${homeworkId}/my-submission/answer-photos/${photoId}/content`,
   myReviewPhoto: (homeworkId, photoId) =>
     `${API_BASE_URL}/api/homework/${homeworkId}/my-submission/review-photos/${photoId}/content`,
   childReviewPhoto: (homeworkId, childId, photoId) =>

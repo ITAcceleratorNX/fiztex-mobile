@@ -16,6 +16,7 @@ import { QuestionBody } from '@shared/components/QuestionBody';
 import { MathText } from '@shared/math/MathText';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { useHomeworkTest } from '@shared/hooks/useHomework';
+import { AnswerPhotos } from './AnswerPhotos';
 
 /**
  * Прохождение теста домашнего задания (ТЗ HOMEWORK-BE-006 §6).
@@ -183,6 +184,15 @@ export function StudentHomeworkTestScreen({ nav, payload }) {
               value={answers[question.id]}
               onChange={(next) => setAnswer(question.id, next)}
             />
+
+            {/*
+              Решение задачи по физике — это выкладки и чертёж: набирать их текстом на
+              телефоне ребёнок не станет. Разрешает фотографию учитель, по каждому вопросу
+              отдельно, поэтому и блок появляется только там, где он её разрешил.
+            */}
+            {question.allowPhoto ? (
+              <AnswerPhotos homeworkId={homeworkId} question={question} />
+            ) : null}
           </Card>
         ))}
       </ScrollView>
