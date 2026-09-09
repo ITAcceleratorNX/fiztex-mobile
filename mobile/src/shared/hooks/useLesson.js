@@ -152,6 +152,13 @@ export function useLessonEditing(lessonId, reload) {
     clearTopic: () => run(() => lessonApi.clearTopic(token, lessonId)),
     saveComment: (body) => run(() => lessonApi.upsertComment(token, lessonId, body)),
     deleteComment: () => run(() => lessonApi.deleteComment(token, lessonId)),
+
+    // «ДЗ не задано» и отмена отметки. Тем же `run`, что тема и комментарий: действие
+    // пишется в журнал урока, и счётчик истории обязан сойтись с записанным.
+    markHomeworkNotAssigned: () =>
+      run(() => lessonApi.markHomeworkNotAssigned(token, lessonId)),
+    clearHomeworkNotAssigned: () =>
+      run(() => lessonApi.clearHomeworkNotAssigned(token, lessonId)),
   };
 }
 
