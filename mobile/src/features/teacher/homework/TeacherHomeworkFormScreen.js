@@ -9,7 +9,6 @@ import {
   Banner,
   Card,
   FilledButton,
-  OutlineButton,
   PickerSheet,
   ScreenHeader,
 } from '@shared/components/ui';
@@ -136,7 +135,7 @@ export function TeacherHomeworkFormScreen({ nav, payload }) {
     && (editing || (standalone ? pair != null : lessonId != null))
     && (recipientType !== 'TEMP_GROUP' || tempGroupId != null);
 
-  const onSave = useCallback(async (publish) => {
+  const onSave = useCallback(async () => {
     clearError();
     const body = editing
       ? {
@@ -159,7 +158,7 @@ export function TeacherHomeworkFormScreen({ nav, payload }) {
           dueAt: dueType === 'EXACT' ? endOfDay(dueDate).toISOString() : undefined,
         };
 
-    const saved = await save({ homeworkId: editId, body, publish });
+    const saved = await save({ homeworkId: editId, body });
     if (!saved) return;
     // Возврат туда, откуда пришли, а не переход в карточку: экран, с которого открыли
     // форму, перечитывает себя на фокусе и сразу показывает результат. Иначе форма
@@ -324,20 +323,14 @@ export function TeacherHomeworkFormScreen({ nav, payload }) {
             backgroundColor: c.surface,
           }}
         >
-          {editing ? (
-            <FilledButton disabled={!valid || saving} onPress={() => onSave(false)}>
-              {saving ? 'Сохраняем…' : 'Сохранить'}
-            </FilledButton>
-          ) : (
-            <>
-              <FilledButton disabled={!valid || saving} onPress={() => onSave(true)}>
-                {saving ? 'Сохраняем…' : 'Опубликовать'}
-              </FilledButton>
-              <OutlineButton size="lg" disabled={!valid || saving} onPress={() => onSave(false)}>
-                Сохранить черновик
-              </OutlineButton>
-            </>
-          )}
+          {/*
+            Одна кнопка и у создания: задание рождается черновиком, а публикуется с
+            карточки. Раньше главной кнопкой формы была «Опубликовать», и задание уходило
+            классу до того, как учитель увидел его целиком.
+          */}
+          <FilledButton disabled={!valid || saving} onPress={() => onSave()}>
+            {saving ? 'Сохраняем…' : editing ? 'Сохранить' : 'Создать черновик'}
+          </FilledButton>
         </View>
       </KeyboardAvoidingView>
 

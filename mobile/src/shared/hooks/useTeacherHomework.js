@@ -216,13 +216,20 @@ export function useTeacherLessonHomework(lessonId, { enabled = true } = {}) {
   return { ...state, reload: load };
 }
 
-/** Сохранение задания: создание и правка отличаются только вызовом. */
+/**
+ * Сохранение задания: создание и правка отличаются только вызовом.
+ *
+ * <p><b>Публикации здесь нет.</b> Созданное задание — всегда черновик: до карточки его
+ * ещё не видел никто, включая автора, а на карточке происходит всё остальное — генерация
+ * текста и вопросов моделью, их проверка и правка. Публикация живёт там же, отдельным
+ * действием с подтверждением.
+ */
 export function useHomeworkSave() {
   const { token } = useAuth();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  const save = useCallback(async ({ homeworkId, body, publish }) => {
+  const save = useCallback(async ({ homeworkId, body }) => {
     if (!token || saving) return null;
     setSaving(true);
     setError(null);
@@ -230,11 +237,6 @@ export function useHomeworkSave() {
       const saved = homeworkId
         ? await homeworkApi.update(token, homeworkId, body)
         : await homeworkApi.create(token, body);
-      if (publish) {
-        // Публикация — отдельный шаг после сохранения: у «до следующего урока» она может
-        // отказать (урока впереди нет), и черновик при этом обязан остаться сохранённым.
-        await homeworkApi.publish(token, saved.id);
-      }
       return saved;
     } catch (e) {
       setError(e?.message || 'Не удалось сохранить задание');
