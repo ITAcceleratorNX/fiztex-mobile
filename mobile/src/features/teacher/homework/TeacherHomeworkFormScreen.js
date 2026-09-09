@@ -305,16 +305,38 @@ export function TeacherHomeworkFormScreen({ nav, payload }) {
                 : 'Отмечает попытки сделать скриншот текста задания. Переключение приложений нарушением не считается.'}
             </Txt>
 
-            <FieldLabel>Описание и инструкция</FieldLabel>
+            {/*
+              Поле одно, но означает разное, и подпись обязана это показывать. У работы
+              текстом здесь само задание. У теста — только инструкция к нему: сама работа
+              лежит в вопросах, и общая подпись читалась как второй способ задать ДЗ —
+              учитель видел в одной форме и тест, и текстовую работу, хотя тип выбран один.
+            */}
+            <FieldLabel>
+              {answerFormat === 'TEST' ? 'Инструкция к тесту' : 'Описание и инструкция'}
+            </FieldLabel>
             <TextInput
               value={description}
               onChangeText={setDescription}
-              placeholder="Что нужно сделать и как сдать"
+              placeholder={
+                answerFormat === 'TEST'
+                  ? 'Что за тест и чем можно пользоваться'
+                  : 'Что нужно сделать и как сдать'
+              }
               placeholderTextColor={c.ink3}
               maxLength={4000}
               multiline
-              style={{ ...inputStyle(c), minHeight: 120, textAlignVertical: 'top', paddingTop: 12 }}
+              style={{
+                ...inputStyle(c),
+                minHeight: answerFormat === 'TEST' ? 80 : 120,
+                textAlignVertical: 'top',
+                paddingTop: 12,
+              }}
             />
+            {answerFormat === 'TEST' ? (
+              <Txt style={{ fontSize: 12, lineHeight: 17, color: c.inkMuted }}>
+                Сама работа — это вопросы: они добавляются на карточке задания.
+              </Txt>
+            ) : null}
           </Card>
 
           <Card elevated style={{ gap: 10 }}>

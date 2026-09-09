@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
-import { Banner, Pill, PrimaryButton, SegmentedSwitch } from '@shared/components/ui';
+import { Banner, OutlineButton, Pill, PrimaryButton, SegmentedSwitch } from '@shared/components/ui';
 import { useLessonMaterials } from '@shared/hooks/useLesson';
 import { useHomeworkAiGeneration, useHomeworkAiQuota } from '@shared/hooks/useTeacherHomework';
 import { jobOutcome, phaseLabel, quotaLabel } from '@shared/api/homeworkAiMap';
@@ -148,6 +148,8 @@ export function HomeworkAiSheet({
                 onClose={onClose}
                 onWriteManually={onWriteManually}
                 onOpenQuestions={onOpenQuestions}
+                onDecide={generation.decide}
+                deciding={generation.deciding}
               />
             ) : (
               <SetupBlock
@@ -336,7 +338,9 @@ function RunningBlock({ job }) {
 }
 
 /** Исход: получилось, не применилось или не вышло. У каждого свои слова и своё действие. */
-function OutcomeBlock({ outcome, kind, onClose, onWriteManually, onOpenQuestions }) {
+function OutcomeBlock({
+  outcome, kind, onClose, onWriteManually, onOpenQuestions, onDecide, deciding,
+}) {
   const { c } = useTheme();
   const tone = outcome.kind === 'failed' ? 'alertTriangle' : outcome.kind === 'done' ? 'check' : 'info';
 
@@ -358,6 +362,32 @@ function OutcomeBlock({ outcome, kind, onClose, onWriteManually, onOpenQuestions
         <PrimaryButton onPress={() => { onClose(); onWriteManually?.(); }}>
           Написать самому
         </PrimaryButton>
+      ) : outcome.kind === 'awaiting' ? (
+        /*
+          Решение принимается здесь, а не в вебе. Сравнения двух текстов рядом на экране в
+          390 точек по-прежнему нет — там его действительно не разложить, — но выбор между
+          «взять машинный» и «оставить своё» в две кнопки укладывается, и без него
+          генерация с телефона обрывалась ровно на результате.
+        */
+        <View style={{ gap: 8 }}>
+          <PrimaryButton
+            disabled={deciding}
+            onPress={async () => {
+              if (await onDecide?.(true)) onClose();
+            }}
+          >
+            {deciding ? 'Применяем…' : 'Взять вариант ИИ'}
+          </PrimaryButton>
+          <OutlineButton
+            size="lg"
+            disabled={deciding}
+            onPress={async () => {
+              if (await onDecide?.(false)) onClose();
+            }}
+          >
+            Оставить свой текст
+          </OutlineButton>
+        </View>
       ) : kind === 'TEST' && outcome.kind === 'done' ? (
         // Сгенерированный тест ведёт прямо в редактор: непрочитанные машинные вопросы —
         // ровно то, ради чего генерация с телефона раньше была закрыта.

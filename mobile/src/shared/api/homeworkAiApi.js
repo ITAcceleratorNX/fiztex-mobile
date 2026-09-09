@@ -37,6 +37,27 @@ export const homeworkAiApi = {
 
   /** Генерации задания: карточка узнаёт из них, что задача ещё идёт. */
   jobs: (token, homeworkId) => request(`/api/homework/${homeworkId}/ai-generations`, { token }),
+
+  /**
+   * Применить готовый вариант поверх своего текста.
+   *
+   * <p>Нужен ровно в одном случае: учитель правил задание после прошлой генерации, и
+   * сервер не стал затирать его текст молча. Раньше телефон в этом месте отправлял в
+   * веб-версию — «сравните там», — и генерация с телефона оказывалась наполовину
+   * бесполезной: дошёл до результата и не смог им воспользоваться.
+   */
+  apply: (token, homeworkId, jobId) =>
+    request(`/api/homework/${homeworkId}/ai-generations/${jobId}/apply`, {
+      method: 'POST',
+      token,
+    }),
+
+  /** Отказаться от варианта: свой текст остаётся, задача закрывается. */
+  discard: (token, homeworkId, jobId) =>
+    request(`/api/homework/${homeworkId}/ai-generations/${jobId}/discard`, {
+      method: 'POST',
+      token,
+    }),
 };
 
 /** Ключ идемпотентности на одно открытие шита. */

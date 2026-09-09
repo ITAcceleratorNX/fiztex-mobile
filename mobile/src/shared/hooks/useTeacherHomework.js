@@ -489,7 +489,37 @@ export function useHomeworkAiGeneration(homeworkId, { onApplied } = {}) {
     key.current = newIdempotencyKey();
   }, []);
 
-  return { job, starting, error, running: isRunning(job), start, adopt, reset };
+  /**
+   * Решение по варианту, который сервер не применил сам: взять его или оставить своё.
+   *
+   * <p>Раньше телефон в этом месте отправлял в веб — «сравните там», — и генерация с
+   * телефона обрывалась ровно на результате. Сравнения двух текстов на экране в 390 точек
+   * по-прежнему нет: там его действительно не разложить. Но решение принять можно, и
+   * применённый вариант виден сразу в описании задания.
+   */
+  const [deciding, setDeciding] = useState(false);
+  const decide = useCallback(async (take) => {
+    if (!token || !homeworkId || job?.id == null || deciding) return false;
+    setDeciding(true);
+    setError(null);
+    try {
+      const next = take
+        ? await homeworkAiApi.apply(token, homeworkId, job.id)
+        : await homeworkAiApi.discard(token, homeworkId, job.id);
+      setJob(next);
+      if (take) onApplied?.(next);
+      return true;
+    } catch (e) {
+      setError(e?.message || 'Не удалось применить вариант');
+      return false;
+    } finally {
+      setDeciding(false);
+    }
+  }, [token, homeworkId, job, deciding, onApplied]);
+
+  return {
+    job, starting, error, running: isRunning(job), start, adopt, reset, decide, deciding,
+  };
 }
 
 /**

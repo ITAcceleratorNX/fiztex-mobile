@@ -281,7 +281,9 @@ export function TeacherHomeworkCardScreen({ nav, payload }) {
         lessonId={homework.lessonId ?? null}
         isTest={homework.answerFormat === 'TEST'}
         existingJob={runningAi.job}
-        onClose={() => { setAiOpen(false); runningAi.reload(); }}
+        // Перечитываем карточку и при обычном закрытии: результат мог примениться сам,
+        // и без этого учитель закрывал шит со словом «Готово» — и не видел ничего нового.
+        onClose={() => { setAiOpen(false); runningAi.reload(); void reload(true); }}
         onApplied={() => { void reload(true); runningAi.reload(); }}
         onWriteManually={() => nav('homework-create', { homeworkId })}
         onOpenQuestions={() => nav('homework-questions', { homeworkId })}
