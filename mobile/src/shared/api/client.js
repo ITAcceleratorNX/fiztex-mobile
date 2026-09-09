@@ -30,11 +30,21 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Сеть недоступна.
+ *
+ * <p>Прежний текст показывал адрес сервера и слово «backend»: ученику это не говорит
+ * ничего, а проверить он может ровно одно — свой интернет. Адрес остаётся в логе
+ * разработчика, человеку — то, что он способен сделать.
+ */
+/** Ждали дольше таймаута. Для человека это то же самое, что нет связи. */
+const TIMEOUT_MESSAGE = 'Сервер долго не отвечает. Проверьте интернет и попробуйте снова.';
+
 function networkError(message) {
-  return new ApiError(
-    0,
-    message || `Не удалось соединиться с сервером (${API_BASE_URL}). Проверьте сеть и backend.`,
-  );
+  if (!message) {
+    console.warn(`Network request failed: ${API_BASE_URL}`);
+  }
+  return new ApiError(0, message || 'Нет связи с сервером. Проверьте интернет и попробуйте снова.');
 }
 
 async function fetchWithTimeout(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
@@ -43,13 +53,13 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = REQUEST_TIMEOUT_M
   const timeoutPromise = new Promise((_, reject) => {
     timer = setTimeout(() => {
       controller.abort();
-      reject(networkError(`Сервер не отвечает (${API_BASE_URL}). Проверьте сеть и что backend запущен.`));
+      reject(networkError(TIMEOUT_MESSAGE));
     }, timeoutMs);
   });
 
   const fetchPromise = fetch(url, { ...options, signal: controller.signal }).catch((e) => {
     if (e?.name === 'AbortError') {
-      throw networkError(`Сервер не отвечает (${API_BASE_URL}). Проверьте сеть и что backend запущен.`);
+      throw networkError(TIMEOUT_MESSAGE);
     }
     throw e;
   });
@@ -61,8 +71,21 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = REQUEST_TIMEOUT_M
   }
 }
 
+/**
+ * Ответ без внятного текста. «Ошибка 500» человеку не говорит ни что случилось, ни что
+ * делать; код остаётся в `ApiError.status` — по нему разбирается экран, а не человек.
+ */
+function fallbackMessage(status) {
+  if (status >= 500) return 'Сервер не ответил. Попробуйте ещё раз через минуту.';
+  if (status === 404) return 'Не найдено. Возможно, это уже удалили.';
+  if (status === 403) return 'У вас нет доступа к этому действию.';
+  if (status === 409) return 'Данные изменились, пока вы работали. Обновите экран.';
+  if (status === 413) return 'Файл слишком большой — выберите файл поменьше.';
+  return 'Не удалось выполнить действие. Попробуйте ещё раз.';
+}
+
 async function parseError(res) {
-  let message = `Ошибка ${res.status}`;
+  let message = fallbackMessage(res.status);
   let code;
   let details;
   try {
