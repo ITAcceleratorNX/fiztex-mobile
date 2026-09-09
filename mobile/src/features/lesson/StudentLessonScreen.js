@@ -16,6 +16,7 @@ import { useMyLessonAttendance } from '@shared/hooks/useAttendance';
 import { useMyDiaryGrades } from '@shared/hooks/useGrades';
 import { lessonGradesSummary } from '@shared/api/gradesMap';
 import { attendanceLabel } from '@shared/api/attendanceMap';
+import { homeworkStateLabel } from '@shared/api/lessonHomeworkState';
 import { LessonHero } from './LessonHero';
 import { LessonCardFallback, LessonCardHeader } from './LessonCardStates';
 
@@ -75,11 +76,16 @@ function TopicCard({ topic, comment }) {
  *   ответа и проверки, её считает учитель в журнале.
  *
  * Задания идут первыми: сдают работу именно по ним, а отметка — вспомогательная.
- * «Задание отсутствует» показывается, только когда нет ни того, ни другого, — иначе экран
- * говорил бы «ничего не задано» поверх выданных заданий.
+ * Состояние блока (`state`) показывается, только когда показывать больше нечего, — иначе
+ * экран говорил бы «ничего не задано» поверх выданных заданий.
+ *
+ * Слово в пустом блоке приходит с бэка и различает две вещи, неразличимые на глаз:
+ * «учитель решил не задавать» и «учитель ещё ничего не сделал». Черновика среди них нет —
+ * ученику и родителю бэкенд отдаёт на его месте «пока не указано».
  */
 function HomeworkCard({
   homework,
+  state,
   canSubmit,
   saving,
   error,
@@ -150,7 +156,9 @@ function HomeworkCard({
           Не удалось загрузить задания урока
         </Txt>
       ) : assignments.length === 0 ? (
-        <Txt style={{ fontSize: 14, fontWeight: '400', color: c.ink3 }}>Задание отсутствует</Txt>
+        <Txt style={{ fontSize: 14, fontWeight: '400', color: c.ink3 }}>
+          {homeworkStateLabel(state) || 'Задание отсутствует'}
+        </Txt>
       ) : null}
 
       {error ? (
@@ -439,6 +447,7 @@ export function StudentLessonScreen({ nav, payload }) {
 
         <HomeworkCard
           homework={lesson.homework}
+          state={lesson.homeworkState}
           canSubmit={lesson.can.submitHomework}
           saving={homework.saving}
           error={homework.error}
