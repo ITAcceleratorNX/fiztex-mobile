@@ -193,7 +193,7 @@ function renderParent({ data, grade = null }) {
 const plainHomework = {
   id: 8, title: 'Упражнения 1–5', subjectName: 'Математика', className: '7А',
   teacherName: 'Смирнова С. Д.', status: 'PUBLISHED', dueType: 'EXACT',
-  dueAt: '2026-09-20T20:00:00Z', questionCount: 0, materials: [],
+  dueAt: '2026-09-20T20:00:00Z', questionCount: 0, answerFormat: 'WRITTEN', materials: [],
   work: { status: 'NOT_SUBMITTED', attemptCount: 0 },
 };
 
@@ -201,6 +201,7 @@ const testHomework = {
   ...plainHomework,
   title: 'Плотность вещества',
   questionCount: 5,
+  answerFormat: 'TEST',
   work: { status: 'SUBMITTED', attemptCount: 1, lastSubmittedAt: '2026-09-18T10:15:00Z' },
 };
 
@@ -297,9 +298,9 @@ function rowText(row) {
 }
 
 check('в списке тест помечен',
-  /Тест/.test(rowText({ id: 1, title: 'Плотность', subjectName: 'Физика', questionCount: 5 })));
+  /Тест/.test(rowText({ id: 1, title: 'Плотность', subjectName: 'Физика', questionCount: 5, answerFormat: 'TEST' })));
 check('обычное задание в списке не помечено',
-  !/Тест/.test(rowText({ id: 2, title: 'Упражнения', subjectName: 'Физика', questionCount: 0 })));
+  !/Тест/.test(rowText({ id: 2, title: 'Упражнения', subjectName: 'Физика', questionCount: 0, answerFormat: 'WRITTEN' })));
 check('строка без questionCount не ломается',
   !/Тест/.test(rowText({ id: 3, title: 'Старое', subjectName: 'Физика' })),
   'страницы, закешированные до появления поля');

@@ -179,7 +179,7 @@ function Header({ homework, row }) {
             приложении, а не в тетради, и «сделал ли» проверяется отправкой, а не
             фотографией. Число вопросов — единственное, что об этом говорит, и бэк
             присылает его именно для этого (ChildHomeworkView.questionCount). */}
-        {homework.questionCount > 0 ? (
+        {homework.answerFormat === 'TEST' ? (
           <View style={{ flexDirection: 'row', paddingTop: 2 }}>
             <Pill color="blue">
               {`Тест · ${homework.questionCount} ${plural(homework.questionCount, ['вопрос', 'вопроса', 'вопросов'])}`}
@@ -323,7 +323,7 @@ function SubmittedLine({ homework, work }) {
   if (!at) return null;
   // У теста «отправлено» звучит как отправленный файл, хотя ребёнок отвечал на вопросы
   // в приложении. Слово другое, факт тот же.
-  const isTest = homework?.questionCount > 0;
+  const isTest = homework?.answerFormat === 'TEST';
   return (
     <View style={{ paddingHorizontal: 16 }}>
       <Txt style={{ fontSize: 13, fontWeight: '400', color: c.inkMuted }}>
@@ -339,7 +339,7 @@ function SubmittedLine({ homework, work }) {
 /** Чего ждёт эта работа — курсивная строка внизу карточки. */
 function waitingFor(homework, work) {
   if (homework.status === 'CANCELLED') return 'Задание отменено';
-  const isTest = homework.questionCount > 0;
+  const isTest = homework.answerFormat === 'TEST';
   if (homework.status === 'COMPLETED') {
     return work.status === 'DONE' ? 'Работа принята учителем' : 'Задание закрыто';
   }

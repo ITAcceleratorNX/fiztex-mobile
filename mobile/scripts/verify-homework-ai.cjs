@@ -323,7 +323,7 @@ check('скрытый материал в выборе помечен',
 
 const emptyMaterials = allText(renderSheet({ materials: [] }));
 check('урок без материалов предупреждает о качестве, а не запрещает',
-  /составит конспект по теме/.test(emptyMaterials)
+  /составит задание по теме/.test(emptyMaterials)
   && hasButton(renderSheet({ materials: [] }), 'Сгенерировать'));
 
 console.log(`\n${failed === 0 ? '✓' : '✗'} ${passed} passed, ${failed} failed`);

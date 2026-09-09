@@ -228,7 +228,7 @@ export function TeacherHomeworkCardScreen({ nav, payload }) {
               </Pressable>
             ) : can.edit ? (
               <OutlineButton size="lg" onPress={() => setAiOpen(true)}>
-                Сгенерировать конспект
+                Сгенерировать текст задания
               </OutlineButton>
             ) : null}
           </Card>

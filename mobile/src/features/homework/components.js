@@ -99,7 +99,7 @@ export function HomeworkRow({ row, onPress }) {
             {/* Словом, а не иконкой: тест отличается от обычного задания тем, что его
                 проходят в приложении, — и узнать об этом, не открывая каждое задание из
                 двадцати, нужно и ученику, и родителю. */}
-            {row.questionCount > 0 ? <TestTag /> : null}
+            {row.answerFormat === 'TEST' ? <TestTag /> : null}
           </View>
           <Txt style={{ fontSize: 15, fontWeight: '500', color: c.ink }} numberOfLines={1}>
             {row.title}

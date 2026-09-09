@@ -121,8 +121,10 @@ export function StudentHomeworkDetailScreen({ nav, payload }) {
 
   const notice = closedNotice(data);
   // Тест сдаётся своим экраном: ответы по вопросам, а не текст с вложениями.
-  // Признак приходит с карточкой (`questionCount`), поэтому лишнего запроса нет.
-  const isTest = (data?.questionCount ?? 0) > 0;
+  // Тип приходит с карточкой полем `answerFormat` — это решение учителя, а не вывод из
+  // числа вопросов: раньше один добавленный вопрос молча отбирал форму отправки, а пустой
+  // тест, наоборот, выглядел работой текстом ровно до сохранения первого вопроса.
+  const isTest = data?.answerFormat === 'TEST';
   const showForm = canSubmit && !isTest;
 
   return (
