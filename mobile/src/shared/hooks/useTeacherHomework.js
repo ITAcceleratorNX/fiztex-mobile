@@ -249,6 +249,62 @@ export function useHomeworkSave() {
   return { save, saving, error, clearError: () => setError(null) };
 }
 
+/**
+ * Вопросы теста: загрузка, правка черновиком и сохранение целиком.
+ *
+ * <p>Черновик живёт в экране, а не на сервере: у вопросов нет промежуточного состояния,
+ * набор заменяется одним `PUT`. Поэтому «Сохранить» — единственный момент, когда что-то
+ * уходит наружу, и до него учитель волен править сколько угодно.
+ */
+export function useHomeworkQuestions(homeworkId) {
+  const { token } = useAuth();
+  const [state, setState] = useState({ loading: true, error: null, questions: null });
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+
+  const load = useCallback(async () => {
+    if (!token || !homeworkId) {
+      setState({ loading: false, error: null, questions: null });
+      return;
+    }
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      setState({ loading: false, error: null, questions: await homeworkApi.questions(token, homeworkId) });
+    } catch (e) {
+      setState({ loading: false, error: errorKind(e), questions: null });
+    }
+  }, [token, homeworkId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const save = useCallback(async (body) => {
+    if (!token || !homeworkId || saving) return null;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const saved = await homeworkApi.saveQuestions(token, homeworkId, body);
+      setState({ loading: false, error: null, questions: saved });
+      return saved;
+    } catch (e) {
+      setSaveError(e?.message || 'Не удалось сохранить вопросы');
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  }, [token, homeworkId, saving]);
+
+  return {
+    ...state,
+    reload: load,
+    save,
+    saving,
+    saveError,
+    clearSaveError: () => setSaveError(null),
+  };
+}
+
 /** Работа одного ученика и решение по ней (004 §5, §9). */
 export function useTeacherSubmission(homeworkId, studentProfileId) {
   const { token } = useAuth();
@@ -332,15 +388,25 @@ export function useHomeworkAiGeneration(homeworkId, { onApplied } = {}) {
 
   if (key.current == null) key.current = newIdempotencyKey();
 
-  const start = useCallback(async ({ materialIds, teacherPrompt }) => {
+  /**
+   * @param kind `MATERIAL` — текст задания в описание, `TEST` — вопросы с ключом.
+   *             Тест с телефона стал возможен вместе с редактором вопросов: раньше его
+   *             результат было нечем прочитать и поправить, и генерировать его значило
+   *             отдать классу непроверенное.
+   */
+  const start = useCallback(async ({
+    kind = 'MATERIAL', materialIds, teacherPrompt, questionCount, openQuestionCount,
+  }) => {
     if (!token || !homeworkId || starting) return;
     setStarting(true);
     setError(null);
     try {
       setJob(await homeworkAiApi.start(token, homeworkId, key.current, {
-        kind: 'MATERIAL',
+        kind,
         materialIds,
         teacherPrompt: teacherPrompt?.trim() || undefined,
+        questionCount: kind === 'TEST' ? questionCount : undefined,
+        openQuestionCount: kind === 'TEST' ? openQuestionCount : undefined,
       }));
     } catch (e) {
       setError(e?.message || 'Не удалось запустить генерацию');

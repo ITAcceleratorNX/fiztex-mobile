@@ -23,7 +23,8 @@ import {
 import {
   TeacherScanner, TeacherAIUpload,
   TeacherFeedbackWrite, TeacherProfile, TeacherHomework,
-  TeacherHomeworkCardScreen, TeacherHomeworkFormScreen, TeacherSubmissionScreen,
+  TeacherHomeworkCardScreen, TeacherHomeworkFormScreen, TeacherHomeworkQuestionsScreen,
+  TeacherSubmissionScreen,
   TeacherLessonHomeworkScreen,
 } from '@features/teacher';
 import {
@@ -217,6 +218,9 @@ export function TeacherApp() {
         { name: 'homework-card', comp: TeacherHomeworkCardScreen },
         // Один экран на создание и правку: разница только в том, чем его заполняют.
         { name: 'homework-create', comp: TeacherHomeworkFormScreen },
+        // Вопросы теста: вход с карточки задания, и только у теста — у работы текстом
+        // вопросов не бывает вовсе.
+        { name: 'homework-questions', comp: TeacherHomeworkQuestionsScreen },
         { name: 'homework-submission', comp: TeacherSubmissionScreen },
         // Задания конкретного урока — вход с его карточки.
         { name: 'lesson-homework', comp: TeacherLessonHomeworkScreen },

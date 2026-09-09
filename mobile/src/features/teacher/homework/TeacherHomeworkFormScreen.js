@@ -11,6 +11,7 @@ import {
   FilledButton,
   PickerSheet,
   ScreenHeader,
+  SegmentedSwitch,
 } from '@shared/components/ui';
 import { useAuth } from '@features/auth/AuthContext';
 import { homeworkApi } from '@shared/api/homeworkApi';
@@ -21,6 +22,11 @@ import {
 } from '@shared/hooks/useTeacherHomework';
 import { HomeworkCardSkeleton } from '@features/homework/HomeworkStates';
 import { teachingPairs } from './context';
+
+const ANSWER_FORMATS = [
+  { value: 'WRITTEN', label: 'Текстом и файлами' },
+  { value: 'TEST', label: 'Вопросами теста' },
+];
 
 const DUE_TYPES = [
   { value: 'EXACT', label: 'Дата' },
@@ -58,6 +64,11 @@ export function TeacherHomeworkFormScreen({ nav, payload }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueType, setDueType] = useState('NEXT_LESSON');
+  /**
+   * Чем ученик отвечает. Выбирается здесь, а не «получается» из того, что учитель потом
+   * добавил вопрос: раньше один добавленный вопрос молча отбирал у ученика форму отправки.
+   */
+  const [answerFormat, setAnswerFormat] = useState('WRITTEN');
   const [dueDate, setDueDate] = useState(() => shiftDays(new Date(), 1));
   const [lessonId, setLessonId] = useState(presetLessonId ?? null);
   /**
@@ -80,8 +91,13 @@ export function TeacherHomeworkFormScreen({ nav, payload }) {
     setTitle(homework.title ?? '');
     setDescription(homework.description ?? '');
     setDueType(homework.dueType ?? 'NONE');
+    setAnswerFormat(homework.answerFormat ?? 'WRITTEN');
     if (homework.dueAt) setDueDate(new Date(homework.dueAt));
   }, [editing, card.homework]);
+
+  // Вопросы уже есть — переключать тип нечем: бэкенд ответит отказом, и правильнее
+  // сказать об этом до нажатия, чем показать ошибку после.
+  const questionsLocked = editing && (card.homework?.questionCount ?? 0) > 0;
 
   const lessons = context.lessons;
   const lesson = useMemo(
@@ -143,6 +159,7 @@ export function TeacherHomeworkFormScreen({ nav, payload }) {
           description: description.trim(),
           dueType,
           dueAt: dueType === 'EXACT' ? endOfDay(dueDate).toISOString() : undefined,
+          answerFormat,
         }
       : {
           // Либо урок, либо класс с предметом: у контекста задания один источник, и слать
@@ -156,6 +173,7 @@ export function TeacherHomeworkFormScreen({ nav, payload }) {
           tempGroupId: recipientType === 'TEMP_GROUP' ? tempGroupId : undefined,
           dueType,
           dueAt: dueType === 'EXACT' ? endOfDay(dueDate).toISOString() : undefined,
+          answerFormat,
         };
 
     const saved = await save({ homeworkId: editId, body });
@@ -164,8 +182,8 @@ export function TeacherHomeworkFormScreen({ nav, payload }) {
     // форму, перечитывает себя на фокусе и сразу показывает результат. Иначе форма
     // осталась бы в стеке под карточкой, и «назад» приводило бы к ней с теми же полями.
     nav.back();
-  }, [clearError, editing, title, description, dueType, dueDate, lessonId, standalone, pair,
-      recipientType, tempGroupId, save, editId, nav]);
+  }, [clearError, editing, title, description, dueType, dueDate, answerFormat, lessonId,
+      standalone, pair, recipientType, tempGroupId, save, editId, nav]);
 
   if (editing && card.loading) {
     return (
@@ -244,6 +262,25 @@ export function TeacherHomeworkFormScreen({ nav, payload }) {
               maxLength={300}
               style={inputStyle(c)}
             />
+
+            <FieldLabel>Как ученик отвечает</FieldLabel>
+            {/*
+              Тип выбирается до вопросов, а не после: описание есть у обоих — это текст
+              задания, — а различается то, чем отвечает ученик. Тест с вопросами обратно
+              бэкенд не переключит, и об этом сказано здесь же, чтобы отказ не был сюрпризом.
+            */}
+            <SegmentedSwitch
+              value={answerFormat}
+              options={ANSWER_FORMATS}
+              onChange={questionsLocked ? () => {} : setAnswerFormat}
+            />
+            <Txt style={{ fontSize: 12, lineHeight: 17, color: c.inkMuted }}>
+              {questionsLocked
+                ? 'У задания есть вопросы — чтобы перевести его в работу текстом, сначала удалите их.'
+                : answerFormat === 'TEST'
+                  ? 'Ученик отвечает на вопросы в приложении. Вопросы добавляются на карточке задания.'
+                  : 'Ученик присылает текст, фотографии решения и файлы.'}
+            </Txt>
 
             <FieldLabel>Описание и инструкция</FieldLabel>
             <TextInput

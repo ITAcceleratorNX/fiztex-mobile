@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { ActivityIndicator, View, ScrollView, Pressable, RefreshControl } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
+import { plural } from '@shared/format';
 import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
@@ -204,6 +205,28 @@ export function TeacherHomeworkCardScreen({ nav, payload }) {
           onRemove={(materialId) => actions.deleteMaterial(materialId)}
         />
 
+        {/*
+          Вопросы — только у теста: у работы текстом их не бывает вовсе, и строка, ведущая
+          в редактор, который откажет, — обещание, которого нет. Показываем и когда их
+          ноль: тест собирают руками, не только моделью.
+        */}
+        {homework.answerFormat === 'TEST' ? (
+          <Card elevated style={{ gap: 8 }}>
+            <Txt style={{ fontSize: 15, fontWeight: '700', color: c.ink }}>Вопросы теста</Txt>
+            <Txt style={{ fontSize: 13, color: c.inkMuted, lineHeight: 19 }}>
+              {(homework.questionCount ?? 0) > 0
+                ? `В тесте ${homework.questionCount} ${plural(homework.questionCount, ['вопрос', 'вопроса', 'вопросов'])}. Ученик отвечает на них в приложении.`
+                : 'Вопросов пока нет — без них тест не опубликовать.'}
+            </Txt>
+            <OutlineButton
+              size="lg"
+              onPress={() => nav('homework-questions', { homeworkId: homework.id })}
+            >
+              {can.edit ? 'Открыть вопросы' : 'Посмотреть вопросы'}
+            </OutlineButton>
+          </Card>
+        ) : null}
+
         {homework.status === 'DRAFT' ? (
           <Card elevated style={{ gap: 8 }}>
             <Txt style={{ fontSize: 15, fontWeight: '700', color: c.ink }}>Черновик</Txt>
@@ -228,7 +251,7 @@ export function TeacherHomeworkCardScreen({ nav, payload }) {
               </Pressable>
             ) : can.edit ? (
               <OutlineButton size="lg" onPress={() => setAiOpen(true)}>
-                Сгенерировать текст задания
+                Сгенерировать содержимое
               </OutlineButton>
             ) : null}
           </Card>
@@ -256,10 +279,12 @@ export function TeacherHomeworkCardScreen({ nav, payload }) {
         visible={aiOpen}
         homeworkId={homeworkId}
         lessonId={homework.lessonId ?? null}
+        isTest={homework.answerFormat === 'TEST'}
         existingJob={runningAi.job}
         onClose={() => { setAiOpen(false); runningAi.reload(); }}
         onApplied={() => { void reload(true); runningAi.reload(); }}
         onWriteManually={() => nav('homework-create', { homeworkId })}
+        onOpenQuestions={() => nav('homework-questions', { homeworkId })}
       />
 
       <ConfirmDialog

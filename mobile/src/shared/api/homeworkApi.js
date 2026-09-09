@@ -108,6 +108,25 @@ export const homeworkApi = {
     });
   },
 
+  /**
+   * Вопросы теста глазами учителя — с ключом правильных ответов.
+   *
+   * <p>Ученику этот адрес не отдаётся: ключ, доехавший до его экрана, решает тест. У него
+   * свой — {@link myQuestions}.
+   */
+  questions(token, homeworkId) {
+    return request(`/api/homework/${homeworkId}/questions`, { token });
+  },
+
+  /** Набор заменяется целиком: частичного сохранения у вопросов нет. */
+  saveQuestions(token, homeworkId, body) {
+    return request(`/api/homework/${homeworkId}/questions`, {
+      method: 'PUT',
+      body,
+      token,
+    });
+  },
+
   /** Карточка задания вместе со своей работой — единственный вход ученика в модуль. */
   myOne(token, homeworkId) {
     return request(`/api/homework/${homeworkId}/my-submission`, { token });

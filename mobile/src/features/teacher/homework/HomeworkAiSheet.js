@@ -13,20 +13,26 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
-import { Banner, Pill, PrimaryButton } from '@shared/components/ui';
+import { Banner, Pill, PrimaryButton, SegmentedSwitch } from '@shared/components/ui';
 import { useLessonMaterials } from '@shared/hooks/useLesson';
 import { useHomeworkAiGeneration, useHomeworkAiQuota } from '@shared/hooks/useTeacherHomework';
 import { jobOutcome, phaseLabel, quotaLabel } from '@shared/api/homeworkAiMap';
 
+const GENERATION_KINDS = [
+  { value: 'MATERIAL', label: 'Текст задания' },
+  { value: 'TEST', label: 'Вопросы' },
+];
+
 const PROMPT_MAX = 500;
 
 /**
- * Генерация конспекта по материалам урока — с телефона (FE-M4).
+ * Генерация содержимого задания по материалам урока — с телефона (FE-M4).
  *
- * <p><b>Только конспект.</b> Тест с телефона не генерируется намеренно: его результат —
- * вопросы с ключом, а редактора вопросов в приложении нет. Сгенерировать то, чего нельзя
- * прочитать и поправить, значит отдать классу непроверенный машинный тест. Конспект
- * ложится в описание задания, которое правит обычная форма, — цикл замкнут.
+ * <p><b>Теперь и тест.</b> Раньше с телефона генерировался только текст задания: результат
+ * теста — вопросы с ключом, а редактора вопросов в приложении не было, и сгенерировать то,
+ * чего нельзя прочитать и поправить, значило отдать классу непроверенное. Редактор появился
+ * ({@code TeacherHomeworkQuestionsScreen}), и генерация ведёт прямо в него: печатать десять
+ * вопросов пальцем никто не станет, а прочитать и поправить сгенерированное — вполне.
  *
  * <p><b>Шит можно закрыть.</b> Задача живёт строкой в базе, а не в памяти экрана: учитель
  * ушёл на урок, вернулся — результат уже в задании. Поэтому во время ожидания это сказано
@@ -38,10 +44,12 @@ export function HomeworkAiSheet({
   visible,
   homeworkId,
   lessonId,
+  isTest = false,
   existingJob,
   onClose,
   onApplied,
   onWriteManually,
+  onOpenQuestions,
 }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
@@ -52,6 +60,13 @@ export function HomeworkAiSheet({
 
   const [selected, setSelected] = useState(null);
   const [prompt, setPrompt] = useState('');
+  /**
+   * Что генерируем. Тест с телефона стал возможен вместе с редактором вопросов: раньше
+   * его результат было нечем прочитать и поправить. У задания с ответом текстом выбора
+   * нет — вопросов у него не бывает вовсе.
+   */
+  const [kind, setKind] = useState('MATERIAL');
+  const [questionCount, setQuestionCount] = useState(10);
 
   // Материалы предлагаются все: учитель приложил их к уроку ровно затем, чтобы по ним и
   // генерировали, а снятие галочки — исключение, а не норма. Скрытые от учеников тоже:
@@ -76,6 +91,11 @@ export function HomeworkAiSheet({
       reset();
     }
   }, [visible, reset]);
+
+  // Вид сбрасывается к тому, что заданию подходит: у работы текстом теста не бывает.
+  useEffect(() => {
+    if (visible) setKind(isTest ? 'TEST' : 'MATERIAL');
+  }, [visible, isTest]);
 
   if (!visible) return null;
 
@@ -112,7 +132,7 @@ export function HomeworkAiSheet({
 
             <View style={{ gap: 4 }}>
               <Txt style={{ fontSize: 17, fontWeight: '700', color: c.ink }}>
-                Сгенерировать текст задания
+                {kind === 'TEST' ? 'Сгенерировать вопросы' : 'Сгенерировать текст задания'}
               </Txt>
               <Txt style={{ fontSize: 13, fontWeight: '400', lineHeight: 19, color: c.inkMuted }}>
                 По материалам урока. Результат — черновик: перечитайте его перед публикацией.
@@ -122,9 +142,20 @@ export function HomeworkAiSheet({
             {generation.running ? (
               <RunningBlock job={generation.job} />
             ) : outcome ? (
-              <OutcomeBlock outcome={outcome} onClose={onClose} onWriteManually={onWriteManually} />
+              <OutcomeBlock
+                outcome={outcome}
+                kind={kind}
+                onClose={onClose}
+                onWriteManually={onWriteManually}
+                onOpenQuestions={onOpenQuestions}
+              />
             ) : (
               <SetupBlock
+                kind={kind}
+                onKind={setKind}
+                isTest={isTest}
+                questionCount={questionCount}
+                onQuestionCount={setQuestionCount}
                 noLesson={noLesson}
                 materials={materials}
                 materialsLoading={materialsLoading}
@@ -142,8 +173,13 @@ export function HomeworkAiSheet({
                 starting={generation.starting}
                 error={generation.error}
                 onStart={() => generation.start({
+                  kind,
                   materialIds: [...(selected || [])],
                   teacherPrompt: prompt,
+                  questionCount,
+                  // Открытые вопросы модель придумывает охотно, но проверять их дороже
+                  // всего: по умолчанию тест закрытый, а открытые учитель добавит сам.
+                  openQuestionCount: 0,
                 })}
               />
             )}
@@ -156,6 +192,7 @@ export function HomeworkAiSheet({
 
 /** Форма запуска: что взять и что попросить. */
 function SetupBlock({
+  kind, onKind, isTest, questionCount, onQuestionCount,
   noLesson, materials, materialsLoading, selected, onToggle,
   prompt, onPrompt, quota, exhausted, starting, error, onStart,
 }) {
@@ -172,6 +209,50 @@ function SetupBlock({
   return (
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 14 }}>
       {error ? <Banner icon="alertTriangle" tone="soft">{error}</Banner> : null}
+
+      {/*
+        Выбор есть только у теста: заданию с ответом текстом вопросы не полагаются, и
+        предлагать их значило бы вести к отказу сервера.
+      */}
+      {isTest ? (
+        <View style={{ gap: 8 }}>
+          <SectionLabel>Что сгенерировать</SectionLabel>
+          <SegmentedSwitch
+            value={kind}
+            options={GENERATION_KINDS}
+            onChange={onKind}
+          />
+          {kind === 'TEST' ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Txt style={{ fontSize: 13, color: c.inkMuted }}>Вопросов</Txt>
+              <TextInput
+                value={String(questionCount)}
+                // Потолок сервера — 30 (`fiztex.ai.homework.max-questions`). Обрезаем здесь,
+                // чтобы «50» не превращалось в отказ уже после нажатия «Сгенерировать».
+                onChangeText={(value) =>
+                  onQuestionCount(Math.min(30, Math.max(1, Number(value) || 1)))
+                }
+                keyboardType="number-pad"
+                style={{
+                  width: 64,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: c.border,
+                  backgroundColor: c.bg,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  fontSize: 14,
+                  color: c.ink,
+                }}
+              />
+              <Txt style={{ fontSize: 12, color: c.ink3, flex: 1 }}>
+                Закрытые вопросы с вариантами, не больше 30. Открытые добавьте сами — их
+                проверка дороже.
+              </Txt>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
 
       <View style={{ gap: 8 }}>
         <SectionLabel>Материалы урока</SectionLabel>
@@ -255,7 +336,7 @@ function RunningBlock({ job }) {
 }
 
 /** Исход: получилось, не применилось или не вышло. У каждого свои слова и своё действие. */
-function OutcomeBlock({ outcome, onClose, onWriteManually }) {
+function OutcomeBlock({ outcome, kind, onClose, onWriteManually, onOpenQuestions }) {
   const { c } = useTheme();
   const tone = outcome.kind === 'failed' ? 'alertTriangle' : outcome.kind === 'done' ? 'check' : 'info';
 
@@ -276,6 +357,12 @@ function OutcomeBlock({ outcome, onClose, onWriteManually }) {
       {outcome.kind === 'failed' ? (
         <PrimaryButton onPress={() => { onClose(); onWriteManually?.(); }}>
           Написать самому
+        </PrimaryButton>
+      ) : kind === 'TEST' && outcome.kind === 'done' ? (
+        // Сгенерированный тест ведёт прямо в редактор: непрочитанные машинные вопросы —
+        // ровно то, ради чего генерация с телефона раньше была закрыта.
+        <PrimaryButton onPress={() => { onClose(); onOpenQuestions?.(); }}>
+          Проверить вопросы
         </PrimaryButton>
       ) : (
         <PrimaryButton onPress={onClose}>Понятно</PrimaryButton>
