@@ -8,6 +8,7 @@ import Icon from '@shared/components/Icon';
 import {
   Banner,
   Card,
+  Checkbox,
   FilledButton,
   PickerSheet,
   ScreenHeader,
@@ -69,6 +70,8 @@ export function TeacherHomeworkFormScreen({ nav, payload }) {
    * добавил вопрос: раньше один добавленный вопрос молча отбирал у ученика форму отправки.
    */
   const [answerFormat, setAnswerFormat] = useState('WRITTEN');
+  /** Античит: наблюдение включает учитель, задание за заданием (ANTICHEAT-001 §2). */
+  const [antiCheatEnabled, setAntiCheatEnabled] = useState(false);
   const [dueDate, setDueDate] = useState(() => shiftDays(new Date(), 1));
   const [lessonId, setLessonId] = useState(presetLessonId ?? null);
   /**
@@ -92,6 +95,7 @@ export function TeacherHomeworkFormScreen({ nav, payload }) {
     setDescription(homework.description ?? '');
     setDueType(homework.dueType ?? 'NONE');
     setAnswerFormat(homework.answerFormat ?? 'WRITTEN');
+    setAntiCheatEnabled(homework.antiCheatEnabled ?? false);
     if (homework.dueAt) setDueDate(new Date(homework.dueAt));
   }, [editing, card.homework]);
 
@@ -160,6 +164,7 @@ export function TeacherHomeworkFormScreen({ nav, payload }) {
           dueType,
           dueAt: dueType === 'EXACT' ? endOfDay(dueDate).toISOString() : undefined,
           answerFormat,
+          antiCheatEnabled,
         }
       : {
           // Либо урок, либо класс с предметом: у контекста задания один источник, и слать
@@ -174,6 +179,7 @@ export function TeacherHomeworkFormScreen({ nav, payload }) {
           dueType,
           dueAt: dueType === 'EXACT' ? endOfDay(dueDate).toISOString() : undefined,
           answerFormat,
+          antiCheatEnabled,
         };
 
     const saved = await save({ homeworkId: editId, body });
@@ -182,8 +188,8 @@ export function TeacherHomeworkFormScreen({ nav, payload }) {
     // форму, перечитывает себя на фокусе и сразу показывает результат. Иначе форма
     // осталась бы в стеке под карточкой, и «назад» приводило бы к ней с теми же полями.
     nav.back();
-  }, [clearError, editing, title, description, dueType, dueDate, answerFormat, lessonId,
-      standalone, pair, recipientType, tempGroupId, save, editId, nav]);
+  }, [clearError, editing, title, description, dueType, dueDate, answerFormat, antiCheatEnabled,
+      lessonId, standalone, pair, recipientType, tempGroupId, save, editId, nav]);
 
   if (editing && card.loading) {
     return (
@@ -280,6 +286,23 @@ export function TeacherHomeworkFormScreen({ nav, payload }) {
                 : answerFormat === 'TEST'
                   ? 'Ученик отвечает на вопросы в приложении. Вопросы добавляются на карточке задания.'
                   : 'Ученик присылает текст, фотографии решения и файлы.'}
+            </Txt>
+
+            {/*
+              Античит сразу под типом работы: от типа зависит, что он делает — у теста это
+              уходы из приложения, у работы текстом только скриншоты содержимого, — и
+              подпись меняется вместе с типом, чтобы учитель не включал то, чего не будет.
+            */}
+            <FieldLabel>Античит</FieldLabel>
+            <Checkbox
+              checked={antiCheatEnabled}
+              label="Следить за прохождением"
+              onPress={() => setAntiCheatEnabled((prev) => !prev)}
+            />
+            <Txt style={{ fontSize: 12, lineHeight: 17, color: c.inkMuted }}>
+              {answerFormat === 'TEST'
+                ? 'Отмечает выходы из приложения и попытки скриншота. Тест не прерывается, оценку ставите вы.'
+                : 'Отмечает попытки сделать скриншот текста задания. Переключение приложений нарушением не считается.'}
             </Txt>
 
             <FieldLabel>Описание и инструкция</FieldLabel>

@@ -3,11 +3,11 @@ import { View, ScrollView, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
-import Icon from '@shared/components/Icon';
 import {
   Card,
   ConfirmDialog,
-  PrimaryButton,
+  FilledButton,
+  OutlineButton,
   ScreenHeader,
   StateView,
   Banner,
@@ -17,37 +17,63 @@ import { MathText } from '@shared/math/MathText';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { useHomeworkTest } from '@shared/hooks/useHomework';
 import { AnswerPhotos } from './AnswerPhotos';
+import { useHomeworkAnticheat } from './useHomeworkAnticheat';
+import { answeredCount, isAnswered, toSubmitPayload } from './homeworkTestModel';
 
 /**
- * Прохождение теста домашнего задания (ТЗ HOMEWORK-BE-006 §6).
+ * Прохождение теста домашнего задания (ТЗ HOMEWORK-BE-006 §6, ANTICHEAT-001).
  *
- * <p><b>Это домашка, а не экзамен.</b> Ни таймера, ни отсчёта, ни блокировки экрана —
- * всё это есть у вступительного теста, и переносить оттуда визуальный язык нельзя:
- * ребёнок делает уроки дома, а не сдаёт под надзором. По той же причине вопросы идут
- * списком, а не по одному: домашку хочется окинуть взглядом и вернуться к пропущенному.
+ * <p><b>Один вопрос на экран — как во вступительном тесте.</b> Раньше вопросы шли списком:
+ * так задание видно целиком, но отвечать на телефоне невозможно — длинная лента с
+ * вариантами, полями ввода и фотографиями прокручивается мимо того места, куда только что
+ * нажали, а клавиатура закрывает следующий вопрос. Один вопрос на экран убирает и то и
+ * другое, а «окинуть взглядом» возвращает навигатор внизу: он показывает все номера и на
+ * каждом видно, отвечен вопрос или нет.
+ *
+ * <p><b>Это по-прежнему домашка, а не экзамен.</b> Таймера нет и не будет, переход назад
+ * свободный, пропускать вопросы можно: ограничения вступительного теста идут от того, что
+ * он сдаётся под надзором и в отведённое время, а здесь ни того ни другого.
  *
  * <p><b>Черновик переживает звонок.</b> Ответы пишутся в память устройства на каждое
- * изменение: серверного черновика ТЗ не предусматривает, а если приложение уйдёт в фон
- * и потеряет ввод, ребёнок не станет вводить всё заново — он просто не сдаст задание.
+ * изменение: серверного черновика ТЗ не предусматривает, а если приложение уйдёт в фон и
+ * потеряет ввод, ребёнок не станет вводить всё заново — он просто не сдаст задание.
+ * Античит этого не меняет: наказывать потерей работы за уход в другое приложение ТЗ прямо
+ * запрещает (§3).
  *
- * <p><b>Баллов после отправки нет</b> — их и не приходит с сервера. Иначе тест
- * превращается в тренажёр: отправил, увидел ошибки, попросил вернуть работу,
- * переотправил уже с ответами.
+ * <p><b>Баллов после отправки нет</b> — их и не приходит с сервера. Иначе тест превращается
+ * в тренажёр: отправил, увидел ошибки, попросил вернуть работу, переотправил уже с ответами.
  */
 export function StudentHomeworkTestScreen({ nav, payload }) {
   const { c } = useTheme();
   const homeworkId = payload?.homeworkId;
   const title = payload?.title;
+  const antiCheatEnabled = Boolean(payload?.antiCheatEnabled);
 
   const { questions, loading, error, reload, submit, sending, sendError, clearSendError } =
     useHomeworkTest(homeworkId);
 
   const [answers, setAnswers] = useState({});
+  const [index, setIndex] = useState(0);
   const [confirming, setConfirming] = useState(false);
   const [sent, setSent] = useState(false);
   const draftKey = `homework-answers:${homeworkId}`;
   const restored = useRef(false);
   const saveTimer = useRef(null);
+  const scroller = useRef(null);
+
+  const list = useMemo(() => questions ?? [], [questions]);
+
+  // Вопрос, на котором ученик сейчас, — в ref: событию античита нужен его номер (§5), а
+  // пересоздавать из-за перелистывания подписку на AppState незачем.
+  const currentQuestionId = useRef(null);
+  currentQuestionId.current = list[index]?.id ?? null;
+
+  const anticheat = useHomeworkAnticheat({
+    enabled: antiCheatEnabled && !sent,
+    homeworkId,
+    mode: 'test',
+    questionIdRef: currentQuestionId,
+  });
 
   // Черновик поднимается один раз, до первого ввода: иначе он затрёт то, что ребёнок
   // успел напечатать, пока читалось хранилище.
@@ -79,26 +105,28 @@ export function StudentHomeworkTestScreen({ nav, payload }) {
     };
   }, [answers, draftKey]);
 
-  const list = useMemo(() => questions ?? [], [questions]);
-  const answered = useMemo(
-    () => list.filter((question) => isAnswered(answers[question.id])).length,
-    [list, answers],
-  );
+  const answered = useMemo(() => answeredCount(list, answers), [list, answers]);
   const unanswered = list.length - answered;
 
   const setAnswer = useCallback((questionId, next) => {
     setAnswers((prev) => ({ ...prev, [questionId]: next }));
   }, []);
 
+  // Новый вопрос всегда начинается сверху: иначе после длинного вопроса следующий
+  // открывается где-то с середины, и ребёнок не видит его текста.
+  const goTo = useCallback((next) => {
+    setIndex(next);
+    scroller.current?.scrollTo?.({ y: 0, animated: false });
+  }, []);
+
+  const leave = useCallback(() => {
+    if (!sent) anticheat.logLeave();
+    nav.back();
+  }, [sent, anticheat, nav]);
+
   const onSubmit = useCallback(async () => {
     setConfirming(false);
-    const payload = list.map((question) => {
-      const value = answers[question.id] ?? {};
-      return question.type === 'OPEN_TEXT'
-        ? { questionId: question.id, openText: value.openTextAnswer ?? '' }
-        : { questionId: question.id, selectedOptionIds: value.selectedOptionIds ?? [] };
-    });
-    const ok = await submit(payload);
+    const ok = await submit(toSubmitPayload(list, answers));
     if (ok) {
       await AsyncStorage.removeItem(draftKey).catch(() => undefined);
       setSent(true);
@@ -145,62 +173,93 @@ export function StudentHomeworkTestScreen({ nav, payload }) {
     );
   }
 
+  const question = list[index];
+  const isLast = index === list.length - 1;
+
+  if (!question) {
+    return (
+      <Screen>
+        <ScreenHeader title={title || 'Тест'} back={leave} />
+        <StateView
+          icon="fileText"
+          title="В тесте пока нет вопросов"
+          subtitle="Учитель ещё их не добавил. Загляните позже."
+          actionLabel="К заданию"
+          onAction={leave}
+        />
+      </Screen>
+    );
+  }
+
   return (
     <Screen>
-      <ScreenHeader title={title || 'Тест'} back={() => nav.back()} />
+      <ScreenHeader title={title || 'Тест'} back={leave} />
+
+      <TestProgress index={index} answered={answered} total={list.length} />
 
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 140, gap: 16 }}
+        ref={scroller}
+        contentContainerStyle={{ paddingBottom: 190, gap: 16 }}
         keyboardShouldPersistTaps="handled"
       >
-        <TestProgress answered={answered} total={list.length} />
-
-        {sendError ? (
-          <Banner icon="alertTriangle">
-            {sendError}
-          </Banner>
+        {/*
+          Предупреждение античита ничего не прерывает (§3): ни теста, ни ответов. Это
+          сообщение «учитель это увидит», и закрыть его можно одним нажатием.
+        */}
+        {anticheat.warning ? (
+          <Pressable onPress={anticheat.dismissWarning}>
+            <Banner icon="alertTriangle">{anticheat.warning}</Banner>
+          </Pressable>
         ) : null}
 
-        {list.map((question, index) => (
-          <Card key={question.id}>
-            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-              <Txt style={{ fontSize: 13, fontWeight: '700', color: c.inkMuted }}>
-                {index + 1} из {list.length}
-              </Txt>
-              {question.maxScore ? (
-                <Txt style={{ fontSize: 13, color: c.inkMuted }}>
-                  · {formatScore(question.maxScore)}
-                </Txt>
-              ) : null}
-            </View>
+        {sendError ? <Banner icon="alertTriangle">{sendError}</Banner> : null}
 
-            <MathText
-              text={question.text}
-              style={{ fontSize: 17, lineHeight: 24, fontWeight: '600', color: c.ink, marginBottom: 14 }}
-            />
+        <Card key={question.id}>
+          <QuestionHeader index={index} total={list.length} maxScore={question.maxScore} />
 
-            <QuestionBody
-              question={question}
-              value={answers[question.id]}
-              onChange={(next) => setAnswer(question.id, next)}
-            />
+          <MathText
+            text={question.text}
+            style={{
+              fontSize: 17,
+              lineHeight: 24,
+              fontWeight: '600',
+              color: c.ink,
+              marginBottom: 14,
+            }}
+          />
 
-            {/*
-              Решение задачи по физике — это выкладки и чертёж: набирать их текстом на
-              телефоне ребёнок не станет. Разрешает фотографию учитель, по каждому вопросу
-              отдельно, поэтому и блок появляется только там, где он её разрешил.
-            */}
-            {question.allowPhoto ? (
-              <AnswerPhotos homeworkId={homeworkId} question={question} />
-            ) : null}
-          </Card>
-        ))}
+          <QuestionBody
+            question={question}
+            value={answers[question.id]}
+            onChange={(next) => setAnswer(question.id, next)}
+          />
+
+          {/*
+            Решение задачи по физике — это выкладки и чертёж: набирать их текстом на
+            телефоне ребёнок не станет. Разрешает фотографию учитель, по каждому вопросу
+            отдельно, поэтому и блок появляется только там, где он её разрешил.
+          */}
+          {question.allowPhoto ? (
+            <AnswerPhotos homeworkId={homeworkId} question={question} />
+          ) : null}
+        </Card>
+
+        <QuestionNavigator
+          questions={list}
+          answers={answers}
+          index={index}
+          onPick={goTo}
+        />
       </ScrollView>
 
-      <SubmitBar
-        unanswered={unanswered}
+      <NavBar
+        index={index}
+        isLast={isLast}
         sending={sending}
-        onPress={() => {
+        unanswered={unanswered}
+        onBack={() => goTo(index - 1)}
+        onNext={() => goTo(index + 1)}
+        onFinish={() => {
           clearSendError();
           setConfirming(true);
         }}
@@ -209,8 +268,13 @@ export function StudentHomeworkTestScreen({ nav, payload }) {
       <ConfirmDialog
         visible={confirming}
         title="Отправить работу?"
-        message="После отправки изменить ответы можно будет, только если учитель вернёт работу."
+        message={
+          unanswered > 0
+            ? `Без ответа осталось вопросов: ${unanswered}. После отправки изменить ответы можно будет, только если учитель вернёт работу.`
+            : 'После отправки изменить ответы можно будет, только если учитель вернёт работу.'
+        }
         confirmLabel="Отправить"
+        busy={sending}
         onConfirm={onSubmit}
         onCancel={() => setConfirming(false)}
       />
@@ -218,25 +282,98 @@ export function StudentHomeworkTestScreen({ nav, payload }) {
   );
 }
 
-/** «Ответили на 3 из 10», а не проценты: ребёнку важно, сколько осталось. */
-function TestProgress({ answered, total }) {
+/** «Вопрос 3 из 10» и полоса по отвеченным: где ты сейчас и сколько ещё осталось. */
+function TestProgress({ index, answered, total }) {
   const { c } = useTheme();
   const ratio = total > 0 ? answered / total : 0;
   return (
-    <View style={{ gap: 8 }}>
-      <Txt style={{ fontSize: 13, color: c.inkMuted }}>{progressLabel(answered, total)}</Txt>
+    <View style={{ gap: 8, paddingBottom: 12 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Txt style={{ fontSize: 13, fontWeight: '600', color: c.ink }}>
+          Вопрос {index + 1} из {total}
+        </Txt>
+        <Txt style={{ fontSize: 13, color: c.inkMuted }}>Отвечено: {answered}</Txt>
+      </View>
       <View style={{ height: 6, borderRadius: 3, backgroundColor: c.border, overflow: 'hidden' }}>
-        <View style={{ width: `${Math.round(ratio * 100)}%`, height: '100%', backgroundColor: c.green }} />
+        <View
+          style={{ width: `${Math.round(ratio * 100)}%`, height: '100%', backgroundColor: c.green }}
+        />
+      </View>
+    </View>
+  );
+}
+
+function QuestionHeader({ index, total, maxScore }) {
+  const { c } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+      <Txt style={{ fontSize: 13, fontWeight: '700', color: c.inkMuted }}>
+        {index + 1} из {total}
+      </Txt>
+      {maxScore ? (
+        <Txt style={{ fontSize: 13, color: c.inkMuted }}>· {formatScore(maxScore)}</Txt>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * Навигатор по номерам. Он и заменяет список: с одного экрана видно, сколько вопросов,
+ * какие отвечены и на каком ты сейчас, — и на любой можно перейти одним нажатием.
+ */
+function QuestionNavigator({ questions, answers, index, onPick }) {
+  const { c } = useTheme();
+  if (questions.length < 2) return null;
+  return (
+    <View style={{ gap: 8 }}>
+      <Txt style={{ fontSize: 13, color: c.inkMuted }}>Все вопросы</Txt>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {questions.map((question, i) => {
+          const done = isAnswered(answers[question.id]);
+          const active = i === index;
+          return (
+            <Pressable
+              key={question.id}
+              accessibilityRole="button"
+              accessibilityLabel={`Вопрос ${i + 1}${done ? ', отвечен' : ''}`}
+              onPress={() => onPick(i)}
+              style={{
+                minWidth: 40,
+                height: 40,
+                paddingHorizontal: 10,
+                borderRadius: 12,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: active ? c.blue : done ? c.blueSoft : c.bg,
+                borderWidth: 1,
+                borderColor: active ? c.blue : done ? c.blue : c.border,
+              }}
+            >
+              <Txt
+                style={{
+                  fontSize: 14,
+                  fontWeight: '600',
+                  color: active ? '#fff' : done ? c.blue : c.inkMuted,
+                }}
+              >
+                {String(i + 1)}
+              </Txt>
+            </Pressable>
+          );
+        })}
       </View>
     </View>
   );
 }
 
 /**
- * Кнопка отправки у нижнего края. Не выключается при неполных ответах: она говорит,
- * сколько осталось, а не молчит — отказ после нажатия ребёнок читает как поломку.
+ * «Назад» и «Далее» у нижнего края, «Отправить» — на последнем вопросе.
+ *
+ * <p>Отправка не выключается при неполных ответах: она говорит, сколько осталось, а
+ * молчаливый отказ после нажатия ребёнок читает как поломку. Пропущенный вопрос сервер
+ * всё равно не примет, и об этом сказано в диалоге подтверждения — до отправки, а не после.
  */
-function SubmitBar({ unanswered, sending, onPress }) {
+function NavBar({ index, isLast, sending, unanswered, onBack, onNext, onFinish }) {
   const { c } = useTheme();
   return (
     <View
@@ -253,27 +390,29 @@ function SubmitBar({ unanswered, sending, onPress }) {
         gap: 8,
       }}
     >
-      {unanswered > 0 ? (
+      {isLast && unanswered > 0 ? (
         <Txt style={{ fontSize: 13, color: c.inkMuted, textAlign: 'center' }}>
           Осталось ответить: {unanswered}
         </Txt>
       ) : null}
-      <PrimaryButton onPress={onPress} disabled={sending || unanswered > 0}>
-        {sending ? 'Отправляем…' : 'Отправить работу'}
-      </PrimaryButton>
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        {index > 0 ? (
+          <OutlineButton size="lg" onPress={onBack} style={{ width: 120 }}>
+            Назад
+          </OutlineButton>
+        ) : null}
+        {isLast ? (
+          <FilledButton size="lg" onPress={onFinish} disabled={sending} style={{ flex: 1 }}>
+            {sending ? 'Отправляем…' : 'Отправить работу'}
+          </FilledButton>
+        ) : (
+          <FilledButton size="lg" onPress={onNext} style={{ flex: 1 }}>
+            Далее
+          </FilledButton>
+        )}
+      </View>
     </View>
   );
-}
-
-function progressLabel(answered, total) {
-  return `Ответили на ${answered} из ${total}`;
-}
-
-/** Ответ считается данным, если выбран хотя бы вариант или написан непустой текст. */
-function isAnswered(value) {
-  if (!value) return false;
-  if ((value.selectedOptionIds ?? []).length > 0) return true;
-  return Boolean((value.openTextAnswer ?? '').trim());
 }
 
 function formatScore(score) {

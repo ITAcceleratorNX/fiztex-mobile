@@ -39,6 +39,7 @@ import {
   StatusHint,
 } from './components';
 import { HomeworkCardSkeleton, HomeworkError, HomeworkMissing } from './HomeworkStates';
+import { useHomeworkAnticheat } from './useHomeworkAnticheat';
 import { pickFiles, pickPhotos, sizeLabel } from './attachments';
 
 /**
@@ -57,6 +58,20 @@ export function StudentHomeworkDetailScreen({ nav, payload }) {
   const { token } = useAuth();
   const insets = useSafeAreaInsets();
   const { loading, error, data, reload } = useMyHomework(homeworkId);
+
+  /*
+    Античит обычного задания — только защита содержимого от скриншотов (ТЗ §4): смена
+    приложения здесь нарушением не считается, ученик и должен открыть учебник. У теста
+    свой экран и свой режим, поэтому здесь режим 'content' и никаких исключений.
+
+    Хук стоит до всех ранних возвратов: правило хуков не терпит условного вызова, а
+    `enabled` внутри и так гасит его, пока карточка не пришла.
+  */
+  const antiCheat = useHomeworkAnticheat({
+    enabled: Boolean(data?.antiCheatEnabled) && data?.answerFormat !== 'TEST',
+    homeworkId,
+    mode: 'content',
+  });
 
   const [body, setBody] = useState('');
   const [photos, setPhotos] = useState([]);
@@ -149,6 +164,17 @@ export function StudentHomeworkDetailScreen({ nav, payload }) {
             </View>
           ) : null}
 
+          {/* Попытка скриншота: предупреждение, а не блокировка — ТЗ §4 требует зафиксировать
+              событие, а не отобрать у ученика задание. */}
+          {antiCheat.warning ? (
+            <Pressable
+              onPress={antiCheat.dismissWarning}
+              style={{ paddingHorizontal: 16, paddingBottom: 12 }}
+            >
+              <Notice tone="warn">{antiCheat.warning}</Notice>
+            </Pressable>
+          ) : null}
+
           {/* «Задание обновлено» — учитель правил условие после публикации (HOMEWORK-002 §7).
               Плашка нужна и на уже отправленной работе: возможно, сдавали по старому тексту. */}
           {data.updatedAfterPublish && !notice ? (
@@ -206,7 +232,15 @@ export function StudentHomeworkDetailScreen({ nav, payload }) {
         {canSubmit && isTest ? (
           <SubmitBar
             label={submission?.attemptCount > 0 ? 'Пройти заново' : 'Пройти тест'}
-            onPress={() => nav('homework-test', { homeworkId: data.id, title: data.title })}
+            onPress={() =>
+              nav('homework-test', {
+                homeworkId: data.id,
+                title: data.title,
+                // Флаг едет с переходом: экран теста должен включить наблюдение в момент
+                // открытия, а не через запрос после того, как вопросы уже на экране.
+                antiCheatEnabled: data.antiCheatEnabled,
+              })
+            }
           />
         ) : null}
       </KeyboardAvoidingView>

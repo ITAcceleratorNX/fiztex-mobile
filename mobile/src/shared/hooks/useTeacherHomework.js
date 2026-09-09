@@ -334,6 +334,41 @@ export function useTeacherSubmission(homeworkId, studentProfileId) {
   return { ...state, reload: load };
 }
 
+/**
+ * Журнал античита по работе ученика (ANTICHEAT-001 §6).
+ *
+ * <p>Сбой запроса не мешает проверять работу: наблюдение — это дополнительные сведения, а
+ * не условие проверки, и уронить из-за него экран решения значило бы поменять их местами.
+ * Поэтому ошибка живёт в состоянии блока, а не в состоянии экрана.
+ */
+export function useAntiCheatLog(homeworkId, studentProfileId) {
+  const { token } = useAuth();
+  const [state, setState] = useState({ loading: true, error: null, data: null });
+
+  const load = useCallback(async () => {
+    if (!token || !homeworkId || !studentProfileId) {
+      setState({ loading: false, error: null, data: null });
+      return;
+    }
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      setState({
+        loading: false,
+        error: null,
+        data: await homeworkApi.antiCheatLog(token, homeworkId, studentProfileId),
+      });
+    } catch (e) {
+      setState({ loading: false, error: errorKind(e), data: null });
+    }
+  }, [token, homeworkId, studentProfileId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return { ...state, reload: load };
+}
+
 export function useSubmissionReview(homeworkId, studentProfileId, { onSuccess } = {}) {
   const { token } = useAuth();
   const [sending, setSending] = useState(null);

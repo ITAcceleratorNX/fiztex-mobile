@@ -11,6 +11,7 @@ import { stamp } from '@shared/api/homeworkMap';
 import { useSubmissionReview, useTeacherSubmission } from '@shared/hooks/useTeacherHomework';
 import { ChipRow, Divider, FeedbackBox, FileChip, PhotoStrip, SectionLabel } from '@features/homework/components';
 import { HomeworkCardSkeleton } from '@features/homework/HomeworkStates';
+import { AntiCheatLog } from './AntiCheatLog';
 import { pickPhotos, sizeLabel } from '@features/homework/attachments';
 
 const DECISION_LABELS = {
@@ -150,6 +151,10 @@ export function TeacherSubmissionScreen({ nav, payload }) {
               ) : null}
             </Card>
           ) : null}
+
+          {/* Журнал античита сразу под ответом (§6): решение по оценке учитель принимает,
+              видя работу и события вместе, а не переходя за ними на другой экран. */}
+          <AntiCheatLog homeworkId={homeworkId} studentProfileId={studentProfileId} />
 
           {decided ? (
             <Card elevated style={{ gap: 10 }}>

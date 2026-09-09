@@ -78,6 +78,26 @@ export const homeworkApi = {
   },
 
   /**
+   * Событие античита (ANTICHEAT-001 §3, §4).
+   *
+   * <p><b>Отказ здесь не событие для ученика.</b> Он в этот момент решает работу, и ни
+   * ронять ему экран, ни показывать «не удалось записать нарушение» нельзя: наблюдение —
+   * дело учителя, а не забота ребёнка. Всё, что не подходит, сервер тихо не пишет и
+   * отвечает 204; сюда попадают только сбои сети, и они гасятся вызывающим.
+   *
+   * @param {'TAB_SWITCH'|'WINDOW_BLUR'|'APP_BACKGROUND'|'PAGE_CLOSE'|'RE_ENTRY'
+   *         |'SCREENSHOT_ATTEMPT'} type
+   * @param {number|null} questionId вопрос, на котором был ученик; у обычного задания null
+   */
+  logAntiCheatEvent(token, homeworkId, type, questionId = null) {
+    return request(`/api/homework/${homeworkId}/my-submission/anti-cheat-events`, {
+      method: 'POST',
+      body: { type, questionId: questionId ?? null },
+      token,
+    });
+  },
+
+  /**
    * Свои снимки решения по вопросу — те, что ещё не отправлены (AIGRADE-003).
    *
    * Фото уезжают до отправки, своим маленьким запросом: класть их в тело сдачи значило бы
@@ -231,6 +251,19 @@ export const homeworkApi = {
 
   submission(token, homeworkId, studentProfileId) {
     return request(`/api/homework/${homeworkId}/submissions/${studentProfileId}`, { token });
+  },
+
+  /**
+   * Журнал античита по работе ученика (ANTICHEAT-001 §6).
+   *
+   * Отдельный запрос, а не поле работы: журнал нужен на одном экране из всех, и тянуть
+   * его в каждую строку списка значило бы платить за него везде.
+   */
+  antiCheatLog(token, homeworkId, studentProfileId) {
+    return request(
+      `/api/homework/${homeworkId}/submissions/${studentProfileId}/anti-cheat-events`,
+      { token },
+    );
   },
 
   /**
