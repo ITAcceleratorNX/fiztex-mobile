@@ -151,6 +151,11 @@ export function mapLessonCard(lesson, { highlight = null } = {}) {
 
     topic: lesson.topic || null,
     homework: mapHomework(lesson.homework),
+
+    // Состояние блока ДЗ целиком: задано / не задано / черновик / пока не указано.
+    // Приходит только с карточки — в строке расписания его нет, и `null` здесь значит
+    // «не спрашивали», а не «состояния нет».
+    homeworkState: lesson.homeworkState || null,
     comment: comment
       ? {
           body: comment.body,

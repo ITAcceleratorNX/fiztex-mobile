@@ -65,6 +65,22 @@ export const lessonApi = {
 
   clearTopic: (token, lessonId) =>
     request(`/api/lessons/${lessonId}/topic`, { method: 'DELETE', token }),
+
+  /**
+   * Отметка «ДЗ не задано» — второе финальное действие учителя по уроку наравне с
+   * выдачей задания.
+   *
+   * Ставится только руками: ни конец урока, ни конец дня её не проставляют — отсутствие
+   * задания не считается решением, пока учитель его не принял.
+   *
+   * Ответ — карточка целиком: `homeworkState` считается по всем заданиям урока, и
+   * собрать его из ответа на одно действие нельзя.
+   */
+  markHomeworkNotAssigned: (token, lessonId) =>
+    request(`/api/lessons/${lessonId}/homework/not-assigned`, { method: 'POST', token }),
+
+  clearHomeworkNotAssigned: (token, lessonId) =>
+    request(`/api/lessons/${lessonId}/homework/not-assigned`, { method: 'DELETE', token }),
 };
 
 /**

@@ -6,7 +6,7 @@ import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
-import { Pill, Banner } from '@shared/components/ui';
+import { Pill, Banner, OutlineButton } from '@shared/components/ui';
 import { EditableField, LessonActionTile } from '@shared/ui/rows';
 import { useLesson, useLessonEditing } from '@shared/hooks/useLesson';
 import { countLabel, plural } from '@shared/format';
@@ -14,6 +14,11 @@ import { useLessonAttendanceSheet } from '@shared/hooks/useAttendance';
 import { useTeacherLessonHomework } from '@shared/hooks/useTeacherHomework';
 import { sheetStateLabel } from '@shared/api/attendanceMap';
 import { sheetBadge } from '@shared/api/gradesMap';
+import {
+  homeworkNeedsTeacherAction,
+  homeworkStateColor,
+  homeworkStateLabel,
+} from '@shared/api/lessonHomeworkState';
 import { useLessonGrades } from '@shared/hooks/useGrades';
 import { TextEditSheet } from '@shared/components/TextEditSheet';
 import { LessonCardFallback, LessonCardHeader } from './LessonCardStates';
@@ -49,17 +54,67 @@ function MetaRow({ icon, children, changed }) {
  * а не слота расписания) и статусом, по которому понятно, что урок — следующий.
  */
 /**
- * Подпись плитки ДЗ: сколько заданий у урока и сколько из них ещё черновики. Черновик
- * назван отдельно потому, что для учеников его не существует — «2 задания» на уроке, где
- * опубликовано одно, ввело бы в заблуждение самого учителя.
+ * Подпись плитки ДЗ. Первым словом — состояние урока, а не число заданий: плитку читают,
+ * чтобы понять, закрыт ли вопрос с домашним заданием, и «2 задания» на уроке, где всё
+ * лежит в черновиках, отвечало на другой вопрос.
+ *
+ * Черновик назван отдельно потому, что для учеников его не существует.
  */
-function homeworkTileValue(state) {
+function homeworkTileValue(state, homeworkState) {
   if (state.loading) return 'Загружаем…';
   if (state.error) return 'Нет данных';
-  if (state.rows.length === 0) return 'Заданий нет';
+  const label = homeworkStateLabel(homeworkState);
+  if (state.rows.length === 0) return label || 'Заданий нет';
   const drafts = state.rows.filter((row) => row.status === 'DRAFT').length;
   const total = `${state.rows.length} ${plural(state.rows.length, ['задание', 'задания', 'заданий'])}`;
-  return drafts > 0 ? `${total} · ${drafts} черн.` : total;
+  const counts = drafts > 0 ? `${total} · ${drafts} черн.` : total;
+  return label ? `${label} · ${counts}` : counts;
+}
+
+/**
+ * Состояние блока ДЗ и единственное действие, которого у урока раньше не было, —
+ * «ДЗ не задано».
+ *
+ * Стоит в учебной части рядом с темой и комментарием, а не у плитки: это такое же
+ * решение учителя по уроку, и закрывается оно здесь, не уходя на другой экран.
+ *
+ * Кнопки нет при выданном ДЗ: бэкенд отвечает 409 — два финальных состояния
+ * одновременно ТЗ запрещает, и предлагать заведомо невозможное нажатие нельзя.
+ */
+function HomeworkStateRow({ state, canEdit, saving, onMark, onClear }) {
+  const { c } = useTheme();
+  if (!state) return null;
+
+  return (
+    <View style={{ gap: 8 }}>
+      {/* Разделитель внутри, а не снаружи: без состояния строки нет, и висящая
+          линия читалась бы как пустой раздел. */}
+      <View style={{ height: 1, backgroundColor: c.border, marginBottom: 4 }} />
+      <Txt style={{ fontSize: 12, fontWeight: '600', color: c.ink3 }}>Домашнее задание</Txt>
+
+      {/* Столбиком, а не строкой с кнопкой справа: «Домашнее задание пока не указано»
+          и «ДЗ не задано» вместе шире карточки на телефоне, а строка в React Native
+          детей не сжимает — кнопку выносило за край. Сокращать формулировку нельзя,
+          она общая с вебом и взята из ТЗ. */}
+      <Pill color={homeworkStateColor(state)}>{homeworkStateLabel(state)}</Pill>
+
+      {canEdit && homeworkNeedsTeacherAction(state) ? (
+        <Txt style={{ fontSize: 12, fontWeight: '400', color: c.ink3 }}>
+          Действие по ДЗ не завершено
+        </Txt>
+      ) : null}
+
+      {canEdit && state !== 'ASSIGNED' ? (
+        <OutlineButton
+          style={{ alignSelf: 'flex-start', marginTop: 2 }}
+          disabled={saving}
+          onPress={state === 'NOT_ASSIGNED' ? onClear : onMark}
+        >
+          {state === 'NOT_ASSIGNED' ? 'Отменить отметку' : 'ДЗ не задано'}
+        </OutlineButton>
+      ) : null}
+    </View>
+  );
 }
 
 /**
@@ -122,17 +177,25 @@ export function LessonCardScreen({ nav, payload }) {
   const lessonHomework = useTeacherLessonHomework(lessonId, {
     enabled: Boolean(lesson?.can.editTeaching),
   });
+  const reloadLessonHomework = lessonHomework.reload;
   const [sheet, setSheet] = useState(null); // 'topic' | 'comment' | null
 
-  // Возврат с листа посещаемости — состояние плитки могло измениться там, а не здесь.
-  // Первый показ пропускается: хук уже сходил за листом при монтировании, и второй
+  // Возврат с листа посещаемости или из заданий урока — состояние плитки могло
+  // измениться там, а не здесь. Карточка перечитывается вместе с ними: публикация
+  // задания снимает отметку «ДЗ не задано», и `homeworkState` живёт в самой карточке.
+  // Первый показ пропускается: хуки уже сходили за данными при монтировании, и второй
   // запрос на открытие карточки был бы чистым дублем.
   const focusedBefore = useRef(false);
   useFocusEffect(
     useCallback(() => {
-      if (focusedBefore.current) reloadAttendance();
-      else focusedBefore.current = true;
-    }, [reloadAttendance]),
+      if (focusedBefore.current) {
+        reloadAttendance();
+        reloadLessonHomework(true);
+        reload(true);
+      } else {
+        focusedBefore.current = true;
+      }
+    }, [reloadAttendance, reloadLessonHomework, reload]),
   );
 
   const closeSheet = useCallback(() => {
@@ -254,6 +317,13 @@ export function LessonCardScreen({ nav, payload }) {
                 : null
             }
           />
+          <HomeworkStateRow
+            state={lesson.homeworkState}
+            canEdit={canEdit}
+            saving={editing.saving}
+            onMark={editing.markHomeworkNotAssigned}
+            onClear={editing.clearHomeworkNotAssigned}
+          />
         </View>
 
         {/* Разделы урока. Все четыре плитки читают бэк; каждая ведёт на свой экран,
@@ -282,7 +352,7 @@ export function LessonCardScreen({ nav, payload }) {
               icon="bookOpen"
               tint="gold"
               label="Домашнее задание"
-              value={homeworkTileValue(lessonHomework)}
+              value={homeworkTileValue(lessonHomework, lesson.homeworkState)}
               onPress={lesson.can.editTeaching
                 ? () => nav?.('lesson-homework', {
                     lessonInstanceId: lessonId,
