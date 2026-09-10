@@ -7,6 +7,7 @@ export { parentApi } from './parentApi';
 export { lessonApi } from './lessonApi';
 export { attendanceApi } from './attendanceApi';
 export { homeworkApi, homeworkFiles } from './homeworkApi';
+export { surveysApi } from './surveysApi';
 export { serviceRequestsApi, serviceRequestFiles } from './serviceRequestsApi';
 export {
   closedNotice,
