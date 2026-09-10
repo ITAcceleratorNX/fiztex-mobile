@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/theme/ThemeContext';
-import { Screen } from '@shared/components/Screen';
+import { Screen, TAB_BAR_HEIGHT } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import {
   useMySchedule,
@@ -215,7 +215,11 @@ export function ScheduleScreen({ nav, role = 'student' }) {
   return (
     <Screen
       scroll
-      contentStyle={{ paddingBottom: insets.bottom + 100 }}
+      // Нижний отступ — ровно высота плавающего таб-бара: подложка дневного режима
+      // упирается в него и не уезжает под него. `flexGrow` нужен ей же — без роста
+      // контейнера прокрутка отдаёт высоту содержимого, и в день с двумя уроками знак
+      // обрывался бы сразу под ними.
+      contentStyle={{ paddingBottom: insets.bottom + TAB_BAR_HEIGHT, flexGrow: 1 }}
       style={{ backgroundColor: c.bg }}
       refreshing={refreshing}
       onRefresh={onRefresh}

@@ -3,6 +3,16 @@ import { View, ScrollView, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 
+/**
+ * Высота плавающего таб-бара без нижнего инсета: 6 сверху + пилюля (14 + 28 + 14) + 8 снизу
+ * (`app/navigation/CustomTabBar`).
+ *
+ * <p>Живёт здесь, а не в самом баре: бар лежит поверх экрана (`position: absolute`), и
+ * отодвигать из-под него содержимое обязаны экраны. Считать это число по месту значит
+ * завести вторую копию геометрии бара, которая разойдётся с первой при первой же правке.
+ */
+export const TAB_BAR_HEIGHT = 6 + 14 + 28 + 14 + 8;
+
 // Soft elevation presets — replace the web `--shadow` / `--shadow-lg` CSS vars.
 export const shadowSm = {
   shadowColor: '#0F172A',

@@ -2,6 +2,19 @@ import { API_BASE_URL } from './config';
 
 const REQUEST_TIMEOUT_MS = 15_000;
 
+/**
+ * Отдельный таймаут на загрузку файлов.
+ *
+ * <p>Пятнадцать секунд — мера для JSON-запроса: он либо отвечает быстро, либо связи нет.
+ * Для multipart это не мера, а потолок: ТЗ HOMEWORK-003 разрешает 100 МБ вложений, и
+ * работа с парой фотографий решения на школьном Wi-Fi уезжает дольше пятнадцати секунд.
+ * Прежний общий таймаут обрывал именно такую отправку — ученик видел «сервер долго не
+ * отвечает» на нормальной сети и не мог сдать работу с фото вообще.
+ *
+ * <p>Потолок всё-таки нужен: без него оборванное соединение висело бы до конца сессии.
+ */
+const UPLOAD_TIMEOUT_MS = 180_000;
+
 const sessionExpiredListeners = new Set();
 
 /** Subscribe to account-session expiry (HTTP 401). Returns unsubscribe. */
@@ -151,19 +164,27 @@ export async function request(
  * Multipart POST (e.g. photo upload).
  * @param {string} path
  * @param {FormData} formData
- * @param {{ token?: string|null, skipSessionExpiry?: boolean }} options
+ * @param {{ token?: string|null, skipSessionExpiry?: boolean, timeoutMs?: number }} options
  */
-export async function requestMultipart(path, formData, { token, skipSessionExpiry = false } = {}) {
+export async function requestMultipart(
+  path,
+  formData,
+  { token, skipSessionExpiry = false, timeoutMs = UPLOAD_TIMEOUT_MS } = {},
+) {
   const headers = { Accept: 'application/json' };
   if (token) headers.Authorization = `Bearer ${token}`;
 
   let res;
   try {
-    res = await fetchWithTimeout(`${API_BASE_URL}${path}`, {
-      method: 'POST',
-      headers,
-      body: formData,
-    });
+    res = await fetchWithTimeout(
+      `${API_BASE_URL}${path}`,
+      {
+        method: 'POST',
+        headers,
+        body: formData,
+      },
+      timeoutMs,
+    );
   } catch (e) {
     if (e instanceof ApiError) throw e;
     throw networkError();

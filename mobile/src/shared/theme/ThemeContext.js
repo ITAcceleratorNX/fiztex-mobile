@@ -149,6 +149,25 @@ const serviceInkDark = {
   srUrgentInk: '#EAB308',
 };
 
+// Подложка расписания (Figma «background», node 2140:15114). Значения сняты с растра
+// макета: знак 50 при шаге 62,7×66,6 — шесть знаков в ряд на 390 точках.
+//
+// Прозрачность — 1,6 %. Цифра не на глаз: в макете самый тёмный пиксель знака это
+// #F7F8F9 на фоне #FAFBFC, то есть падение яркости ровно на 3/255. Фирменный navy даёт
+// такое же падение именно при 0.016.
+//
+// В тёмной теме navy на #0F172A не виден вовсе, поэтому там знак светлый — тот же
+// #88A7F9, что и на navy-шапке карточки урока.
+const scheduleWatermark = {
+  schedulePattern: '#274185',
+  schedulePatternOpacity: 0.016,
+};
+
+const scheduleWatermarkDark = {
+  schedulePattern: '#88A7F9',
+  schedulePatternOpacity: 0.03,
+};
+
 const light = {
   bg: '#FAFBFC',
   bg2: '#F1F5F9',
@@ -178,6 +197,7 @@ const light = {
   ...service,
   ...serviceInk,
   ...hero,
+  ...scheduleWatermark,
   ...PHYSTECH,
 };
 
@@ -207,6 +227,7 @@ const dark = {
   ...service,
   ...serviceInkDark,
   ...hero,
+  ...scheduleWatermarkDark,
   ...PHYSTECH,
 };
 

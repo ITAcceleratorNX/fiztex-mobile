@@ -40,7 +40,7 @@ import {
 } from './components';
 import { HomeworkCardSkeleton, HomeworkError, HomeworkMissing } from './HomeworkStates';
 import { useHomeworkAnticheat } from './useHomeworkAnticheat';
-import { pickFiles, pickPhotos, sizeLabel } from './attachments';
+import { ATTACHMENT_HINT, pickFiles, pickPhotos, sizeLabel } from './attachments';
 
 /**
  * Задание ученика: просмотр и отправка (ТЗ HOMEWORK-003, Figma «Ученик ДЗ — …»
@@ -708,6 +708,10 @@ function AnswerForm({
         <AttachButton label="+ Прикрепить файл" onPress={onAddFiles} />
         <AttachButton label="+ Прикрепить фото" onPress={onAddPhotos} />
       </View>
+
+      {/* Форматы названы до выбора, а не в отказе после «Отправить»: сервер отклоняет
+          отправку целиком, и вместе с неподходящим файлом пропадал бы набранный текст. */}
+      <Txt style={{ fontSize: 12, color: c.ink3, lineHeight: 16 }}>{ATTACHMENT_HINT}</Txt>
 
       <PendingAttachments items={photos} onDrop={onDropPhoto} />
       <PendingAttachments items={files} onDrop={onDropFile} />

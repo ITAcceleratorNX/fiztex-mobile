@@ -11,7 +11,7 @@
  *   node scripts/verify-schedule-logic.cjs [liveWeekJson]
  *
  * `liveWeekJson` is an optional /api/schedule/me/week response; when given, the
- * lesson-mapping and attendance checks run against real backend data.
+ * lesson-mapping checks run against real backend data.
  */
 
 const babel = require('@babel/core');
@@ -68,8 +68,7 @@ const scheduleMap = load('src/shared/api/scheduleMap.js');
 const states = load('src/features/schedule/ScheduleStates.js', {
   scheduleMap: { scheduleStatusMessage: (s) => `msg:${s}` },
 });
-const childSwitcher = load('src/features/schedule/ChildSwitcher.js');
-const attendance = load('src/features/schedule/attendanceMock.js');
+const childSwitcher = load('src/shared/ui/childSwitcher.js');
 const useSchedule = load('src/shared/hooks/useSchedule.js', {
   scheduleMap,
   AuthContext: { useAuth: () => ({ token: null }) },
@@ -88,7 +87,6 @@ const {
   MIN_GRID_ROWS,
 } = weekGrid;
 const { childShortLabel, childFullLabel, childInitials, childColor } = childSwitcher;
-const { mockAttendanceFor, ATTENDANCE_STATUSES } = attendance;
 const { buildDayStrip, startOfWeek, lessonsForDate } = useSchedule;
 
 // ── 1. dates ─────────────────────────────────────────────────────────────────
@@ -205,20 +203,7 @@ section('Селектор ребёнка');
     `${childColor(0)} / ${childColor(1)}`);
 }
 
-// ── 6. attendance placeholder ────────────────────────────────────────────────
-section('Посещаемость (заглушка)');
-{
-  const done = { lessonId: 7, status: 'done' };
-  check('детерминирован', mockAttendanceFor(done) === mockAttendanceFor(done));
-  check('нет значка у «Сейчас»', mockAttendanceFor({ lessonId: 7, status: 'now' }) === null);
-  check('нет значка у будущего', mockAttendanceFor({ lessonId: 7, status: 'upcoming' }) === null);
-  const all = new Set();
-  for (let i = 0; i < 100; i += 1) all.add(mockAttendanceFor({ lessonId: i, status: 'done' }));
-  check('встречаются все статусы', ATTENDANCE_STATUSES.every((s) => all.has(s)), [...all].join(','));
-  check('встречаются уроки без отметки', all.has(null));
-}
-
-// ── 7. недельная сетка ───────────────────────────────────────────────────────
+// ── 6. недельная сетка ───────────────────────────────────────────────────────
 section('Недельная сетка');
 {
   const now = new Date(2026, 6, 29, 12, 0, 0); // Ср 29.07.2026, 12:00
@@ -358,7 +343,7 @@ section('Недельная сетка');
     }));
 }
 
-// ── 8. against live backend data (optional) ──────────────────────────────────
+// ── 7. against live backend data (optional) ──────────────────────────────────
 const livePath = process.argv[2];
 if (livePath && fs.existsSync(livePath)) {
   section('Живые данные бэкенда');
@@ -378,8 +363,6 @@ if (livePath && fs.existsSync(livePath)) {
     const mapped = { lessons: rows };
     return lessonsForDate(mapped, day).every((l) => l.date === day);
   })());
-  check('значок посещаемости только у завершённых',
-    rows.every((r) => r.status === 'done' || mockAttendanceFor(r) === null));
 }
 
 console.log(`\n=== ИТОГ: ${passed} ok, ${failed} fail ===`);

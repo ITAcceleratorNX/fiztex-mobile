@@ -10,6 +10,32 @@ import * as DocumentPicker from 'expo-document-picker';
  * Клиент отвечает за выбор файла и за понятный отказ, если система не дала доступ.
  */
 
+/**
+ * Типы, которые системный выбор файлов вообще предлагает.
+ *
+ * <p>Это не проверка, а сужение выбора: неподдерживаемый файл нельзя выбрать, поэтому и
+ * отказывать за него не приходится. Раньше выбрать можно было что угодно — архив,
+ * картинку из «Файлов», — а узнавал об этом ученик только после «Отправить», когда
+ * работа уже набрана: сервер отклоняет отправку целиком, и вместе с файлом пропадал
+ * набранный текст.
+ *
+ * <p>Решает всё равно бэк: список повторяет {@code HomeworkAttachmentPolicy.FILE_EXTENSIONS},
+ * и при расхождении лишнее просто не покажется в пикере — отказа это не отменяет.
+ */
+const FILE_MIME_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'text/plain',
+];
+
+/** Подпись под кнопками — то же, что примет сервер, словами ученика. */
+export const ATTACHMENT_HINT = 'Фото — JPG, PNG или HEIC. Файлы — PDF, Word, Excel, PowerPoint или TXT.';
+
 /** Нормализованное вложение: то, что понимает `homeworkApi.submit`. */
 function fromImage(asset) {
   return {
@@ -55,11 +81,12 @@ export async function pickPhotos() {
   return (result.assets ?? []).map(fromImage);
 }
 
-/** Файлы решения: pdf, документы, что угодно — тип ограничивает бэк, а не выбор. */
+/** Файлы решения: только те форматы, которые примет сервер (см. `FILE_MIME_TYPES`). */
 export async function pickFiles() {
   const result = await DocumentPicker.getDocumentAsync({
     multiple: true,
     copyToCacheDirectory: true,
+    type: FILE_MIME_TYPES,
   });
   if (result.canceled) return [];
   return (result.assets ?? []).map(fromDocument);

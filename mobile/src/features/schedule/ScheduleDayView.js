@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Pressable, FlatList } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Txt } from '@shared/components/Txt';
-import { PhysTechMark } from '@shared/components/Hex';
+import { LogoWatermark } from '@shared/components/ui';
 import { LessonRow } from '@shared/ui/rows';
 import { InfoBanner, ScheduleSkeleton, ScheduleStateView } from './ScheduleStates';
 
@@ -10,33 +10,16 @@ const STRIP_GAP = 8;
 const STRIP_PAD = 16;
 const VISIBLE_CHIPS = 5;
 
-/** Subtle repeating Φ watermark behind the lesson list (Figma `lessons-scroll`). */
-function ScheduleWatermark() {
-  const { c } = useTheme();
-  const marks = Array.from({ length: 48 });
-  return (
-    <View
-      pointerEvents="none"
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        opacity: 0.045,
-        overflow: 'hidden',
-      }}
-    >
-      {marks.map((_, i) => (
-        <View key={i} style={{ width: '25%', height: 110, alignItems: 'center', justifyContent: 'center' }}>
-          <PhysTechMark size={36} color={c.blue} />
-        </View>
-      ))}
-    </View>
-  );
-}
+/**
+ * Подложка из макета (`background`, node 2140:15114).
+ *
+ * Знак 50 при шаге 62,7×66,6 — шесть знаков в ряд на 390 точках. `gap` один на обе оси:
+ * шаг по вертикали больше не потому, что зазор другой, а потому что сам знак выше, чем
+ * шире (96/89). Цвет и прозрачность — в теме (`schedulePattern`), там же объяснено,
+ * откуда взялись 1,6 %.
+ */
+const MARK_SIZE = 50;
+const MARK_GAP = 0.127;
 
 function DayChip({ day, selected, isToday, width, onPress }) {
   const { c } = useTheme();
@@ -146,40 +129,78 @@ export function ScheduleDayView({
   onRetry,
   onOpenLesson,
 }) {
+  const { c } = useTheme();
   const isTeacher = role === 'teacher';
+
+  /*
+    Слой знаков собирается один раз на тему, а не на каждый выбранный день: сетка на
+    экран это под сотню SVG, и пересобирать её при переключении дня незачем — от дня
+    она не зависит. Один и тот же элемент React пропускает без повторного рендера.
+  */
+  const watermark = useMemo(
+    () => (
+      <LogoWatermark
+        color={c.schedulePattern}
+        mark={MARK_SIZE}
+        gap={MARK_GAP}
+        opacity={c.schedulePatternOpacity}
+      />
+    ),
+    [c.schedulePattern, c.schedulePatternOpacity],
+  );
 
   return (
     <>
-      <ScheduleWatermark />
       <DayStrip days={days} selectedDate={selectedDate} todayStr={todayStr} onSelect={onSelectDay} />
 
-      {state.kind === 'loading' ? (
-        <ScheduleSkeleton />
-      ) : state.kind === 'lessons' ? (
-        <>
-          {state.infoEvents.map((e) => (
-            <InfoBanner key={e.id} title={e.title} />
-          ))}
-          <View style={{ gap: 12, paddingHorizontal: 16 }}>
-            {lessons.map((l, i) => (
-              <LessonRow
-                key={l.lessonId || i}
-                lesson={l}
-                teacherView={isTeacher}
-                // Отметка принадлежит одному ученику, поэтому на расписании учителя
-                // (класс целиком) её нет — контейнер за неё даже не ходит.
-                // Ключ — id фактического урока: у слота расписания посещаемости нет.
-                attendance={isTeacher ? null : marks[l.lessonInstanceId] || null}
-                // Оценки за урок — там же и по тем же правилам, что отметка.
-                grades={isTeacher ? null : grades[l.lessonInstanceId] || null}
-                onPress={onOpenLesson && l.lessonInstanceId ? () => onOpenLesson(l) : undefined}
-              />
+      {/*
+        Подложка начинается сразу под полоской дней и тянется до нижнего меню.
+
+        Границы не заданы числом ни сверху, ни снизу. Сверху блок просто стоит следующим
+        за полоской, поэтому переезд полоски не сдвигает подложку. Снизу его тянет
+        `flexGrow`: контейнер прокрутки растянут на высоту экрана, а нижний отступ
+        контента равен высоте плавающего таб-бара, и блок упирается ровно в него.
+        `flexShrink: 0` — чтобы длинный список не сжимался ради этого роста.
+
+        Инфо-событие дня внутри блока, а не над ним: у него своя непрозрачная подложка,
+        и знак под ней всё равно не виден, зато фон начинается там, где ему сказано.
+
+        `paddingBottom` — запас под тень нижней карточки: на длинном списке блок кончается
+        ровно на последнем уроке, и `overflow: hidden` срезал бы её.
+      */}
+      <View style={{ flexGrow: 1, flexShrink: 0, overflow: 'hidden', paddingBottom: 24 }}>
+        {watermark}
+
+        {state.kind === 'loading' ? (
+          <ScheduleSkeleton />
+        ) : state.kind === 'lessons' ? (
+          <>
+            {/* У баннера свои горизонтальные поля, поэтому он стоит рядом со списком,
+                а не внутри него: вложенный, он получил бы отступ дважды. */}
+            {state.infoEvents.map((e) => (
+              <InfoBanner key={e.id} title={e.title} />
             ))}
-          </View>
-        </>
-      ) : (
-        <ScheduleStateView state={state} onRetry={onRetry} />
-      )}
+            <View style={{ gap: 12, paddingHorizontal: 16 }}>
+              {lessons.map((l, i) => (
+                <LessonRow
+                  key={l.lessonId || i}
+                  lesson={l}
+                  teacherView={isTeacher}
+                  // Отметка принадлежит одному ученику, поэтому на расписании учителя
+                  // (класс целиком) её нет — контейнер за неё даже не ходит.
+                  // Ключ — id фактического урока: у слота расписания посещаемости нет.
+                  attendance={isTeacher ? null : marks[l.lessonInstanceId] || null}
+                  // Оценки за урок — там же и по тем же правилам, что отметка.
+                  grades={isTeacher ? null : grades[l.lessonInstanceId] || null}
+                  onPress={onOpenLesson && l.lessonInstanceId ? () => onOpenLesson(l) : undefined}
+                />
+              ))}
+            </View>
+          </>
+        ) : (
+          <ScheduleStateView state={state} onRetry={onRetry} />
+        )}
+      </View>
     </>
   );
 }
