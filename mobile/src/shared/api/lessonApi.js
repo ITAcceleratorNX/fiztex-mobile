@@ -21,6 +21,20 @@ export const lessonApi = {
   card: (token, lessonId, childId) =>
     request(`/api/lessons/${lessonId}${childQuery(childId)}`, { token }),
 
+  /**
+   * Урок, к которому ведёт кнопка «Текущий урок»: идущий сейчас, а если такого нет —
+   * ближайший будущий.
+   *
+   * Выбирает урок бэк, а не приложение: правило «идёт / следующий сегодня / первый урок
+   * ближайшего учебного дня» опирается на школьный календарь, подгруппы, замены и
+   * горизонт генерации — всего этого у клиента нет, а расписание на неделю ответа не
+   * даёт (за понедельником может не быть занятий вовсе).
+   *
+   * Пустой ответ приходит не пустотой, а причиной в `status`: «расписания ещё нет» и
+   * «уроков больше нет» — разные новости для родителя.
+   */
+  current: (token, childId) => request(`/api/lessons/current${childQuery(childId)}`, { token }),
+
   /** Состав учеников урока (нужна capability VIEW_STUDENTS). */
   students: (token, lessonId, childId) =>
     request(`/api/lessons/${lessonId}/students${childQuery(childId)}`, { token }),

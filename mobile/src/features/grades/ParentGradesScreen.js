@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
@@ -9,6 +9,7 @@ import {
   childShortLabel,
 } from '@shared/ui/childSwitcher';
 import { useParentChildren } from '@shared/hooks/useSchedule';
+import { useSelectedChild } from '@shared/state/SelectedChild';
 import { StudentGradesScreen } from './StudentGradesScreen';
 import { GradesSkeleton } from './GradeStates';
 
@@ -33,14 +34,10 @@ export function ParentGradesScreen({ nav }) {
   const { c } = useTheme();
   const { loading, error, children, reload } = useParentChildren();
 
-  const [childId, setChildId] = useState(null);
+  // Выбор ребёнка общий на всё приложение родителя (см. `SelectedChildProvider`):
+  // раздел оценок и кнопка «Текущий урок» обязаны говорить об одном и том же ребёнке.
+  const { childId, setChildId } = useSelectedChild(children);
   const [pickerOpen, setPickerOpen] = useState(false);
-
-  // Первый ребёнок по умолчанию: до выбора запрос за оценками не уходит, а держать
-  // родителя на пустом экране, когда ребёнок один, незачем. Тот же приём в расписании.
-  useEffect(() => {
-    if (children.length && !childId) setChildId(children[0].id);
-  }, [children, childId]);
 
   const selectedIndex = children.findIndex((item) => item.id === childId);
   const child = selectedIndex >= 0 ? children[selectedIndex] : null;

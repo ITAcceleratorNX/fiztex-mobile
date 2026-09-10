@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, ScrollView, RefreshControl } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
-import { Screen } from '@shared/components/Screen';
+import { Screen, useBottomChromePadding } from '@shared/components/Screen';
 import { useHomeworkList } from '@shared/hooks/useHomework';
 import { HomeworkRow, ScopeTabs } from './components';
 import {
@@ -22,6 +22,7 @@ import {
  */
 export function StudentHomeworkScreen({ nav }) {
   const { c } = useTheme();
+  const bottomPad = useBottomChromePadding();
   const { loading, error, rows, scope, setScope, reload, refresh, refreshing } = useHomeworkList();
 
   return (
@@ -33,7 +34,7 @@ export function StudentHomeworkScreen({ nav }) {
       </View>
 
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 120, flexGrow: 1 }}
+        contentContainerStyle={{ paddingBottom: bottomPad, flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={c.ink3} />

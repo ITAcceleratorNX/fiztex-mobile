@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Pressable } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '@shared/theme/ThemeContext';
-import { Screen, shadowLg } from '@shared/components/Screen';
+import { Screen, shadowLg, useBottomChromePadding } from '@shared/components/Screen';
 import { Txt, Ink } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { HexBadge, PhysTechMark } from '@shared/components/Hex';
@@ -889,6 +889,7 @@ export function StudentShop({ nav }) {
 
 // ═══ PROFILE ═══
 export function StudentProfile({ onSignOut }) {
+  const bottomPad = useBottomChromePadding();
   const { c, dark, toggle } = useTheme();
   const { biometricsEnabled, biometricMeta, enableBiometrics, disableBiometrics } = useAuth();
   // Всё на экране — своё, с бэка: имя, класс и учебный год из профиля, посещаемость из
@@ -939,7 +940,7 @@ export function StudentProfile({ onSignOut }) {
         </Pressable>
       </Card>
 
-      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 100 }}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomPad }}>
         <Pressable onPress={onSignOut} style={{ padding: 14, alignItems: 'center' }}>
           <Txt style={{ color: c.red, fontWeight: '600', fontSize: 14 }}>Выйти</Txt>
         </Pressable>

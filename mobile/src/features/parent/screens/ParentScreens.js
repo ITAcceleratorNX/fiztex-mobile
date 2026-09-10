@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Pressable, ScrollView } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
-import { Screen } from '@shared/components/Screen';
+import { Screen, useBottomChromePadding } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { HexBadge } from '@shared/components/Hex';
@@ -410,6 +410,7 @@ function parentSubtitle(count) {
 }
 
 export function ParentProfile({ onSignOut }) {
+  const bottomPad = useBottomChromePadding();
   const { c, dark, toggle } = useTheme();
   const { biometricsEnabled, biometricMeta, enableBiometrics, disableBiometrics } = useAuth();
   // Дети приходят те же, что и в расписании: связь родитель↔ребёнок в системе одна.
@@ -467,7 +468,7 @@ export function ParentProfile({ onSignOut }) {
         </Pressable>
       </Card>
 
-      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 100 }}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomPad }}>
         <Pressable onPress={onSignOut} style={{ padding: 14, alignItems: 'center' }}>
           <Txt style={{ color: c.red, fontWeight: '600', fontSize: 14 }}>Выйти</Txt>
         </Pressable>

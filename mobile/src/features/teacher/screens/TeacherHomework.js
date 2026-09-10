@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { View, Pressable, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
-import { Screen } from '@shared/components/Screen';
+import { Screen, useBottomChromePadding } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { Pill, ScreenHeader, StateView } from '@shared/components/ui';
@@ -29,6 +29,7 @@ const PAGE_SIZE = 50;
  */
 export function TeacherHomework({ nav }) {
   const { c } = useTheme();
+  const bottomPad = useBottomChromePadding();
   const { token } = useAuth();
 
   const [scope, setScope] = useState('ACTUAL');
@@ -99,7 +100,7 @@ export function TeacherHomework({ nav }) {
       </View>
 
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 120, flexGrow: 1 }}
+        contentContainerStyle={{ paddingBottom: bottomPad, flexGrow: 1 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.ink3} />
         }

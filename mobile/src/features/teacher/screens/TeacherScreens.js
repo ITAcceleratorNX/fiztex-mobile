@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Pressable, ScrollView, Animated, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/theme/ThemeContext';
-import { Screen } from '@shared/components/Screen';
+import { Screen, useBottomChromePadding } from '@shared/components/Screen';
 import { Txt, Ink } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { HexBadge } from '@shared/components/Hex';
@@ -453,6 +453,7 @@ export function TeacherFeedbackWrite({ nav }) {
 const CLASS_COLORS = ['green', 'blue', 'red', 'gold'];
 
 export function TeacherProfile({ nav, onSignOut }) {
+  const bottomPad = useBottomChromePadding();
   const { c, dark, toggle } = useTheme();
   const { biometricsEnabled, biometricMeta, enableBiometrics, disableBiometrics } = useAuth();
   // Что учитель ведёт в этом году — из его назначений. Разовая замена сюда не попадает:
@@ -529,7 +530,7 @@ export function TeacherProfile({ nav, onSignOut }) {
         </Pressable>
       </Card>
 
-      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 100 }}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomPad }}>
         <Pressable onPress={onSignOut} style={{ padding: 14, alignItems: 'center' }}>
           <Txt style={{ color: c.red, fontWeight: '600', fontSize: 14 }}>Выйти</Txt>
         </Pressable>

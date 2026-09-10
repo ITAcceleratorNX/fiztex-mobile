@@ -2,6 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { CustomTabBar } from './CustomTabBar';
+import { SelectedChildProvider } from '@shared/state/SelectedChild';
 import { withNav } from './withNav';
 import { NotificationsScreen } from '@features/notifications';
 import { ScheduleScreen } from '@features/schedule';
@@ -88,7 +89,7 @@ const STab = createBottomTabNavigator();
 
 function StudentTabs() {
   return (
-    <STab.Navigator tabBar={(p) => <CustomTabBar {...p} />} screenOptions={tabScreenOptions}>
+    <STab.Navigator tabBar={(p) => <CustomTabBar {...p} currentLesson />} screenOptions={tabScreenOptions}>
       {renderTabs(STab, [
         { name: 'home', comp: StudentHomeScreen, label: 'Главная', icon: 'home' },
         { name: 'schedule', comp: StudentSchedule, label: 'Расписание', icon: 'calendar' },
@@ -140,7 +141,7 @@ const PTab = createBottomTabNavigator();
 
 function ParentTabs() {
   return (
-    <PTab.Navigator tabBar={(p) => <CustomTabBar {...p} />} screenOptions={tabScreenOptions}>
+    <PTab.Navigator tabBar={(p) => <CustomTabBar {...p} currentLesson />} screenOptions={tabScreenOptions}>
       {renderTabs(PTab, [
         { name: 'home', comp: ParentHomeScreen, label: 'Главная', icon: 'home' },
         { name: 'schedule', comp: ParentSchedule, label: 'Расписание', icon: 'calendar' },
@@ -154,28 +155,37 @@ function ParentTabs() {
   );
 }
 
+/**
+ * Выбранный ребёнок — состояние всего родительского приложения, а не отдельного экрана
+ * (`SelectedChildProvider`). Раньше выбор жил на каждом экране свой, и «Главная» с
+ * «Расписанием» могли показывать разных детей; с кнопкой «Текущий урок» это перестало
+ * быть терпимым — она в нижней панели, своего переключателя не имеет и обязана вести к
+ * уроку выбранного ребёнка (ТЗ Быстрый доступ §2).
+ */
 export function ParentApp() {
   return (
-    <PStack.Navigator screenOptions={stackScreenOptions}>
-      <PStack.Screen name="Tabs" component={ParentTabs} />
-      {renderDetails(PStack, [
-        // Родителю тот же экран: карточка одна на всех, а что в ней доступно, решает бэк
-        // через capabilities — отдельный «родительский» экран разошёлся бы с ученическим.
-        { name: 'lesson', comp: StudentLessonScreen },
-        { name: 'lesson-materials', comp: LessonMaterialsScreen },
-        // Карточка ДЗ у родителя своя, а не общая с учеником: ученическая показывает
-        // ответ и форму отправки, а родителю не положено ни то, ни другое.
-        { name: 'homework-card', comp: ParentHomeworkDetailScreen },
-        { name: 'subject', comp: StudentSubjectGradesScreen },
-        { name: 'attendance', comp: ParentAttendance },
-        { name: 'service', comp: ParentService },
-        { name: 'clubs', comp: StudentClubs },
-        { name: 'club', comp: StudentClub },
-        { name: 'events', comp: StudentEvents },
-        { name: 'feedback', comp: ParentFeedback },
-        { name: 'notifications', comp: NotificationsScreen },
-      ])}
-    </PStack.Navigator>
+    <SelectedChildProvider>
+      <PStack.Navigator screenOptions={stackScreenOptions}>
+        <PStack.Screen name="Tabs" component={ParentTabs} />
+        {renderDetails(PStack, [
+          // Родителю тот же экран: карточка одна на всех, а что в ней доступно, решает бэк
+          // через capabilities — отдельный «родительский» экран разошёлся бы с ученическим.
+          { name: 'lesson', comp: StudentLessonScreen },
+          { name: 'lesson-materials', comp: LessonMaterialsScreen },
+          // Карточка ДЗ у родителя своя, а не общая с учеником: ученическая показывает
+          // ответ и форму отправки, а родителю не положено ни то, ни другое.
+          { name: 'homework-card', comp: ParentHomeworkDetailScreen },
+          { name: 'subject', comp: StudentSubjectGradesScreen },
+          { name: 'attendance', comp: ParentAttendance },
+          { name: 'service', comp: ParentService },
+          { name: 'clubs', comp: StudentClubs },
+          { name: 'club', comp: StudentClub },
+          { name: 'events', comp: StudentEvents },
+          { name: 'feedback', comp: ParentFeedback },
+          { name: 'notifications', comp: NotificationsScreen },
+        ])}
+      </PStack.Navigator>
+    </SelectedChildProvider>
   );
 }
 
@@ -185,7 +195,7 @@ const TTab = createBottomTabNavigator();
 
 function TeacherTabs() {
   return (
-    <TTab.Navigator tabBar={(p) => <CustomTabBar {...p} />} screenOptions={tabScreenOptions}>
+    <TTab.Navigator tabBar={(p) => <CustomTabBar {...p} currentLesson />} screenOptions={tabScreenOptions}>
       {renderTabs(TTab, [
         { name: 'home', comp: TeacherHomeScreen, label: 'Сегодня', icon: 'home' },
         { name: 'schedule', comp: TeacherSchedule, label: 'Расписание', icon: 'calendar' },

@@ -13,6 +13,30 @@ import { useTheme } from '../theme/ThemeContext';
  */
 export const TAB_BAR_HEIGHT = 6 + 14 + 28 + 14 + 8;
 
+/**
+ * Полоса «Текущий урок» над панелью (Figma `Current Lesson Banner`, 390×44).
+ *
+ * <p>Высота фиксированная, хотя полоса бывает скрыта: место под неё резервируется всегда.
+ * Иначе последняя строка списка то пряталась бы, то нет — в зависимости от того, идёт ли
+ * сейчас урок, а «прыгающий» конец списка выглядит как поломка вёрстки.
+ */
+export const CURRENT_LESSON_BAR_HEIGHT = 44;
+
+/** Вся нижняя обвязка, из-под которой экран обязан себя вытащить. */
+export const BOTTOM_CHROME_HEIGHT = TAB_BAR_HEIGHT + CURRENT_LESSON_BAR_HEIGHT;
+
+/**
+ * Отступ снизу для экрана-вкладки: нижняя обвязка плюс безопасная зона устройства.
+ *
+ * <p>Хук, а не константа, потому что второе слагаемое известно только устройству. И
+ * общий, а не число по месту: до него у каждой вкладки было своё «примерно сто», и
+ * появление полосы «Текущий урок» пришлось бы разносить по десятку экранов заново.
+ */
+export function useBottomChromePadding(extra = 0) {
+  const insets = useSafeAreaInsets();
+  return insets.bottom + BOTTOM_CHROME_HEIGHT + extra;
+}
+
 // Soft elevation presets — replace the web `--shadow` / `--shadow-lg` CSS vars.
 export const shadowSm = {
   shadowColor: '#0F172A',

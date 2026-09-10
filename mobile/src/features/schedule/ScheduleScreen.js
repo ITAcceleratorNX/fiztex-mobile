@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/theme/ThemeContext';
-import { Screen, TAB_BAR_HEIGHT } from '@shared/components/Screen';
+import { Screen, BOTTOM_CHROME_HEIGHT } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import {
   useMySchedule,
@@ -15,6 +15,7 @@ import {
   workingDayOffsets,
   nearestSchoolDay,
 } from '@shared/hooks/useSchedule';
+import { useSelectedChild } from '@shared/state/SelectedChild';
 import { useMyAttendanceMarks } from '@shared/hooks/useAttendance';
 import { useMyDiaryGrades } from '@shared/hooks/useGrades';
 import { localDateKey } from '@shared/api/scheduleMap';
@@ -69,12 +70,10 @@ export function ScheduleScreen({ nav, role = 'student' }) {
   const isParent = role === 'parent';
 
   const { children, loading: childrenLoading, reload: reloadChildren } = useParentChildren(isParent);
-  const [childId, setChildId] = useState(null);
+  // Выбор ребёнка общий на всё приложение родителя (`SelectedChildProvider`).
+  const { childId, setChildId } = useSelectedChild(isParent ? children : []);
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  useEffect(() => {
-    if (isParent && children.length && !childId) setChildId(children[0].id);
-  }, [isParent, children, childId]);
 
   const todayStr = localDateKey();
   const [selectedDate, setSelectedDate] = useState(todayStr);
@@ -219,7 +218,7 @@ export function ScheduleScreen({ nav, role = 'student' }) {
       // упирается в него и не уезжает под него. `flexGrow` нужен ей же — без роста
       // контейнера прокрутка отдаёт высоту содержимого, и в день с двумя уроками знак
       // обрывался бы сразу под ними.
-      contentStyle={{ paddingBottom: insets.bottom + TAB_BAR_HEIGHT, flexGrow: 1 }}
+      contentStyle={{ paddingBottom: insets.bottom + BOTTOM_CHROME_HEIGHT, flexGrow: 1 }}
       style={{ backgroundColor: c.bg }}
       refreshing={refreshing}
       onRefresh={onRefresh}

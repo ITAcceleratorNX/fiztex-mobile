@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Screen } from '@shared/components/Screen';
+import { BOTTOM_CHROME_HEIGHT, Screen } from '@shared/components/Screen';
 import { StateView } from '@shared/components/ui';
 import { useMySchedule } from '@shared/hooks/useSchedule';
 import { useMyProfile } from '@shared/hooks/useProfile';
@@ -68,7 +68,7 @@ export function StudentHomeScreen({ nav }) {
     <Screen refreshing={refreshing} onRefresh={onRefresh} contentStyle={{
         gap: 20,
         paddingHorizontal: 16,
-        paddingBottom: insets.bottom + 100,
+        paddingBottom: insets.bottom + BOTTOM_CHROME_HEIGHT,
       }}>
       <HomeHeader
         title={`Привет, ${greetingName(profile, displayName)}!`}

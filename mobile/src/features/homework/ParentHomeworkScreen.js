@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View, ScrollView, RefreshControl } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
-import { Screen } from '@shared/components/Screen';
+import { Screen, useBottomChromePadding } from '@shared/components/Screen';
 import { useParentChildren } from '@shared/hooks/useSchedule';
+import { useSelectedChild } from '@shared/state/SelectedChild';
 import { useHomeworkList } from '@shared/hooks/useHomework';
 import {
   ChildPickerSheet,
@@ -29,15 +30,12 @@ import {
  */
 export function ParentHomeworkScreen({ nav }) {
   const { c } = useTheme();
+  const bottomPad = useBottomChromePadding();
   const { loading: childrenLoading, error: childrenError, children } = useParentChildren();
-  const [childId, setChildId] = useState(null);
+  // Выбор ребёнка общий на всё приложение родителя: переключение здесь видно и на
+  // «Главной», и в расписании, и на кнопке «Текущий урок» в нижней панели.
+  const { childId, setChildId } = useSelectedChild(children);
   const [picking, setPicking] = useState(false);
-
-  // Первый ребёнок выбирается сам: экран без выбранного ребёнка ничего не показывает,
-  // а начинать со списка «выберите ребёнка» там, где он один, — лишний шаг.
-  useEffect(() => {
-    if (childId == null && children.length > 0) setChildId(children[0].id);
-  }, [childId, children]);
 
   const index = Math.max(0, children.findIndex((child) => child.id === childId));
   const child = children[index] || null;
@@ -69,7 +67,7 @@ export function ParentHomeworkScreen({ nav }) {
       </View>
 
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 120, flexGrow: 1 }}
+        contentContainerStyle={{ paddingBottom: bottomPad, flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={c.ink3} />

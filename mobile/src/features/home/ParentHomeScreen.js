@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Screen } from '@shared/components/Screen';
+import { BOTTOM_CHROME_HEIGHT, Screen } from '@shared/components/Screen';
 import { PickerSheet, StateView } from '@shared/components/ui';
 import { useChildSchedule, useParentChildren } from '@shared/hooks/useSchedule';
+import { useSelectedChild } from '@shared/state/SelectedChild';
 import { useMyProfile } from '@shared/hooks/useProfile';
 import { useMyDiaryGrades, useMySubjectGrades } from '@shared/hooks/useGrades';
 import {
@@ -23,14 +24,10 @@ export function ParentHomeScreen({ nav }) {
   const insets = useSafeAreaInsets();
   const { children, loading: childrenLoading, error: childrenError } = useParentChildren();
   const { profile, displayName } = useMyProfile();
-  const [childId, setChildId] = useState(null);
+  // Выбор ребёнка общий на всё приложение родителя (`SelectedChildProvider`): его
+  // читают и расписание, и оценки, и кнопка «Текущий урок» в нижней панели.
+  const { childId, setChildId } = useSelectedChild(children);
   const [pickerOpen, setPickerOpen] = useState(false);
-
-  // Первый ребёнок выбирается сам: экран без выбора показал бы пустоту тому, у кого
-  // ребёнок один и выбирать нечего.
-  useEffect(() => {
-    if (childId == null && children.length > 0) setChildId(children[0].id);
-  }, [children, childId]);
 
   const child = useMemo(
     () => children.find((c) => c.id === childId) || null,
@@ -88,7 +85,7 @@ export function ParentHomeScreen({ nav }) {
     <Screen refreshing={refreshing} onRefresh={onRefresh} contentStyle={{
         gap: 20,
         paddingHorizontal: 16,
-        paddingBottom: insets.bottom + 100,
+        paddingBottom: insets.bottom + BOTTOM_CHROME_HEIGHT,
       }}>
       <HomeHeader
         title={parentName(profile, displayName)}
