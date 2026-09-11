@@ -98,6 +98,13 @@ export function ParentHomeScreen({ nav }) {
         subtitle={formatHomeDate(data?.date)}
       />
 
+      {/* Сразу под приветствием, как и у ученика — опросам не место внизу экрана под
+          расписанием и оценками. Широкий вариант: у родителя нет плитки сканера, с
+          которой её делить строкой. */}
+      {pendingSurveys > 0 ? (
+        <SurveysTile count={pendingSurveys} onPress={() => nav?.('survey-list')} />
+      ) : null}
+
       <View style={{ gap: 10 }}>
         <HomeSectionTitle>Расписание на сегодня</HomeSectionTitle>
         {child ? (
@@ -128,10 +135,6 @@ export function ParentHomeScreen({ nav }) {
           onPress={() => nav?.('grades')}
         />
       </View>
-
-      {pendingSurveys > 0 ? (
-        <SurveysTile count={pendingSurveys} onPress={() => nav?.('survey-list')} />
-      ) : null}
 
       <PickerSheet
         visible={pickerOpen}
