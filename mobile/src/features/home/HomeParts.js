@@ -15,6 +15,15 @@ import { initialsOf, childPillLabel, homeLessonWindow } from './homeDate';
  * при первой же правке одного из них.
  */
 
+/**
+ * Высота компактной плитки в паре «Сканер + Опросы» ({@link ScanQrTile}/
+ * {@link SurveysTile} с `compact`). Жёсткая `height`, а не `minHeight`: у второй
+ * плитки на строку больше текста (название и счётчик против одной подписи сканера),
+ * и с `minHeight` контент раздвигал её бокс выше соседней — обе теперь одной высоты
+ * независимо от того, сколько строк текста внутри.
+ */
+const COMPACT_TILE_HEIGHT = 92;
+
 /** Шапка: имя и школьная дата. */
 export function HomeHeader({ title, subtitle, topGap = 8 }) {
   const { c } = useTheme();
@@ -340,10 +349,9 @@ export function ScanQrTile({ onPress, compact = false }) {
             alignItems: 'center',
             justifyContent: 'center',
             gap: 8,
-            minHeight: 92,
+            height: COMPACT_TILE_HEIGHT,
             borderRadius: 16,
             paddingHorizontal: 10,
-            paddingVertical: 14,
             backgroundColor: c.green,
           }}
         >
@@ -423,11 +431,11 @@ export function SurveysTile({ count, onPress, compact = false }) {
   const { c } = useTheme();
   if (compact) {
     return (
-      <Pressable onPress={onPress} style={{ flex: 1 }}>
+      <Pressable onPress={onPress} style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.85 : 1 })}>
         <SurfaceCard
           radius={16}
           padding={10}
-          style={{ alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 92 }}
+          style={{ alignItems: 'center', justifyContent: 'center', gap: 6, height: COMPACT_TILE_HEIGHT }}
         >
           <View
             style={{
@@ -441,7 +449,7 @@ export function SurveysTile({ count, onPress, compact = false }) {
           >
             <Icon name="clipboardCheck" size={20} color={c.blue} strokeWidth={2} />
           </View>
-          <View style={{ alignItems: 'center', gap: 2 }}>
+          <View style={{ alignItems: 'center' }}>
             <Txt style={{ fontSize: 13, fontWeight: '700', color: c.ink }}>Опросы</Txt>
             <Txt numberOfLines={1} style={{ fontSize: 11, fontWeight: '600', color: c.blue }}>
               {count}
