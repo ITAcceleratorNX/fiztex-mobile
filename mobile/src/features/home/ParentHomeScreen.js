@@ -7,8 +7,9 @@ import { useChildSchedule, useParentChildren } from '@shared/hooks/useSchedule';
 import { useSelectedChild } from '@shared/state/SelectedChild';
 import { useMyProfile } from '@shared/hooks/useProfile';
 import { useMyDiaryGrades, useMySubjectGrades } from '@shared/hooks/useGrades';
+import { useMySurveys } from '@shared/hooks/useSurveys';
 import {
-  ChildSwitcherPill, GradesTile, HomeHeader, HomeSectionTitle, LearnerLessonsCard,
+  ChildSwitcherPill, GradesTile, HomeHeader, HomeSectionTitle, LearnerLessonsCard, SurveysTile,
 } from './HomeParts';
 import { childPillLabel, formatHomeDate, parentName, todayKey } from './homeDate';
 import { latestGradeLine } from './latestGrade';
@@ -42,16 +43,20 @@ export function ParentHomeScreen({ nav }) {
   const { subjects, reload: reloadSubjects } = useMySubjectGrades({
     childStudentProfileId: childId,
   });
+  // Без `childId`: анкета родителя одна на аккаунт независимо от числа детей и от того,
+  // какой ребёнок выбран пилюлей выше (см. правило в контракте опросов) — переключение
+  // ребёнка эту плитку не трогает.
+  const { surveys, reload: reloadSurveys } = useMySurveys();
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([reload(true), reloadGrades(), reloadSubjects({ silent: true })]);
+      await Promise.all([reload(true), reloadGrades(), reloadSubjects({ silent: true }), reloadSurveys(true)]);
     } finally {
       setRefreshing(false);
     }
-  }, [reload, reloadGrades, reloadSubjects]);
+  }, [reload, reloadGrades, reloadSubjects, reloadSurveys]);
 
   const openLesson = useCallback(
     (lesson) => nav?.('lesson', {
@@ -80,6 +85,7 @@ export function ParentHomeScreen({ nav }) {
 
   const lessons = data?.lessons ?? [];
   const gradeLine = latestGradeLine(subjects);
+  const pendingSurveys = (surveys ?? []).filter((s) => s.canAnswer).length;
 
   return (
     <Screen refreshing={refreshing} onRefresh={onRefresh} contentStyle={{
@@ -122,6 +128,10 @@ export function ParentHomeScreen({ nav }) {
           onPress={() => nav?.('grades')}
         />
       </View>
+
+      {pendingSurveys > 0 ? (
+        <SurveysTile count={pendingSurveys} onPress={() => nav?.('survey-list')} />
+      ) : null}
 
       <PickerSheet
         visible={pickerOpen}

@@ -6,8 +6,9 @@ import { StateView } from '@shared/components/ui';
 import { useMySchedule } from '@shared/hooks/useSchedule';
 import { useMyProfile } from '@shared/hooks/useProfile';
 import { useMyDiaryGrades, useMySubjectGrades } from '@shared/hooks/useGrades';
+import { useMySurveys } from '@shared/hooks/useSurveys';
 import {
-  HomeHeader, HomeSectionTitle, LearnerLessonsCard, GradesTile, ScanQrTile,
+  HomeHeader, HomeSectionTitle, LearnerLessonsCard, GradesTile, ScanQrTile, SurveysTile,
 } from './HomeParts';
 import { formatHomeDate, greetingName, todayKey } from './homeDate';
 import { latestGradeLine } from './latestGrade';
@@ -28,16 +29,19 @@ export function StudentHomeScreen({ nav }) {
   // поэтому хук гасит её молча и отдаёт пустую карту.
   const { grades, reload: reloadGrades } = useMyDiaryGrades({ dateFrom: today, dateTo: today });
   const { subjects, reload: reloadSubjects } = useMySubjectGrades();
+  // Плитка опросов не должна ронять остальную главную своей ошибкой — блок скрывается
+  // сам, если счётчик посчитать не удалось (пустой список ведёт себя так же).
+  const { surveys, reload: reloadSurveys } = useMySurveys();
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([reload(true), reloadGrades(), reloadSubjects({ silent: true })]);
+      await Promise.all([reload(true), reloadGrades(), reloadSubjects({ silent: true }), reloadSurveys(true)]);
     } finally {
       setRefreshing(false);
     }
-  }, [reload, reloadGrades, reloadSubjects]);
+  }, [reload, reloadGrades, reloadSubjects, reloadSurveys]);
 
   const openLesson = useCallback(
     (lesson) => nav?.('lesson', { ...lesson, childId: null, childName: null }),
@@ -63,6 +67,9 @@ export function StudentHomeScreen({ nav }) {
 
   const lessons = data?.lessons ?? [];
   const gradeLine = latestGradeLine(subjects);
+  // `canAnswer` уже решён сервером (не отправлен, окно открыто, опрос активен) — здесь
+  // только считаем, сколько таких пришло, а не признаём отдельно.
+  const pendingSurveys = (surveys ?? []).filter((s) => s.canAnswer).length;
 
   return (
     <Screen refreshing={refreshing} onRefresh={onRefresh} contentStyle={{
@@ -96,6 +103,12 @@ export function StudentHomeScreen({ nav }) {
           onPress={() => nav?.('diary')}
         />
       </View>
+
+      {/* Плитка появляется, только если реально есть что пройти — иначе на главной
+          постоянно висел бы раздел без действия. */}
+      {pendingSurveys > 0 ? (
+        <SurveysTile count={pendingSurveys} onPress={() => nav?.('survey-list')} />
+      ) : null}
     </Screen>
   );
 }

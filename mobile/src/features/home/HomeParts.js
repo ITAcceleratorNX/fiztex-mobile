@@ -365,6 +365,55 @@ export function ScanQrTile({ onPress }) {
   );
 }
 
+/**
+ * Плитка «Опросы» ученика и родителя — только там, где есть что пройти (Фаза 3
+ * «Опросы»). Не вариант `GradesTile` с другой иконкой: подпись здесь не «последняя
+ * оценка», а счётчик, и его текст меняется от числа, а не просто подставляется.
+ */
+export function SurveysTile({ count, onPress }) {
+  const { c } = useTheme();
+  return (
+    <Pressable onPress={onPress}>
+      <SurfaceCard
+        radius={16}
+        padding={12}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+      >
+        <View
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: c.blueSoft,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Icon name="clipboardCheck" size={18} color={c.blue} strokeWidth={2} />
+        </View>
+        <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
+          <Txt style={{ fontSize: 14, fontWeight: '600', color: c.ink }}>Опросы</Txt>
+          <Txt numberOfLines={1} style={{ fontSize: 12, fontWeight: '500', color: c.inkMuted }}>
+            {pendingSurveysLabel(count)}
+          </Txt>
+        </View>
+        <Icon name="chevronRight" size={20} color={c.ink3} strokeWidth={2} />
+      </SurfaceCard>
+    </Pressable>
+  );
+}
+
+function pendingSurveysLabel(count) {
+  const n = Math.abs(count) % 100;
+  const tail = n % 10;
+  let word = 'опросов';
+  if (n < 11 || n > 14) {
+    if (tail === 1) word = 'опрос';
+    else if (tail >= 2 && tail <= 4) word = 'опроса';
+  }
+  return `Ждёт ответа: ${count} ${word}`;
+}
+
 /** Плитка «Оценки» учителя: заливка без рамки, иконка и шеврон в одну строку сверху. */
 export function TeacherGradesTile({ title, subtitle, onPress }) {
   const { c } = useTheme();

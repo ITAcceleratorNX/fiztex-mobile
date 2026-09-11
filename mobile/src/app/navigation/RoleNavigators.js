@@ -32,6 +32,9 @@ import {
   StudentHomeworkScreen, StudentHomeworkDetailScreen, StudentHomeworkTestScreen,
   ParentHomeworkScreen, ParentHomeworkDetailScreen,
 } from '@features/homework';
+// Опросы: список и прохождение — один и тот же экран для ученика и родителя (см.
+// `SurveyListScreen`), backend сам решает, что вернуть по токену.
+import { SurveyListScreen, SurveyTakeScreen } from '@features/survey';
 // Главные экраны трёх ролей живут отдельным модулем: они делят шапку, карточку
 // расписания и плитку оценок, и все три читают бэкенд, а не макетные данные.
 import { StudentHomeScreen, ParentHomeScreen, TeacherHomeScreen } from '@features/home';
@@ -66,6 +69,14 @@ function ParentSchedule(props) {
 
 function TeacherSchedule(props) {
   return <ScheduleScreen {...props} role="teacher" />;
+}
+
+function StudentSurveyList(props) {
+  return <SurveyListScreen {...props} role="student" />;
+}
+
+function ParentSurveyList(props) {
+  return <SurveyListScreen {...props} role="parent" />;
 }
 
 function renderTabs(Tab, tabs) {
@@ -118,6 +129,8 @@ export function StudentApp() {
         { name: 'attendance-scan', comp: QrScanScreen },
         { name: 'homework-card', comp: StudentHomeworkDetailScreen },
         { name: 'homework-test', comp: StudentHomeworkTestScreen },
+        { name: 'survey-list', comp: StudentSurveyList },
+        { name: 'survey-take', comp: SurveyTakeScreen },
         { name: 'checkout', comp: StudentCheckoutQR },
         { name: 'subject', comp: StudentSubjectGradesScreen },
         { name: 'clubs', comp: StudentClubs },
@@ -175,6 +188,8 @@ export function ParentApp() {
           // Карточка ДЗ у родителя своя, а не общая с учеником: ученическая показывает
           // ответ и форму отправки, а родителю не положено ни то, ни другое.
           { name: 'homework-card', comp: ParentHomeworkDetailScreen },
+          { name: 'survey-list', comp: ParentSurveyList },
+          { name: 'survey-take', comp: SurveyTakeScreen },
           { name: 'subject', comp: StudentSubjectGradesScreen },
           { name: 'attendance', comp: ParentAttendance },
           { name: 'service', comp: ParentService },
