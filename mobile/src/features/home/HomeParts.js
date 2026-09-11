@@ -319,9 +319,53 @@ export function GradesTile({ title, subtitle, onPress }) {
  *
  * Не плавающая кнопка: она перекрыла бы этот список ради действия, которое совершают
  * раз в день.
+ *
+ * `compact` — половина строки рядом с {@link SurveysTile}, когда есть непройденные
+ * опросы (иначе сканер по-прежнему один и на всю ширину): тот же зелёный акцент и
+ * иконка, но без подписи-подсказки — в паре с другой плиткой на неё не хватает места,
+ * а укороченный текст «Отметиться» рядом с иконкой сканера самодостаточен и без неё.
  */
-export function ScanQrTile({ onPress }) {
+export function ScanQrTile({ onPress, compact = false }) {
   const { c } = useTheme();
+  if (compact) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Отметиться на уроке: открыть сканер QR-кода"
+        onPress={onPress}
+        style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.85 : 1 })}
+      >
+        <View
+          style={{
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            minHeight: 92,
+            borderRadius: 16,
+            paddingHorizontal: 10,
+            paddingVertical: 14,
+            backgroundColor: c.green,
+          }}
+        >
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: 'rgba(255,255,255,0.22)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icon name="qr" size={20} color="#fff" strokeWidth={2} />
+          </View>
+          <Txt style={{ fontSize: 13, fontWeight: '700', color: '#fff', textAlign: 'center' }}>
+            Отметиться
+          </Txt>
+        </View>
+      </Pressable>
+    );
+  }
   return (
     <Pressable
       accessibilityRole="button"
@@ -369,9 +413,44 @@ export function ScanQrTile({ onPress }) {
  * Плитка «Опросы» ученика и родителя — только там, где есть что пройти (Фаза 3
  * «Опросы»). Не вариант `GradesTile` с другой иконкой: подпись здесь не «последняя
  * оценка», а счётчик, и его текст меняется от числа, а не просто подставляется.
+ *
+ * `compact` — вторая половина строки рядом со {@link ScanQrTile} на главной ученика:
+ * сканер QR и опросы — два действия, которые открывают в начале дня, и опросам не
+ * место внизу экрана под прокруткой расписания и оценок. У родителя пары со сканером
+ * нет (сканирует посещаемость только ученик), поэтому там плитка остаётся широкой.
  */
-export function SurveysTile({ count, onPress }) {
+export function SurveysTile({ count, onPress, compact = false }) {
   const { c } = useTheme();
+  if (compact) {
+    return (
+      <Pressable onPress={onPress} style={{ flex: 1 }}>
+        <SurfaceCard
+          radius={16}
+          padding={10}
+          style={{ alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 92 }}
+        >
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: c.blueSoft,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icon name="clipboardCheck" size={20} color={c.blue} strokeWidth={2} />
+          </View>
+          <View style={{ alignItems: 'center', gap: 2 }}>
+            <Txt style={{ fontSize: 13, fontWeight: '700', color: c.ink }}>Опросы</Txt>
+            <Txt numberOfLines={1} style={{ fontSize: 11, fontWeight: '600', color: c.blue }}>
+              {count}
+            </Txt>
+          </View>
+        </SurfaceCard>
+      </Pressable>
+    );
+  }
   return (
     <Pressable onPress={onPress}>
       <SurfaceCard
