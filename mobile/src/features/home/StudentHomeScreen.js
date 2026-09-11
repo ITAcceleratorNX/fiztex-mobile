@@ -82,7 +82,17 @@ export function StudentHomeScreen({ nav }) {
         subtitle={formatHomeDate(data?.date)}
       />
 
-      <ScanQrTile onPress={() => nav?.('attendance-scan')} />
+      {/* Пара «Сканер + Опросы», пока есть непройденный опрос: оба открывают в начале
+          дня, и опросам не место внизу экрана под расписанием и оценками. Нет
+          непройденных — сканер один на всю ширину, как и был. */}
+      {pendingSurveys > 0 ? (
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <ScanQrTile compact onPress={() => nav?.('attendance-scan')} />
+          <SurveysTile compact count={pendingSurveys} onPress={() => nav?.('survey-list')} />
+        </View>
+      ) : (
+        <ScanQrTile onPress={() => nav?.('attendance-scan')} />
+      )}
 
       <View style={{ gap: 10 }}>
         <HomeSectionTitle>Сегодня</HomeSectionTitle>
@@ -103,12 +113,6 @@ export function StudentHomeScreen({ nav }) {
           onPress={() => nav?.('diary')}
         />
       </View>
-
-      {/* Плитка появляется, только если реально есть что пройти — иначе на главной
-          постоянно висел бы раздел без действия. */}
-      {pendingSurveys > 0 ? (
-        <SurveysTile count={pendingSurveys} onPress={() => nav?.('survey-list')} />
-      ) : null}
     </Screen>
   );
 }
