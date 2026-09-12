@@ -38,6 +38,9 @@ import { SurveyListScreen, SurveyTakeScreen } from '@features/survey';
 // Главные экраны трёх ролей живут отдельным модулем: они делят шапку, карточку
 // расписания и плитку оценок, и все три читают бэкенд, а не макетные данные.
 import { StudentHomeScreen, ParentHomeScreen, TeacherHomeScreen } from '@features/home';
+// Психолог (PSYCHOLOGIST-001) — единственный экран-заглушка, без вкладок и без
+// сервисных заявок: эта роль их не заводит и не исполняет.
+import { PsychologistHomeScreen } from '@features/psychologist';
 // Сервисные заявки: один и тот же авторский модуль у учителя, администратора и охраны
 // (ТЗ SERVICE-FE-002 §16). Роль решает, откуда в него входят, а не что внутри.
 import {
@@ -298,5 +301,19 @@ export function StaffApp() {
         { name: 'notifications', comp: NotificationsScreen },
       ])}
     </StackStaff.Navigator>
+  );
+}
+
+// ─── Психолог — только заглушка ────────────────────────────────────────────────
+// Раздел «Психологические тесты» живёт в веб-панели (PSYCHOLOGIST-001 §2); мобильному
+// приложению эта роль нужна только для входа. Стек, а не таб-навигатор, как у Staff:
+// делить с чем-либо один экран незачем — вкладка на один пункт выглядела бы поломкой.
+const StackPsychologist = createNativeStackNavigator();
+
+export function PsychologistApp() {
+  return (
+    <StackPsychologist.Navigator screenOptions={stackScreenOptions}>
+      <StackPsychologist.Screen name="Tabs" component={withNav(PsychologistHomeScreen)} />
+    </StackPsychologist.Navigator>
   );
 }

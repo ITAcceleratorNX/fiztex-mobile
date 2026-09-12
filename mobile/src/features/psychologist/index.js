@@ -1,0 +1,1 @@
+export { PsychologistHomeScreen } from './PsychologistHomeScreen';
