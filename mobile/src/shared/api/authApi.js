@@ -51,6 +51,19 @@ export const authApi = {
       skipSessionExpiry: true,
     }),
 
+  /**
+   * Психолог (PSYCHOLOGIST-001 §1) — тот же путь, что у администратора: телефон/почта
+   * + пароль, код `PASSWORD_RESET_CODE`. Бэкенд принимает обе роли одним эндпоинтом
+   * (`ActivationService.activateAdmin`), поэтому один метод на них двоих, а не два
+   * похожих. Поле называется `phone`, но принимает и почту — контакт разбирает бэкенд.
+   */
+  activateAdmin: (contact, code, password) =>
+    request('/api/auth/admin/activate', {
+      method: 'POST',
+      body: { phone: contact, code, password },
+      skipSessionExpiry: true,
+    }),
+
   logout: (token) =>
     request('/api/auth/logout', {
       method: 'POST',

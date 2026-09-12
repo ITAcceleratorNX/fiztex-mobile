@@ -12,7 +12,7 @@ import {
 } from '@features/auth';
 import { EntranceFlow } from '@features/entrance';
 import { useTheme } from '@shared/theme/ThemeContext';
-import { StudentApp, ParentApp, TeacherApp, StaffApp } from './RoleNavigators';
+import { StudentApp, ParentApp, TeacherApp, StaffApp, PsychologistApp } from './RoleNavigators';
 
 const Root = createNativeStackNavigator();
 
@@ -28,6 +28,9 @@ const ROLE_ROUTE = {
   SECURITY: 'StaffApp',
   CLEANING: 'StaffApp',
   TECHNICIAN: 'StaffApp',
+  // Свой навигатор, а не StaffApp: у психолога нет сервисных заявок, которые и есть
+  // содержимое StaffApp — делить с ним экраны значило бы показать пустую вкладку заявок.
+  PSYCHOLOGIST: 'PsychologistApp',
 };
 
 function BootSplash() {
@@ -137,6 +140,7 @@ export function RootNavigator() {
       <Root.Screen name="ParentApp" component={ParentApp} />
       <Root.Screen name="TeacherApp" component={TeacherApp} />
       <Root.Screen name="StaffApp" component={StaffApp} />
+      <Root.Screen name="PsychologistApp" component={PsychologistApp} />
       <Root.Screen name="EntranceFlow" component={EntranceFlowRoute} />
     </Root.Navigator>
   );

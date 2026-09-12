@@ -341,10 +341,13 @@ export function AuthParentTeacherLogin({ onBack, onActivatedHint }) {
         }
         // Путь активации выбирает роль, а не общий эндпоинт: бэкенд проверяет роль
         // вместе с кодом, и учительский путь охране откажет (SERVICE-BE-002 §2).
+        // Психолог — на тот же `/admin/activate`, что администратор (PSYCHOLOGIST-001):
+        // это не «сотрудник» из SERVICE-BE-002, у него свой отдельный путь на бэкенде.
         const activate = {
           teacher: authApi.activateTeacher,
           staff: authApi.activateStaff,
           parent: authApi.activateParent,
+          psychologist: authApi.activateAdmin,
         }[role] ?? authApi.activateParent;
         res = await activate(phone.trim(), code.trim(), password);
       }
@@ -432,6 +435,9 @@ export function AuthParentTeacherLogin({ onBack, onActivatedHint }) {
                   // Охрана и хозяйственные службы: школьного профиля у них нет, а код
                   // активации выдаётся так же (SERVICE-BE-002 §2).
                   { id: 'staff', label: 'Сотрудник' },
+                  // Психолог (PSYCHOLOGIST-001) — тоже без школьного профиля, но не
+                  // «Сотрудник»: у него свой эндпоинт активации, тот же, что у админа.
+                  { id: 'psychologist', label: 'Психолог' },
                 ].map((r) => (
                   <Pressable
                     key={r.id}
@@ -457,7 +463,7 @@ export function AuthParentTeacherLogin({ onBack, onActivatedHint }) {
                 ))}
               </View>
               <Field
-                label={role === 'staff' ? 'Телефон или email' : 'Телефон'}
+                label={role === 'staff' || role === 'psychologist' ? 'Телефон или email' : 'Телефон'}
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType={role === 'staff' ? 'email-address' : 'phone-pad'}

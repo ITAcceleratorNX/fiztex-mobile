@@ -25,11 +25,15 @@ const PROFILE_KEY = 'fiztex.auth.profile';
  * (SERVICE-FE-003): общая очередь службы, взятие заявки в работу, возврат, передача и
  * выполнение. Заявки они и заводят — тем же авторским flow, что все остальные.
  *
+ * `PSYCHOLOGIST` (PSYCHOLOGIST-001) входит и логинится, но раздела «Психологические
+ * тесты» здесь нет — он живёт только в веб-панели. Мобильный экран этой роли — заглушка
+ * (профиль + выход), заведена ровно чтобы код активации не терялся без входа вовсе.
+ *
  * Из ролей приложения вне списка остаётся только `SUPER_ADMIN`: его раздел —
  * отдельная frontend-задача после отдельного дизайна.
  */
 const MOBILE_ROLES = new Set([
-  'STUDENT', 'PARENT', 'TEACHER', 'ADMIN', 'SECURITY', 'CLEANING', 'TECHNICIAN',
+  'STUDENT', 'PARENT', 'TEACHER', 'ADMIN', 'SECURITY', 'CLEANING', 'TECHNICIAN', 'PSYCHOLOGIST',
 ]);
 
 /**
