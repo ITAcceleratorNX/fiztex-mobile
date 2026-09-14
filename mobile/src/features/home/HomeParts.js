@@ -1,5 +1,6 @@
-import React from 'react';
-import { View, Pressable } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Modal, Pressable, ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
@@ -14,15 +15,6 @@ import { initialsOf, childPillLabel, homeLessonWindow } from './homeDate';
  * экранами: развилка `if (role === …)` внутри одного экрана разошлась бы с макетами
  * при первой же правке одного из них.
  */
-
-/**
- * Высота компактной плитки в паре «Сканер + Опросы» ({@link ScanQrTile}/
- * {@link SurveysTile} с `compact`). Жёсткая `height`, а не `minHeight`: у второй
- * плитки на строку больше текста (название и счётчик против одной подписи сканера),
- * и с `minHeight` контент раздвигал её бокс выше соседней — обе теперь одной высоты
- * независимо от того, сколько строк текста внутри.
- */
-const COMPACT_TILE_HEIGHT = 92;
 
 /** Шапка: имя и школьная дата. */
 export function HomeHeader({ title, subtitle, topGap = 8 }) {
@@ -328,52 +320,9 @@ export function GradesTile({ title, subtitle, onPress }) {
  *
  * Не плавающая кнопка: она перекрыла бы этот список ради действия, которое совершают
  * раз в день.
- *
- * `compact` — половина строки рядом с {@link SurveysTile}, когда есть непройденные
- * опросы (иначе сканер по-прежнему один и на всю ширину): тот же зелёный акцент и
- * иконка, но без подписи-подсказки — в паре с другой плиткой на неё не хватает места,
- * а укороченный текст «Отметиться» рядом с иконкой сканера самодостаточен и без неё.
  */
-export function ScanQrTile({ onPress, compact = false }) {
+export function ScanQrTile({ onPress }) {
   const { c } = useTheme();
-  if (compact) {
-    return (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Отметиться на уроке: открыть сканер QR-кода"
-        onPress={onPress}
-        style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.85 : 1 })}
-      >
-        <View
-          style={{
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            height: COMPACT_TILE_HEIGHT,
-            borderRadius: 16,
-            paddingHorizontal: 10,
-            backgroundColor: c.green,
-          }}
-        >
-          <View
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: 'rgba(255,255,255,0.22)',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Icon name="qr" size={20} color="#fff" strokeWidth={2} />
-          </View>
-          <Txt style={{ fontSize: 13, fontWeight: '700', color: '#fff', textAlign: 'center' }}>
-            Отметиться
-          </Txt>
-        </View>
-      </Pressable>
-    );
-  }
   return (
     <Pressable
       accessibilityRole="button"
@@ -418,87 +367,169 @@ export function ScanQrTile({ onPress, compact = false }) {
 }
 
 /**
- * Плитка «Опросы» ученика и родителя — только там, где есть что пройти (Фаза 3
- * «Опросы»). Не вариант `GradesTile` с другой иконкой: подпись здесь не «последняя
- * оценка», а счётчик, и его текст меняется от числа, а не просто подставляется.
+ * Блок активного опроса на главной ученика и родителя (Figma «Дизайн блока активных
+ * опросов для Student и Parent»: `Студент/Родитель — без опроса | один опрос | выбор
+ * опроса`).
  *
- * `compact` — вторая половина строки рядом со {@link ScanQrTile} на главной ученика:
- * сканер QR и опросы — два действия, которые открывают в начале дня, и опросам не
- * место внизу экрана под прокруткой расписания и оценок. У родителя пары со сканером
- * нет (сканирует посещаемость только ученик), поэтому там плитка остаётся широкой.
+ * Три состояния макета — это одно правило и один баннер, а не три вёрстки: непройденных
+ * опросов нет — блока нет вовсе; один — баннер ведёт прямо в него; несколько — тот же
+ * баннер открывает лист выбора. Правило живёт здесь, а не в двух главных экранах: у
+ * ученика и родителя блок обязан вести себя одинаково, а продублированное «если один —
+ * то сразу» разошлось бы при первой же правке одного из экранов.
+ *
+ * <p>Баннер ведёт в сам опрос, а не в раздел «Опросы»: по макету с главной попадают к
+ * первому вопросу, и промежуточный экран со статусами — лишний шаг между «хочу помочь»
+ * и ответом. Раздел от этого не пропадает — он и показывает то, чего в блоке нет:
+ * уже пройденные опросы и сроки.
  */
-export function SurveysTile({ count, onPress, compact = false }) {
-  const { c } = useTheme();
-  if (compact) {
-    return (
-      <Pressable onPress={onPress} style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.85 : 1 })}>
-        <SurfaceCard
-          radius={16}
-          padding={10}
-          style={{ alignItems: 'center', justifyContent: 'center', gap: 6, height: COMPACT_TILE_HEIGHT }}
-        >
-          <View
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: c.blueSoft,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Icon name="clipboardCheck" size={20} color={c.blue} strokeWidth={2} />
-          </View>
-          <View style={{ alignItems: 'center' }}>
-            <Txt style={{ fontSize: 13, fontWeight: '700', color: c.ink }}>Опросы</Txt>
-            <Txt numberOfLines={1} style={{ fontSize: 11, fontWeight: '600', color: c.blue }}>
-              {count}
-            </Txt>
-          </View>
-        </SurfaceCard>
-      </Pressable>
-    );
-  }
+export function ActiveSurveysBlock({ surveys, onOpenSurvey }) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  // `canAnswer` решает сервер — не отправлен ли ответ, открыто ли окно между `startAt`
+  // и `deadlineAt`, активен ли сам опрос. Здесь только отбор по готовому флагу, без
+  // своей арифметики по датам.
+  const pending = useMemo(() => (surveys ?? []).filter((s) => s?.canAnswer), [surveys]);
+
+  const open = useCallback((survey) => {
+    setPickerOpen(false);
+    onOpenSurvey?.(survey);
+  }, [onOpenSurvey]);
+
+  if (pending.length === 0) return null;
+
   return (
-    <Pressable onPress={onPress}>
-      <SurfaceCard
-        radius={16}
-        padding={12}
-        style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+    <>
+      <ActiveSurveyBanner
+        onPress={() => (pending.length === 1 ? open(pending[0]) : setPickerOpen(true))}
+      />
+      <SurveyPickerSheet
+        visible={pickerOpen}
+        surveys={pending}
+        onSelect={open}
+        onClose={() => setPickerOpen(false)}
+      />
+    </>
+  );
+}
+
+/**
+ * Баннер «Актуальный опрос» — призыв сразу под приветствием.
+ *
+ * Подпись не зависит от числа опросов: в макете и у одного, и у нескольких стоит одно и
+ * то же «Пройти опрос». Счётчика здесь нет намеренно — это просьба помочь школе, а не
+ * список дел с числом невыполненных (тем он и отличается от прежней плитки «Опросы»).
+ *
+ * <p><b>Подложка navy, а не оранжевая, как в макете.</b> Макет рисовался без плитки
+ * сканера — на живой главной ученика она стоит выше и уже занимает оранжевый CTA
+ * (`c.green`), и второй оранжевый баннер подряд читался бы как её продолжение. Цвет
+ * здесь единственное, чем два соседних призыва различаются с одного взгляда.
+ *
+ * Кружок со значком задан цветом, а не токенами темы: подложка баннера navy в обеих
+ * темах, а `blueSoft`, который в тёмной становится тёмно-синим, слился бы с ней.
+ */
+function ActiveSurveyBanner({ onPress }) {
+  const { c } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Помогите школе стать лучше: пройти опрос"
+      onPress={onPress}
+      style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
+          borderRadius: 16,
+          padding: 12,
+          backgroundColor: c.blue,
+        }}
       >
         <View
           style={{
             width: 36,
             height: 36,
             borderRadius: 18,
-            backgroundColor: c.blueSoft,
+            backgroundColor: '#EFF6FF',
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Icon name="clipboardCheck" size={18} color={c.blue} strokeWidth={2} />
+          <Icon name="schoolGlobe" size={20} color={c.blue} />
         </View>
         <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
-          <Txt style={{ fontSize: 14, fontWeight: '600', color: c.ink }}>Опросы</Txt>
-          <Txt numberOfLines={1} style={{ fontSize: 12, fontWeight: '500', color: c.inkMuted }}>
-            {pendingSurveysLabel(count)}
+          <Txt style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF' }}>
+            Помогите школе стать лучше
           </Txt>
+          <Txt style={{ fontSize: 12, fontWeight: '500', color: '#FFFFFF' }}>Пройти опрос</Txt>
         </View>
-        <Icon name="chevronRight" size={20} color={c.ink3} strokeWidth={2} />
-      </SurfaceCard>
+        <Icon name="chevronRight" size={20} color="#FFFFFF" strokeWidth={2} />
+      </View>
     </Pressable>
   );
 }
 
-function pendingSurveysLabel(count) {
-  const n = Math.abs(count) % 100;
-  const tail = n % 10;
-  let word = 'опросов';
-  if (n < 11 || n > 14) {
-    if (tail === 1) word = 'опрос';
-    else if (tail >= 2 && tail <= 4) word = 'опроса';
-  }
-  return `Ждёт ответа: ${count} ${word}`;
+/**
+ * Лист выбора опроса — только когда непройденных несколько (Figma `выбор опроса`).
+ *
+ * Ни статуса, ни срока, ни описания: всё, что сюда попало, уже отобрано по `canAnswer`,
+ * и единственный оставшийся вопрос — какой из них открыть. Этим лист и отличается от
+ * раздела «Опросы», где лента показывает в том числе пройденные.
+ *
+ * Хром листа — общий для приложения (скругление 24, полоска-ручка, затемнение
+ * `rgba(15,23,42,.35)`), как у `PickerSheet` и `TextEditSheet`: в макете он взят из
+ * готового шита экрана ключей, и повторять его пиксельно значило бы завести четвёртый
+ * вариант одного и того же листа.
+ */
+function SurveyPickerSheet({ visible, surveys, onSelect, onClose }) {
+  const { c } = useTheme();
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable
+        style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.35)', justifyContent: 'flex-end' }}
+        onPress={onClose}
+      >
+        <Pressable
+          onPress={(e) => e.stopPropagation?.()}
+          style={{
+            backgroundColor: c.surface,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            paddingTop: 8,
+            paddingBottom: Math.max(24, insets.bottom + 12),
+            gap: 12,
+          }}
+        >
+          <View style={{ alignItems: 'center', paddingVertical: 4 }}>
+            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: c.stripeIdle }} />
+          </View>
+          <View style={{ borderTopWidth: 1, borderTopColor: c.border, paddingHorizontal: 16 }}>
+            <ScrollView bounces={false} style={{ maxHeight: 380 }}>
+              {surveys.map((survey) => (
+                <Pressable
+                  key={String(survey.surveyId)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Открыть опрос «${survey.title ?? ''}»`}
+                  onPress={() => onSelect?.(survey)}
+                  style={({ pressed }) => ({
+                    padding: 14,
+                    borderBottomWidth: 1,
+                    borderBottomColor: c.border,
+                    backgroundColor: pressed ? c.bg2 : 'transparent',
+                  })}
+                >
+                  <Txt style={{ fontSize: 14, fontWeight: '700', color: c.ink }}>
+                    {survey.title}
+                  </Txt>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
 }
 
 /** Плитка «Оценки» учителя: заливка без рамки, иконка и шеврон в одну строку сверху. */
