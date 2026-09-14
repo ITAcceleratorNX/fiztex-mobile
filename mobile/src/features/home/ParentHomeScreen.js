@@ -9,7 +9,8 @@ import { useMyProfile } from '@shared/hooks/useProfile';
 import { useMyDiaryGrades, useMySubjectGrades } from '@shared/hooks/useGrades';
 import { useMySurveys } from '@shared/hooks/useSurveys';
 import {
-  ChildSwitcherPill, GradesTile, HomeHeader, HomeSectionTitle, LearnerLessonsCard, SurveysTile,
+  ActiveSurveysBlock, ChildSwitcherPill, GradesTile, HomeHeader, HomeSectionTitle,
+  LearnerLessonsCard,
 } from './HomeParts';
 import { childPillLabel, formatHomeDate, parentName, todayKey } from './homeDate';
 import { latestGradeLine } from './latestGrade';
@@ -44,8 +45,8 @@ export function ParentHomeScreen({ nav }) {
     childStudentProfileId: childId,
   });
   // Без `childId`: анкета родителя одна на аккаунт независимо от числа детей и от того,
-  // какой ребёнок выбран пилюлей выше (см. правило в контракте опросов) — переключение
-  // ребёнка эту плитку не трогает.
+  // какой ребёнок выбран пилюлей ниже (см. правило в контракте опросов) — переключение
+  // ребёнка этот блок не трогает.
   const { surveys, reload: reloadSurveys } = useMySurveys();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -57,6 +58,11 @@ export function ParentHomeScreen({ nav }) {
       setRefreshing(false);
     }
   }, [reload, reloadGrades, reloadSubjects, reloadSurveys]);
+
+  const openSurvey = useCallback(
+    (survey) => nav?.('survey-take', { surveyId: survey.surveyId, title: survey.title }),
+    [nav],
+  );
 
   const openLesson = useCallback(
     (lesson) => nav?.('lesson', {
@@ -85,7 +91,6 @@ export function ParentHomeScreen({ nav }) {
 
   const lessons = data?.lessons ?? [];
   const gradeLine = latestGradeLine(subjects);
-  const pendingSurveys = (surveys ?? []).filter((s) => s.canAnswer).length;
 
   return (
     <Screen refreshing={refreshing} onRefresh={onRefresh} contentStyle={{
@@ -98,12 +103,9 @@ export function ParentHomeScreen({ nav }) {
         subtitle={formatHomeDate(data?.date)}
       />
 
-      {/* Сразу под приветствием, как и у ученика — опросам не место внизу экрана под
-          расписанием и оценками. Широкий вариант: у родителя нет плитки сканера, с
-          которой её делить строкой. */}
-      {pendingSurveys > 0 ? (
-        <SurveysTile count={pendingSurveys} onPress={() => nav?.('survey-list')} />
-      ) : null}
+      {/* Сразу под приветствием — как в макете: у родителя нет плитки сканера, и опрос
+          встаёт первым же блоком главной. */}
+      <ActiveSurveysBlock surveys={surveys} onOpenSurvey={openSurvey} />
 
       <View style={{ gap: 10 }}>
         <HomeSectionTitle>Расписание на сегодня</HomeSectionTitle>

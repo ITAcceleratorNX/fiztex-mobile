@@ -8,7 +8,7 @@ import { useMyProfile } from '@shared/hooks/useProfile';
 import { useMyDiaryGrades, useMySubjectGrades } from '@shared/hooks/useGrades';
 import { useMySurveys } from '@shared/hooks/useSurveys';
 import {
-  HomeHeader, HomeSectionTitle, LearnerLessonsCard, GradesTile, ScanQrTile, SurveysTile,
+  ActiveSurveysBlock, HomeHeader, HomeSectionTitle, LearnerLessonsCard, GradesTile, ScanQrTile,
 } from './HomeParts';
 import { formatHomeDate, greetingName, todayKey } from './homeDate';
 import { latestGradeLine } from './latestGrade';
@@ -29,8 +29,8 @@ export function StudentHomeScreen({ nav }) {
   // поэтому хук гасит её молча и отдаёт пустую карту.
   const { grades, reload: reloadGrades } = useMyDiaryGrades({ dateFrom: today, dateTo: today });
   const { subjects, reload: reloadSubjects } = useMySubjectGrades();
-  // Плитка опросов не должна ронять остальную главную своей ошибкой — блок скрывается
-  // сам, если счётчик посчитать не удалось (пустой список ведёт себя так же).
+  // Блок опроса не должен ронять остальную главную своей ошибкой — при неудаче хук
+  // отдаёт пустой список, и блок просто не появляется (как и когда опросов нет).
   const { surveys, reload: reloadSurveys } = useMySurveys();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -45,6 +45,11 @@ export function StudentHomeScreen({ nav }) {
 
   const openLesson = useCallback(
     (lesson) => nav?.('lesson', { ...lesson, childId: null, childName: null }),
+    [nav],
+  );
+
+  const openSurvey = useCallback(
+    (survey) => nav?.('survey-take', { surveyId: survey.surveyId, title: survey.title }),
     [nav],
   );
 
@@ -67,9 +72,6 @@ export function StudentHomeScreen({ nav }) {
 
   const lessons = data?.lessons ?? [];
   const gradeLine = latestGradeLine(subjects);
-  // `canAnswer` уже решён сервером (не отправлен, окно открыто, опрос активен) — здесь
-  // только считаем, сколько таких пришло, а не признаём отдельно.
-  const pendingSurveys = (surveys ?? []).filter((s) => s.canAnswer).length;
 
   return (
     <Screen refreshing={refreshing} onRefresh={onRefresh} contentStyle={{
@@ -82,17 +84,12 @@ export function StudentHomeScreen({ nav }) {
         subtitle={formatHomeDate(data?.date)}
       />
 
-      {/* Пара «Сканер + Опросы», пока есть непройденный опрос: оба открывают в начале
-          дня, и опросам не место внизу экрана под расписанием и оценками. Нет
-          непройденных — сканер один на всю ширину, как и был. */}
-      {pendingSurveys > 0 ? (
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <ScanQrTile compact onPress={() => nav?.('attendance-scan')} />
-          <SurveysTile compact count={pendingSurveys} onPress={() => nav?.('survey-list')} />
-        </View>
-      ) : (
-        <ScanQrTile onPress={() => nav?.('attendance-scan')} />
-      )}
+      <ScanQrTile onPress={() => nav?.('attendance-scan')} />
+
+      {/* Опрос — сразу под сканером и над «Сегодня», как в макете: ниже он оказался бы
+          под прокруткой расписания и оценок. Сканер при этом остаётся первым — его
+          открывают каждый день и по звонку, а опрос раз в четверть. */}
+      <ActiveSurveysBlock surveys={surveys} onOpenSurvey={openSurvey} />
 
       <View style={{ gap: 10 }}>
         <HomeSectionTitle>Сегодня</HomeSectionTitle>
