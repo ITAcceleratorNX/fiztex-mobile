@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Pressable, Modal, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Pressable, Modal, ScrollView, ActivityIndicator, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
+import { FONT } from '../theme/tokens';
 import { Txt, Ink, wrapStrings } from './Txt';
 import Icon from './Icon';
 import { Hex, HexBadge, PhysTechMark, PhysTechLogotype } from './Hex';
@@ -260,6 +261,76 @@ export function FilledButton({ children, onPress, disabled = false, color = 'gre
         {children}
       </Txt>
     </Pressable>
+  );
+}
+
+// ─── TextField ───────────────────────────────────────────────────────────────
+// Поле формы из мобильных макетов: подпись, обязательность, единая геометрия ввода и
+// место под ошибку. Экран передаёт только семантику поля; цвета, фокус и disabled живут
+// здесь, чтобы формы не собирали разные варианты одного и того же input по месту.
+export function TextField({
+  label,
+  required = false,
+  error,
+  value,
+  onChangeText,
+  placeholder,
+  editable = true,
+  multiline = false,
+  style,
+  inputStyle,
+  ...inputProps
+}) {
+  const { c } = useTheme();
+  const [focused, setFocused] = React.useState(false);
+
+  return (
+    <View style={[{ width: '100%', gap: 6 }, style]}>
+      {label ? (
+        <View style={{ flexDirection: 'row', gap: 2 }}>
+          <Txt style={{ fontSize: 13, fontWeight: '500', color: c.ink }}>{label}</Txt>
+          {required ? <Txt style={{ fontSize: 13, fontWeight: '500', color: c.red }}>*</Txt> : null}
+        </View>
+      ) : null}
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={c.ink3}
+        editable={editable}
+        multiline={multiline}
+        onFocus={(event) => {
+          setFocused(true);
+          inputProps.onFocus?.(event);
+        }}
+        onBlur={(event) => {
+          setFocused(false);
+          inputProps.onBlur?.(event);
+        }}
+        {...inputProps}
+        style={[
+          {
+            minHeight: multiline ? 92 : 46,
+            borderWidth: 1,
+            borderColor: error ? c.red : focused ? c.blue : c.border,
+            borderRadius: 10,
+            backgroundColor: editable ? c.surface : c.bg2,
+            color: c.ink,
+            paddingHorizontal: 14,
+            paddingVertical: multiline ? 12 : 10,
+            fontSize: 15,
+            fontFamily: FONT.regular,
+            textAlignVertical: multiline ? 'top' : 'center',
+          },
+          inputStyle,
+        ]}
+      />
+      {error ? (
+        <Txt accessibilityRole="alert" style={{ fontSize: 12, color: c.red }}>
+          {error}
+        </Txt>
+      ) : null}
+    </View>
   );
 }
 
@@ -583,17 +654,19 @@ export function ConfirmDialog({
   message,
   cancelLabel = 'Отмена',
   confirmLabel = 'Продолжить',
+  confirmTone = 'primary',
   busy = false,
   onCancel,
   onConfirm,
 }) {
   const { c } = useTheme();
+  const confirmBackground = confirmTone === 'danger' ? c.red : c.green;
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <View
         style={{
           flex: 1,
-          backgroundColor: 'rgba(11,8,16,0.6)',
+          backgroundColor: c.modalBackdrop,
           alignItems: 'center',
           justifyContent: 'center',
           padding: 25,
@@ -644,7 +717,7 @@ export function ConfirmDialog({
                 borderRadius: 8,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: c.green,
+                backgroundColor: confirmBackground,
                 opacity: busy ? 0.7 : pressed ? 0.9 : 1,
               })}
             >

@@ -5,6 +5,8 @@ import { BOTTOM_CHROME_HEIGHT, Screen } from '@shared/components/Screen';
 import { StateView } from '@shared/components/ui';
 import { useMySchedule } from '@shared/hooks/useSchedule';
 import { useMyProfile } from '@shared/hooks/useProfile';
+import { useMyKeys } from '@shared/hooks/useKeys';
+import { MyKeysCard } from '@features/keys/MyKeysCard';
 import { HomeHeader, HomeSectionTitle, TeacherAgendaCard, TeacherGradesTile } from './HomeParts';
 import { formatHomeDate, teacherName } from './homeDate';
 
@@ -21,16 +23,17 @@ export function TeacherHomeScreen({ nav }) {
   const insets = useSafeAreaInsets();
   const { data, loading, error, reload, emptyMessage } = useMySchedule();
   const { profile, displayName } = useMyProfile();
+  const myKeys = useMyKeys();
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await reload(true);
+      await Promise.all([reload(true), myKeys.reload()]);
     } finally {
       setRefreshing(false);
     }
-  }, [reload]);
+  }, [reload, myKeys.reload]);
 
   const openLesson = useCallback((lesson) => nav?.('lesson', lesson), [nav]);
 
@@ -64,6 +67,8 @@ export function TeacherHomeScreen({ nav }) {
         subtitle={formatHomeDate(data?.date)}
         topGap={16}
       />
+
+      <MyKeysCard keys={myKeys.rows} />
 
       <View style={{ gap: 12 }}>
         <HomeSectionTitle compact>Расписание на сегодня</HomeSectionTitle>

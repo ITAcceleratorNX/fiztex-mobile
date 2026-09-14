@@ -168,6 +168,16 @@ const scheduleWatermarkDark = {
   schedulePatternOpacity: 0.03,
 };
 
+// Затемнение под модальными action-sheet. Это семантический токен: компоненты не
+// должны подбирать собственную альфу, а в тёмной теме подложка нужна плотнее.
+const overlays = {
+  modalBackdrop: 'rgba(15,23,42,0.38)',
+};
+
+const overlaysDark = {
+  modalBackdrop: 'rgba(2,6,23,0.66)',
+};
+
 const light = {
   bg: '#FAFBFC',
   bg2: '#F1F5F9',
@@ -197,6 +207,7 @@ const light = {
   ...service,
   ...serviceInk,
   ...hero,
+  ...overlays,
   ...scheduleWatermark,
   ...PHYSTECH,
 };
@@ -227,6 +238,7 @@ const dark = {
   ...service,
   ...serviceInkDark,
   ...hero,
+  ...overlaysDark,
   ...scheduleWatermarkDark,
   ...PHYSTECH,
 };

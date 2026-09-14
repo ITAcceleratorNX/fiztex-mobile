@@ -16,6 +16,11 @@ export function makeNav(navigation) {
     else navigation.navigate('home');
   };
   nav.reset = (screen) => navigation.navigate(screen);
+  /** Open a concrete tab from a stack step (issue/transfer/form) and discard its form UI. */
+  nav.tabs = (screen, payload) => navigation.navigate('Tabs', {
+    screen,
+    params: payload !== undefined ? { payload } : undefined,
+  });
   /**
    * Уйти на экран, не оставляя текущий в стеке.
    *

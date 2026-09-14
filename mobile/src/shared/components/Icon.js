@@ -146,6 +146,31 @@ const ICONS = {
       <Path {...p} d="M16 17l5-5-5-5M21 12H9" />
     </>
   ),
+  key: (p) => (
+    <>
+      <Circle {...p} cx="8" cy="15" r="4" />
+      <Path {...p} d="M11 12l8-8M16 7l3 3M14 9l2 2" />
+    </>
+  ),
+  inbox: (p) => (
+    <>
+      <Path {...p} d="M4 5h16l2 10v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4z" />
+      <Path {...p} d="M2 15h5l2 3h6l2-3h5" />
+    </>
+  ),
+  history: (p) => (
+    <>
+      <Path {...p} d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+      <Path {...p} d="M3 3v5h5M12 7v5l3 2" />
+    </>
+  ),
+  moreVertical: (p) => (
+    <>
+      <Circle cx="12" cy="5" r="1" fill={p.stroke} stroke="none" />
+      <Circle cx="12" cy="12" r="1" fill={p.stroke} stroke="none" />
+      <Circle cx="12" cy="19" r="1" fill={p.stroke} stroke="none" />
+    </>
+  ),
   info: (p) => (
     <>
       <Circle {...p} cx="12" cy="12" r="9" />

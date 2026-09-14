@@ -51,6 +51,10 @@ import { PsychologistHomeScreen } from '@features/psychologist';
 import {
   ServiceRequestsScreen, ServiceRequestCreateScreen, ServiceRequestCardScreen, StaffProfileScreen,
 } from '@features/service';
+import {
+  SecurityOnPostScreen, SecurityIssuedScreen, KeyHistoryScreen,
+  KeyDetailScreen, KeyRecipientScreen, KeyGroupFormScreen,
+} from '@features/keys';
 
 const tabScreenOptions = { headerShown: false };
 
@@ -271,15 +275,48 @@ export function TeacherApp() {
   );
 }
 
+// ─── Охрана — физические ключи ──────────────────────────────────────────────
+// Три вкладки повторяют рабочие очереди поста. Состояние ключа не хранится локально:
+// каждая вкладка читает вычисленное сервером ON_POST / ISSUED, а команды лежат в стеке.
+const SecurityStack = createNativeStackNavigator();
+const SecurityTab = createBottomTabNavigator();
+
+function SecurityTabs() {
+  return (
+    <SecurityTab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={tabScreenOptions}>
+      {renderTabs(SecurityTab, [
+        { name: 'keys-on-post', comp: SecurityOnPostScreen, label: 'На посту', icon: 'inbox' },
+        { name: 'keys-issued', comp: SecurityIssuedScreen, label: 'Выданы', icon: 'key' },
+        { name: 'keys-history', comp: KeyHistoryScreen, label: 'История', icon: 'history' },
+      ])}
+    </SecurityTab.Navigator>
+  );
+}
+
+export function SecurityApp() {
+  return (
+    <SecurityStack.Navigator screenOptions={stackScreenOptions}>
+      <SecurityStack.Screen name="Tabs" component={SecurityTabs} />
+      {renderDetails(SecurityStack, [
+        { name: 'key-detail', comp: KeyDetailScreen },
+        { name: 'key-recipient', comp: KeyRecipientScreen },
+        { name: 'key-group-form', comp: KeyGroupFormScreen },
+        // Сервисные заявки охраны остаются зарегистрированы как deep-link экраны: модуль
+        // ключей не меняет серверное право охраны заводить и читать свои заявки.
+        ...SERVICE_DETAILS,
+      ])}
+    </SecurityStack.Navigator>
+  );
+}
+
 // ─── Служебные роли — Заявки / Я ──────────────────────────────────────────────
 // Учебных разделов у этих ролей нет: ни расписания, ни журнала, ни класса. Их
 // приложение — сервисные заявки и профиль, поэтому список стоит вкладкой, а не
 // открывается из профиля, как у учителя.
 //
-// Навигатор один на четыре роли — администратора, охрану, уборку и техслужбу. Экраны у
-// них те же; различает их сам раздел: службе он показывает ещё и общую очередь своей
-// службы (SERVICE-FE-003 §2), а остальным — нет. Вторая копия навигатора отличалась бы
-// только подписью роли, а её показывает профиль.
+// Навигатор один для администратора, уборки и техслужбы. Экраны у них те же;
+// различает их сам раздел: службе он показывает ещё и общую очередь своей службы
+// (SERVICE-FE-003 §2), а администратору — только собственные заявки.
 const StackStaff = createNativeStackNavigator();
 const TabStaff = createBottomTabNavigator();
 
