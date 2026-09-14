@@ -6,7 +6,12 @@ import { SelectedChildProvider } from '@shared/state/SelectedChild';
 import { withNav } from './withNav';
 import { NotificationsScreen } from '@features/notifications';
 import { ScheduleScreen } from '@features/schedule';
-import { LessonCardScreen, LessonMaterialsScreen, StudentLessonScreen } from '@features/lesson';
+import {
+  LessonCardScreen,
+  LessonMaterialsScreen,
+  LessonTextbookViewerScreen,
+  StudentLessonScreen,
+} from '@features/lesson';
 import { AttendanceScreen, QrScanScreen } from '@features/attendance';
 import {
   JournalScreen, JournalStudentScreen, LessonGradesScreen,
@@ -129,6 +134,9 @@ export function StudentApp() {
         // Материалы урока — один экран на все три роли: что показывать, решает бэк,
         // отдавая ученику только то, что учитель открыл.
         { name: 'lesson-materials', comp: LessonMaterialsScreen },
+        // Учебник урока — как материалы: файл отдаётся через урок, и экран один на ученика
+        // и родителя.
+        { name: 'lesson-textbook', comp: LessonTextbookViewerScreen },
         { name: 'attendance-scan', comp: QrScanScreen },
         { name: 'homework-card', comp: StudentHomeworkDetailScreen },
         { name: 'homework-test', comp: StudentHomeworkTestScreen },
@@ -188,6 +196,7 @@ export function ParentApp() {
           // через capabilities — отдельный «родительский» экран разошёлся бы с ученическим.
           { name: 'lesson', comp: StudentLessonScreen },
           { name: 'lesson-materials', comp: LessonMaterialsScreen },
+          { name: 'lesson-textbook', comp: LessonTextbookViewerScreen },
           // Карточка ДЗ у родителя своя, а не общая с учеником: ученическая показывает
           // ответ и форму отправки, а родителю не положено ни то, ни другое.
           { name: 'homework-card', comp: ParentHomeworkDetailScreen },

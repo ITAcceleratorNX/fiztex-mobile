@@ -95,6 +95,14 @@ export const lessonApi = {
 
   clearHomeworkNotAssigned: (token, lessonId) =>
     request(`/api/lessons/${lessonId}/homework/not-assigned`, { method: 'DELETE', token }),
+
+  /**
+   * Учебники урока одним ответом: выбор учителя со страницами и всё, что действует у класса
+   * на дату урока (LIBRARY-BE-001 §6). Если учитель не выбрал, ученик выбирает сам из
+   * `available` — это правило сервера, а не приложения.
+   */
+  textbooks: (token, lessonId, childId) =>
+    request(`/api/lessons/${lessonId}/textbooks${childQuery(childId)}`, { token }),
 };
 
 /**
@@ -108,4 +116,8 @@ export const lessonApi = {
 export const lessonFiles = {
   material: (lessonId, materialId) =>
     `${API_BASE_URL}/api/lessons/${lessonId}/materials/${materialId}/content`,
+
+  /** Файл учебника через урок: другого основания доступа у ученика и родителя нет. */
+  textbook: (lessonId, textbookId, childId) =>
+    `${API_BASE_URL}/api/lessons/${lessonId}/textbooks/${textbookId}/content${childQuery(childId)}`,
 };

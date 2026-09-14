@@ -14,6 +14,11 @@ import { PrimaryButton } from './ui';
  * это отдельное действие «Удалить», а не сохранение пустой строки: у полей, которые
  * бэк не принимает пустыми, иначе получалась бы кнопка «Сохранить», ведущая к 400.
  *
+ * `keyboardType`, `saveLabel`, `autoFocus` и `submitOnReturn` нужны полям, которые не про текст:
+ * номер страницы в просмотре учебника вводится цифровой клавиатурой, кнопка у него «Перейти»,
+ * а «Готово» на клавиатуре сразу переходит. У темы и комментария отправка по «Готово»
+ * выключена, как и была: там это правка текста, а не команда.
+ *
  * `readOnly` — тот же шит без права правки: комментарий в листе посещаемости виден и
  * тому, кто заполнять уже не может (бывший заместитель, закрытый период). Отдельный
  * компонент под просмотр разошёлся бы с этим по вёрстке при первой же правке.
@@ -27,6 +32,10 @@ export function TextEditSheet({
   maxLength,
   multiline = false,
   readOnly = false,
+  keyboardType = 'default',
+  saveLabel = 'Сохранить',
+  autoFocus = false,
+  submitOnReturn = false,
   saving = false,
   error = null,
   onSave,
@@ -94,6 +103,9 @@ export function TextEditSheet({
                 placeholderTextColor={c.ink3}
                 editable={!saving && !readOnly}
                 multiline={multiline}
+                keyboardType={keyboardType}
+                autoFocus={autoFocus}
+                onSubmitEditing={submitOnReturn && !multiline ? () => canSave && onSave(trimmed) : undefined}
                 maxLength={maxLength}
                 textAlignVertical={multiline ? 'top' : 'center'}
                 style={{
@@ -124,7 +136,7 @@ export function TextEditSheet({
               <PrimaryButton color="ghost" onPress={onClose}>Закрыть</PrimaryButton>
             ) : (
               <PrimaryButton color="blue" onPress={() => canSave && onSave(trimmed)} disabled={!canSave}>
-                {saving ? <ActivityIndicator color="#fff" /> : 'Сохранить'}
+                {saving ? <ActivityIndicator color="#fff" /> : saveLabel}
               </PrimaryButton>
             )}
 

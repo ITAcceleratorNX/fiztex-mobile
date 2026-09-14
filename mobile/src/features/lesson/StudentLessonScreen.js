@@ -5,9 +5,9 @@ import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
-import { Card, Banner } from '@shared/components/ui';
+import { Card, Banner, PickerSheet } from '@shared/components/ui';
 import { ModuleRow } from '@shared/ui/rows';
-import { useLesson, useLessonHomework } from '@shared/hooks/useLesson';
+import { useLesson, useLessonHomework, useLessonTextbooks } from '@shared/hooks/useLesson';
 import { useLessonAssignments } from '@shared/hooks/useHomework';
 import { StatusChip, OverdueTag } from '@features/homework/components';
 import { dueShort, isOverdueOpen } from '@shared/api/homeworkMap';
@@ -17,6 +17,7 @@ import { useMyDiaryGrades } from '@shared/hooks/useGrades';
 import { lessonGradesSummary } from '@shared/api/gradesMap';
 import { attendanceLabel } from '@shared/api/attendanceMap';
 import { homeworkStateLabel } from '@shared/api/lessonHomeworkState';
+import { textbookEntry } from '@shared/api/textbookMap';
 import { LessonHero } from './LessonHero';
 import { LessonCardFallback, LessonCardHeader } from './LessonCardStates';
 
@@ -384,6 +385,15 @@ export function StudentLessonScreen({ nav, payload }) {
   });
   const lessonGrades = lessonId ? diaryGrades[lessonId] : null;
 
+  // Учебники — свой запрос, как посещаемость: сбой гасится, и строки «Учебник» просто нет.
+  const textbooks = useLessonTextbooks(lessonId, { childId });
+  const textbookRow = textbookEntry(textbooks.data);
+  const [choosingTextbook, setChoosingTextbook] = useState(false);
+  const openTextbook = useCallback(
+    (textbook) => nav('lesson-textbook', { lessonInstanceId: lessonId, childId, textbook }),
+    [nav, lessonId, childId],
+  );
+
   const onBack = useCallback(() => nav?.back?.(), [nav]);
 
   const [refreshing, setRefreshing] = useState(false);
@@ -393,12 +403,12 @@ export function StudentLessonScreen({ nav, payload }) {
       // Посещаемость — свой запрос, и обновлять её надо вместе с карточкой: учитель
       // публикует лист после урока, и жест «потянуть» затем и делают.
       await Promise.all([
-        reload(true), reloadAttendance(), reloadGrades(), assignments.reload(true),
+        reload(true), reloadAttendance(), reloadGrades(), assignments.reload(true), textbooks.reload(),
       ]);
     } finally {
       setRefreshing(false);
     }
-  }, [reload, reloadAttendance, reloadGrades, assignments]);
+  }, [reload, reloadAttendance, reloadGrades, assignments, textbooks]);
 
   // Роль — из ответа бэка: клиент не должен решать «я родитель» по тому, что ему
   // передали childId, иначе экран и права разъедутся на первом же нестандартном заходе.
@@ -497,7 +507,31 @@ export function StudentLessonScreen({ nav, payload }) {
             ? 'Урок отменён'
             : lessonGradesSummary(lessonGrades)}
         />
+        {/* Строки нет, когда учебников нет: как у материалов, «учебника нет» ребёнку ничего
+            не сообщает. Выбран учителем или назначен один — сразу просмотр; назначено
+            несколько и ни один не выбран — сначала шит выбора (Figma 2149:5119). */}
+        {textbookRow ? (
+          <ModuleRow
+            icon="textbook"
+            tint="green"
+            label="Учебник"
+            value={textbookRow.value}
+            onPress={() =>
+              textbookRow.open ? openTextbook(textbookRow.open) : setChoosingTextbook(true)}
+          />
+        ) : null}
       </View>
+
+      <PickerSheet
+        visible={choosingTextbook}
+        options={(textbookRow?.choose ?? []).map((item) => ({ value: item.bindingId, label: item.title }))}
+        onSelect={(bindingId) => {
+          setChoosingTextbook(false);
+          const chosen = textbookRow?.choose.find((item) => item.bindingId === bindingId);
+          if (chosen) openTextbook(chosen);
+        }}
+        onClose={() => setChoosingTextbook(false)}
+      />
     </Screen>
   );
 }

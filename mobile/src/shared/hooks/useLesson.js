@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@features/auth/AuthContext';
 import { lessonApi } from '@shared/api/lessonApi';
 import { mapLessonCard, mapLessonMaterials } from '@shared/api/lessonMap';
+import { mapLessonTextbooks } from '@shared/api/textbookMap';
 
 /**
  * Карточка урока плюс счётчик истории.
@@ -197,4 +198,41 @@ export function useLessonMaterials(lessonId) {
   }, [reload]);
 
   return { loading, error, materials, reload };
+}
+
+/**
+ * Учебники урока для строки «Учебник» на карточке ученика и родителя.
+ *
+ * Запрос некритичный: сбой гасится, строки просто нет — карточка остаётся карточкой, как с
+ * посещаемостью и оценками. При неудачном обновлении остаётся прежний ответ.
+ *
+ * Спрашивается у каждой карточки, а не по `LessonView.textbookCount`: счётчик считает только
+ * действующее на дату урока и не видит выбор учителя, чьё назначение потом завершили, — а
+ * такой учебник уроку положено показывать (контракт §6, `selected.active = false`).
+ */
+export function useLessonTextbooks(lessonId, { childId = null } = {}) {
+  const { token } = useAuth();
+  const [loading, setLoading] = useState(Boolean(lessonId));
+  const [data, setData] = useState(null);
+
+  const reload = useCallback(async () => {
+    if (!token || !lessonId) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
+    try {
+      setData(mapLessonTextbooks(await lessonApi.textbooks(token, lessonId, childId)));
+    } catch {
+      // Строка «Учебник» — не повод показывать ошибку поверх урока.
+    } finally {
+      setLoading(false);
+    }
+  }, [token, lessonId, childId]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  return { loading, data, reload };
 }
