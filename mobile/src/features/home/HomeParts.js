@@ -401,9 +401,11 @@ export function ActiveSurveysBlock({ surveys, onOpenSurvey }) {
       <ActiveSurveyBanner
         onPress={() => (pending.length === 1 ? open(pending[0]) : setPickerOpen(true))}
       />
-      <SurveyPickerSheet
+      <TitlePickerSheet
         visible={pickerOpen}
-        surveys={pending}
+        items={pending}
+        keyOf={(survey) => survey.surveyId}
+        titleOf={(survey) => survey.title}
         onSelect={open}
         onClose={() => setPickerOpen(false)}
       />
@@ -470,7 +472,8 @@ function ActiveSurveyBanner({ onPress }) {
 }
 
 /**
- * Лист выбора опроса — только когда непройденных несколько (Figma `выбор опроса`).
+ * Лист выбора — только когда открытых несколько (Figma `выбор опроса`). Один на опросы и
+ * психотесты: у обоих блоков один и тот же вопрос — какой из уже отобранных открыть.
  *
  * Ни статуса, ни срока, ни описания: всё, что сюда попало, уже отобрано по `canAnswer`,
  * и единственный оставшийся вопрос — какой из них открыть. Этим лист и отличается от
@@ -481,7 +484,7 @@ function ActiveSurveyBanner({ onPress }) {
  * готового шита экрана ключей, и повторять его пиксельно значило бы завести четвёртый
  * вариант одного и того же листа.
  */
-function SurveyPickerSheet({ visible, surveys, onSelect, onClose }) {
+function TitlePickerSheet({ visible, items, keyOf, titleOf, onSelect, onClose }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   return (
@@ -506,12 +509,12 @@ function SurveyPickerSheet({ visible, surveys, onSelect, onClose }) {
           </View>
           <View style={{ borderTopWidth: 1, borderTopColor: c.border, paddingHorizontal: 16 }}>
             <ScrollView bounces={false} style={{ maxHeight: 380 }}>
-              {surveys.map((survey) => (
+              {items.map((item) => (
                 <Pressable
-                  key={String(survey.surveyId)}
+                  key={String(keyOf(item))}
                   accessibilityRole="button"
-                  accessibilityLabel={`Открыть опрос «${survey.title ?? ''}»`}
-                  onPress={() => onSelect?.(survey)}
+                  accessibilityLabel={`Открыть «${titleOf(item) ?? ''}»`}
+                  onPress={() => onSelect?.(item)}
                   style={({ pressed }) => ({
                     padding: 14,
                     borderBottomWidth: 1,
@@ -520,7 +523,7 @@ function SurveyPickerSheet({ visible, surveys, onSelect, onClose }) {
                   })}
                 >
                   <Txt style={{ fontSize: 14, fontWeight: '700', color: c.ink }}>
-                    {survey.title}
+                    {titleOf(item)}
                   </Txt>
                 </Pressable>
               ))}
@@ -530,6 +533,81 @@ function SurveyPickerSheet({ visible, surveys, onSelect, onClose }) {
       </Pressable>
     </Modal>
   );
+}
+
+/**
+ * Психологический тест на главной ученика (PSYCHOLOGIST-002). Правило то же, что у блока
+ * опроса: открытых нет — блока нет; один — плитка ведёт прямо в него; несколько — лист выбора.
+ *
+ * <p>Белая плитка, а не цветной баннер: макета у блока нет, а выше на главной уже стоят два
+ * цветных призыва — оранжевый сканер и синий опрос; третий подряд перестал бы выделять
+ * любой из них. Вид — как у плитки «Оценки», с которой главная уже знакома.
+ */
+export function ActivePsychTestsBlock({ tests, onOpenTest }) {
+  const { c } = useTheme();
+  const [pickerOpen, setPickerOpen] = useState(false);
+  // `canAnswer` решает сервер: не отправлено, приём не закрыт, срок не прошёл.
+  const pending = useMemo(() => (tests ?? []).filter((t) => t?.canAnswer), [tests]);
+
+  const open = useCallback((test) => {
+    setPickerOpen(false);
+    onOpenTest?.(test);
+  }, [onOpenTest]);
+
+  if (pending.length === 0) return null;
+
+  const single = pending.length === 1;
+  const subtitle = single ? pending[0].title : `${pending.length} ${testsWord(pending.length)} ждут прохождения`;
+
+  return (
+    <>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Тест от школьного психолога: ${subtitle}`}
+        onPress={() => (single ? open(pending[0]) : setPickerOpen(true))}
+        style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+      >
+        <SurfaceCard radius={16} padding={12} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: c.blueSoft,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icon name="face" size={20} color={c.blue} strokeWidth={2} />
+          </View>
+          <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
+            <Txt style={{ fontSize: 14, fontWeight: '600', color: c.ink }}>Тест от школьного психолога</Txt>
+            <Txt numberOfLines={1} style={{ fontSize: 12, fontWeight: '500', color: c.inkMuted }}>
+              {subtitle}
+            </Txt>
+          </View>
+          <Icon name="chevronRight" size={20} color={c.ink3} strokeWidth={2} />
+        </SurfaceCard>
+      </Pressable>
+      <TitlePickerSheet
+        visible={pickerOpen}
+        items={pending}
+        keyOf={(test) => test.assignmentId}
+        titleOf={(test) => test.title}
+        onSelect={open}
+        onClose={() => setPickerOpen(false)}
+      />
+    </>
+  );
+}
+
+function testsWord(count) {
+  const n = Math.abs(count) % 100;
+  const tail = n % 10;
+  if (n >= 11 && n <= 14) return 'тестов';
+  if (tail === 1) return 'тест';
+  if (tail >= 2 && tail <= 4) return 'теста';
+  return 'тестов';
 }
 
 /** Плитка «Оценки» учителя: заливка без рамки, иконка и шеврон в одну строку сверху. */

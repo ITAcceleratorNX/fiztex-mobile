@@ -40,6 +40,8 @@ import {
 // Опросы: список и прохождение — один и тот же экран для ученика и родителя (см.
 // `SurveyListScreen`), backend сам решает, что вернуть по токену.
 import { SurveyListScreen, SurveyTakeScreen } from '@features/survey';
+// Психотест проходит только ученик (PSYCHOLOGIST-002) — у родителя этого экрана нет.
+import { PsychTestTakeScreen } from '@features/psychtest';
 // Главные экраны трёх ролей живут отдельным модулем: они делят шапку, карточку
 // расписания и плитку оценок, и все три читают бэкенд, а не макетные данные.
 import { StudentHomeScreen, ParentHomeScreen, TeacherHomeScreen } from '@features/home';
@@ -146,6 +148,7 @@ export function StudentApp() {
         { name: 'homework-test', comp: StudentHomeworkTestScreen },
         { name: 'survey-list', comp: StudentSurveyList },
         { name: 'survey-take', comp: SurveyTakeScreen },
+        { name: 'psych-test-take', comp: PsychTestTakeScreen },
         { name: 'checkout', comp: StudentCheckoutQR },
         { name: 'subject', comp: StudentSubjectGradesScreen },
         { name: 'clubs', comp: StudentClubs },

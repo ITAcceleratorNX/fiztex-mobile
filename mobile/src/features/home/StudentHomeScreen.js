@@ -1,5 +1,6 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BOTTOM_CHROME_HEIGHT, Screen } from '@shared/components/Screen';
 import { StateView } from '@shared/components/ui';
@@ -7,8 +8,10 @@ import { useMySchedule } from '@shared/hooks/useSchedule';
 import { useMyProfile } from '@shared/hooks/useProfile';
 import { useMyDiaryGrades, useMySubjectGrades } from '@shared/hooks/useGrades';
 import { useMySurveys } from '@shared/hooks/useSurveys';
+import { useMyPsychTests } from '@shared/hooks/usePsychTests';
 import {
-  ActiveSurveysBlock, HomeHeader, HomeSectionTitle, LearnerLessonsCard, GradesTile, ScanQrTile,
+  ActivePsychTestsBlock, ActiveSurveysBlock, HomeHeader, HomeSectionTitle, LearnerLessonsCard, GradesTile,
+  ScanQrTile,
 } from './HomeParts';
 import { formatHomeDate, greetingName, todayKey } from './homeDate';
 import { latestGradeLine } from './latestGrade';
@@ -32,16 +35,32 @@ export function StudentHomeScreen({ nav }) {
   // Блок опроса не должен ронять остальную главную своей ошибкой — при неудаче хук
   // отдаёт пустой список, и блок просто не появляется (как и когда опросов нет).
   const { surveys, reload: reloadSurveys } = useMySurveys();
+  // Психотесты — тем же приёмом: ошибка гасится хуком, и блок просто не появляется.
+  const { tests: psychTests, reload: reloadPsychTests } = useMyPsychTests();
+
+  // Пройденный тест должен уйти с главной сразу по возвращении, а не после ручного
+  // обновления: вкладка остаётся смонтированной, и без этого плитка вела бы в «Ответы уже
+  // приняты». Первый показ пропускается — хук уже сходил за данными при монтировании
+  // (тот же приём, что у `LessonCardScreen`).
+  const focusedBefore = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (focusedBefore.current) reloadPsychTests(true);
+      else focusedBefore.current = true;
+    }, [reloadPsychTests]),
+  );
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([reload(true), reloadGrades(), reloadSubjects({ silent: true }), reloadSurveys(true)]);
+      await Promise.all([
+        reload(true), reloadGrades(), reloadSubjects({ silent: true }), reloadSurveys(true), reloadPsychTests(true),
+      ]);
     } finally {
       setRefreshing(false);
     }
-  }, [reload, reloadGrades, reloadSubjects, reloadSurveys]);
+  }, [reload, reloadGrades, reloadSubjects, reloadSurveys, reloadPsychTests]);
 
   const openLesson = useCallback(
     (lesson) => nav?.('lesson', { ...lesson, childId: null, childName: null }),
@@ -50,6 +69,11 @@ export function StudentHomeScreen({ nav }) {
 
   const openSurvey = useCallback(
     (survey) => nav?.('survey-take', { surveyId: survey.surveyId, title: survey.title }),
+    [nav],
+  );
+
+  const openPsychTest = useCallback(
+    (test) => nav?.('psych-test-take', { assignmentId: test.assignmentId, title: test.title }),
     [nav],
   );
 
@@ -90,6 +114,8 @@ export function StudentHomeScreen({ nav }) {
           под прокруткой расписания и оценок. Сканер при этом остаётся первым — его
           открывают каждый день и по звонку, а опрос раз в четверть. */}
       <ActiveSurveysBlock surveys={surveys} onOpenSurvey={openSurvey} />
+
+      <ActivePsychTestsBlock tests={psychTests} onOpenTest={openPsychTest} />
 
       <View style={{ gap: 10 }}>
         <HomeSectionTitle>Сегодня</HomeSectionTitle>
