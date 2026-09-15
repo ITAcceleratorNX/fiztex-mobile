@@ -242,8 +242,12 @@ export function SurveyTakeScreen({ nav, payload }) {
   );
 }
 
-/** «Вопрос 3 из 10» и полоса по отвеченным. */
-function SurveyProgress({ index, answered, total }) {
+/**
+ * «Вопрос 3 из 10» и полоса по отвеченным. Экспортируется вместе с навигатором и нижней
+ * панелью: те же части у психологического теста (`PsychTestTakeScreen`) — одна вёрстка, а
+ * не копия, которая разойдётся при первой правке, как разошлись поля с тестом ДЗ.
+ */
+export function SurveyProgress({ index, answered, total }) {
   const { c } = useTheme();
   const ratio = total > 0 ? answered / total : 0;
   return (
@@ -263,7 +267,7 @@ function SurveyProgress({ index, answered, total }) {
   );
 }
 
-function QuestionHeader({ index, total }) {
+export function QuestionHeader({ index, total }) {
   const { c } = useTheme();
   return (
     <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
@@ -275,7 +279,7 @@ function QuestionHeader({ index, total }) {
 }
 
 /** Навигатор по номерам вопросов — тот же приём, что и у теста домашнего задания. */
-function QuestionNavigator({ questions, answers, index, onPick }) {
+export function QuestionNavigator({ questions, answers, index, onPick }) {
   const { c } = useTheme();
   if (questions.length < 2) return null;
   return (
@@ -321,7 +325,7 @@ function QuestionNavigator({ questions, answers, index, onPick }) {
 }
 
 /** «Назад» / «Далее», «Отправить» — на последнем вопросе. Неполные ответы не блокируют кнопку. */
-function NavBar({ index, isLast, sending, unanswered, onBack, onNext, onFinish }) {
+export function NavBar({ index, isLast, sending, unanswered, onBack, onNext, onFinish }) {
   const { c } = useTheme();
   return (
     <View
