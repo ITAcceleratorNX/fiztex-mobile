@@ -91,10 +91,13 @@ export function useSurveyTest(surveyId) {
    * он в этот момент заполняет опрос дальше, и ронять экран из-за моргнувшей сети
    * незачем: следующее изменение отправится само, а ответ всё равно остаётся в состоянии
    * экрана до финальной отправки.
+   *
+   * <p>Промис возвращается (и никогда не отклоняется), чтобы отправка могла дождаться
+   * последнего сохранения, а не обогнать его.
    */
   const saveAnswer = useCallback((request) => {
-    if (!token || !surveyId) return;
-    surveysApi.saveAnswer(token, surveyId, request).catch(() => undefined);
+    if (!token || !surveyId) return Promise.resolve();
+    return surveysApi.saveAnswer(token, surveyId, request).catch(() => undefined);
   }, [token, surveyId]);
 
   const submit = useCallback(async () => {

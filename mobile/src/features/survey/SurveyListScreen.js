@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, ScrollView, Pressable, RefreshControl } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
@@ -7,6 +7,7 @@ import { Pill, StateView } from '@shared/components/ui';
 import Icon from '@shared/components/Icon';
 import { useMySurveys } from '@shared/hooks/useSurveys';
 import {
+  isPsychTest,
   surveyResponseStatusColor,
   surveyResponseStatusLabel,
   surveyWindowLabel,
@@ -22,10 +23,15 @@ import {
  *
  * <p>Ни вкладок, ни статусного фильтра: лента одна, потому что опросов у одного человека
  * немного, а не десятки заданий за четверть.
+ *
+ * <p>Тестов школьного психолога здесь нет, хотя приходят они той же лентой: раздел — про
+ * опросы школы («Новые опросы от школы появятся здесь»), а тест ученик находит в своей
+ * плитке на главной.
  */
 export function SurveyListScreen({ nav }) {
   const { c } = useTheme();
-  const { surveys, loading, error, reload } = useMySurveys();
+  const { surveys: feed, loading, error, reload } = useMySurveys();
+  const surveys = useMemo(() => feed.filter((survey) => !isPsychTest(survey)), [feed]);
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {

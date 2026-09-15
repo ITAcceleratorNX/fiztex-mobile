@@ -9,7 +9,35 @@ import { QuestionBody } from '@shared/components/QuestionBody';
 import { MathText } from '@shared/math/MathText';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { useSurveyTest } from '@shared/hooks/useSurveys';
+import { isPsychTest } from '@shared/api/surveyStatus';
 import { answeredCount, answersFromSaved, isAnswered, toSaveAnswerRequest } from './surveyTestModel';
+
+/**
+ * Слова экрана. Тест школьного психолога — тот же опрос, поэтому развилка здесь в словах, а не
+ * во второй вёрстке, которая разошлась бы с этой при первой правке.
+ */
+const SURVEY_COPY = {
+  title: 'Опрос',
+  loadError: 'Не удалось загрузить опрос',
+  thanks: 'Спасибо за ответы — результаты не оцениваются.',
+  unavailable: 'Опрос сейчас недоступен',
+  emptyTitle: 'В опросе пока нет вопросов',
+  emptySubtitle: 'Школа ещё их не добавила. Загляните позже.',
+  back: 'К списку опросов',
+};
+
+const PSYCH_TEST_COPY = {
+  title: 'Психологический тест',
+  loadError: 'Не удалось загрузить тест',
+  // Ни баллов, ни «правильных» ответов: сервер их ученику не отдаёт, а ответы читает один
+  // психолог — это и есть то, что ученику важно услышать после отправки.
+  thanks: 'Спасибо! Ваши ответы увидит только школьный психолог.',
+  unavailable: 'Тест сейчас недоступен',
+  emptyTitle: 'В тесте пока нет вопросов',
+  emptySubtitle: 'Психолог ещё их не добавил. Загляните позже.',
+  // Тест открывают только с главной — плитка «Тест от школьного психолога».
+  back: 'На главную',
+};
 
 /**
  * Прохождение опроса — вопрос за вопросом, как тест домашнего задания
@@ -29,6 +57,10 @@ import { answeredCount, answersFromSaved, isAnswered, toSaveAnswerRequest } from
  * отправлен ли опрос уже, идёт ли сейчас окно между `startAt` и `deadlineAt`, активен ли
  * опрос вообще. Экран его только читает: `false` — форма не рисуется вовсе, показывается
  * состояние «недоступен», и никаких попыток предсказать это условие по датам заранее.
+ *
+ * <p><b>Тест школьного психолога проходится здесь же</b> (PSYCHOLOGIST-002): это опрос с
+ * `origin=PSYCHOLOGICAL`. Отличаются слова, инструкция психолога перед первым вопросом (описание
+ * теста) и то, кому уходят ответы.
  */
 export function SurveyTakeScreen({ nav, payload }) {
   const { c } = useTheme();
@@ -47,6 +79,9 @@ export function SurveyTakeScreen({ nav, payload }) {
   const saveTimers = useRef({});
 
   const list = useMemo(() => questions ?? [], [questions]);
+  // До загрузки вид известен из того, что передала главная; дальше решает ответ сервера.
+  const psych = isPsychTest(survey ?? payload);
+  const copy = psych ? PSYCH_TEST_COPY : SURVEY_COPY;
 
   // Черновик поднимается из ответа сервера один раз на опрос — не на каждую силент-
   // перезагрузку, иначе она затёрла бы то, что отвечающий успел набрать между запросами.
@@ -84,14 +119,24 @@ export function SurveyTakeScreen({ nav, payload }) {
 
   const onSubmit = useCallback(async () => {
     setConfirming(false);
+    // Отложенный автосейв открытого ответа дожидается отправки, а не обгоняется ею: сервер
+    // принял бы отправку первой, отклонил сохранение поверх неё — и последняя набранная
+    // фраза не попала бы в ответы.
+    const pending = Object.entries(saveTimers.current).map(([questionId, timer]) => {
+      clearTimeout(timer);
+      const question = list.find((q) => String(q.id) === String(questionId));
+      return question ? saveAnswer(toSaveAnswerRequest(question, answers[question.id])) : null;
+    });
+    saveTimers.current = {};
+    await Promise.all(pending);
     const ok = await submit();
     if (ok) setSent(true);
-  }, [submit]);
+  }, [submit, saveAnswer, list, answers]);
 
   if (loading) {
     return (
       <Screen>
-        <ScreenHeader title={titleFromList || 'Опрос'} back={() => nav.back()} />
+        <ScreenHeader title={titleFromList || copy.title} back={() => nav.back()} />
         <StateView icon="clock" title="Загружаем вопросы…" />
       </Screen>
     );
@@ -100,11 +145,11 @@ export function SurveyTakeScreen({ nav, payload }) {
   if (error) {
     return (
       <Screen>
-        <ScreenHeader title={titleFromList || 'Опрос'} back={() => nav.back()} />
+        <ScreenHeader title={titleFromList || copy.title} back={() => nav.back()} />
         <StateView
           tone="error"
           icon="alertTriangle"
-          title="Не удалось загрузить опрос"
+          title={copy.loadError}
           actionLabel={error === 'load' ? 'Повторить' : undefined}
           onAction={error === 'load' ? reload : undefined}
         />
@@ -115,13 +160,13 @@ export function SurveyTakeScreen({ nav, payload }) {
   if (sent) {
     return (
       <Screen>
-        <ScreenHeader title={survey?.title || titleFromList || 'Опрос'} back={() => nav.back()} />
+        <ScreenHeader title={survey?.title || titleFromList || copy.title} back={() => nav.back()} />
         <StateView
           tone="brand"
           icon="check"
           title="Ответы приняты"
-          subtitle="Спасибо за ответы — результаты не оцениваются."
-          actionLabel="К списку опросов"
+          subtitle={copy.thanks}
+          actionLabel={copy.back}
           onAction={() => nav.back()}
         />
       </Screen>
@@ -134,17 +179,13 @@ export function SurveyTakeScreen({ nav, payload }) {
     const already = survey?.responseStatus === 'COMPLETED';
     return (
       <Screen>
-        <ScreenHeader title={survey?.title || titleFromList || 'Опрос'} back={() => nav.back()} />
+        <ScreenHeader title={survey?.title || titleFromList || copy.title} back={() => nav.back()} />
         <StateView
           tone={already ? 'brand' : 'neutral'}
           icon={already ? 'check' : 'lock'}
-          title={already ? 'Ответы уже приняты' : 'Опрос сейчас недоступен'}
-          subtitle={
-            already
-              ? 'Спасибо за ответы — результаты не оцениваются.'
-              : 'Возможно, приём ответов ещё не начался или уже завершён.'
-          }
-          actionLabel="К списку опросов"
+          title={already ? 'Ответы уже приняты' : copy.unavailable}
+          subtitle={already ? copy.thanks : 'Возможно, приём ответов ещё не начался или уже завершён.'}
+          actionLabel={copy.back}
           onAction={() => nav.back()}
         />
       </Screen>
@@ -157,12 +198,12 @@ export function SurveyTakeScreen({ nav, payload }) {
   if (!question) {
     return (
       <Screen>
-        <ScreenHeader title={survey?.title || titleFromList || 'Опрос'} back={() => nav.back()} />
+        <ScreenHeader title={survey?.title || titleFromList || copy.title} back={() => nav.back()} />
         <StateView
           icon="fileText"
-          title="В опросе пока нет вопросов"
-          subtitle="Школа ещё их не добавила. Загляните позже."
-          actionLabel="К списку опросов"
+          title={copy.emptyTitle}
+          subtitle={copy.emptySubtitle}
+          actionLabel={copy.back}
           onAction={() => nav.back()}
         />
       </Screen>
@@ -171,7 +212,7 @@ export function SurveyTakeScreen({ nav, payload }) {
 
   return (
     <Screen>
-      <ScreenHeader title={survey?.title || titleFromList || 'Опрос'} back={() => nav.back()} />
+      <ScreenHeader title={survey?.title || titleFromList || copy.title} back={() => nav.back()} />
 
       <SurveyProgress index={index} answered={answered} total={list.length} />
 
@@ -187,6 +228,8 @@ export function SurveyTakeScreen({ nav, payload }) {
             <Txt style={{ fontSize: 13, fontWeight: '600', color: c.red }}>{sendError}</Txt>
           </Pressable>
         ) : null}
+
+        {psych && index === 0 ? <Instructions text={survey?.description} /> : null}
 
         <Card key={question.id}>
           <QuestionHeader index={index} total={list.length} />
@@ -243,11 +286,23 @@ export function SurveyTakeScreen({ nav, payload }) {
 }
 
 /**
- * «Вопрос 3 из 10» и полоса по отвеченным. Экспортируется вместе с навигатором и нижней
- * панелью: те же части у психологического теста (`PsychTestTakeScreen`) — одна вёрстка, а
- * не копия, которая разойдётся при первой правке, как разошлись поля с тестом ДЗ.
+ * Инструкция психолога — описание теста. Только перед первым вопросом: на каждом следующем
+ * она отнимала бы место у самого вопроса. У школьного опроса блока нет — описание опроса экран
+ * прохождения не показывает и раньше не показывал.
  */
-export function SurveyProgress({ index, answered, total }) {
+function Instructions({ text }) {
+  const { c } = useTheme();
+  if (!text) return null;
+  return (
+    <View style={{ gap: 4, padding: 14, borderRadius: 16, backgroundColor: c.blueSoft }}>
+      <Txt style={{ fontSize: 12, fontWeight: '700', color: c.blue }}>Инструкция</Txt>
+      <Txt style={{ fontSize: 14, lineHeight: 20, color: c.ink }}>{text}</Txt>
+    </View>
+  );
+}
+
+/** «Вопрос 3 из 10» и полоса по отвеченным. */
+function SurveyProgress({ index, answered, total }) {
   const { c } = useTheme();
   const ratio = total > 0 ? answered / total : 0;
   return (
@@ -267,7 +322,7 @@ export function SurveyProgress({ index, answered, total }) {
   );
 }
 
-export function QuestionHeader({ index, total }) {
+function QuestionHeader({ index, total }) {
   const { c } = useTheme();
   return (
     <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
@@ -279,7 +334,7 @@ export function QuestionHeader({ index, total }) {
 }
 
 /** Навигатор по номерам вопросов — тот же приём, что и у теста домашнего задания. */
-export function QuestionNavigator({ questions, answers, index, onPick }) {
+function QuestionNavigator({ questions, answers, index, onPick }) {
   const { c } = useTheme();
   if (questions.length < 2) return null;
   return (
@@ -325,7 +380,7 @@ export function QuestionNavigator({ questions, answers, index, onPick }) {
 }
 
 /** «Назад» / «Далее», «Отправить» — на последнем вопросе. Неполные ответы не блокируют кнопку. */
-export function NavBar({ index, isLast, sending, unanswered, onBack, onNext, onFinish }) {
+function NavBar({ index, isLast, sending, unanswered, onBack, onNext, onFinish }) {
   const { c } = useTheme();
   return (
     <View
