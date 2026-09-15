@@ -199,7 +199,9 @@ export function StudentHomeworkTestScreen({ nav, payload }) {
 
       <ScrollView
         ref={scroller}
-        contentContainerStyle={{ paddingBottom: 190, gap: 16 }}
+        // Поля те же 16, что у `ScreenHeader` и нижней панели: без них карточка вопроса
+        // и номера вопросов упирались в края экрана, а «Отвечено: N» обрезалось справа.
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 190, gap: 16 }}
         keyboardShouldPersistTaps="handled"
       >
         {/*
@@ -287,7 +289,7 @@ function TestProgress({ index, answered, total }) {
   const { c } = useTheme();
   const ratio = total > 0 ? answered / total : 0;
   return (
-    <View style={{ gap: 8, paddingBottom: 12 }}>
+    <View style={{ gap: 8, paddingHorizontal: 16, paddingBottom: 12 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
         <Txt style={{ fontSize: 13, fontWeight: '600', color: c.ink }}>
           Вопрос {index + 1} из {total}
