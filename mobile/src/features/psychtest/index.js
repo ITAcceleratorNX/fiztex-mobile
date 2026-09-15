@@ -1,1 +1,0 @@
-export { PsychTestTakeScreen } from './PsychTestTakeScreen';

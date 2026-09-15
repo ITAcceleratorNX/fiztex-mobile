@@ -5,6 +5,7 @@ import { useTheme } from '@shared/theme/ThemeContext';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { shadowSm } from '@shared/components/Screen';
+import { isPsychTest } from '@shared/api/surveyStatus';
 import { initialsOf, childPillLabel, homeLessonWindow } from './homeDate';
 
 /**
@@ -381,13 +382,20 @@ export function ScanQrTile({ onPress }) {
  * первому вопросу, и промежуточный экран со статусами — лишний шаг между «хочу помочь»
  * и ответом. Раздел от этого не пропадает — он и показывает то, чего в блоке нет:
  * уже пройденные опросы и сроки.
+ *
+ * <p>Тесты школьного психолога приходят той же лентой, но баннер их не берёт: у них своя
+ * плитка (`ActivePsychTestsBlock`), и «помогите школе стать лучше» над тестом о тревожности
+ * звучало бы не к месту.
  */
 export function ActiveSurveysBlock({ surveys, onOpenSurvey }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   // `canAnswer` решает сервер — не отправлен ли ответ, открыто ли окно между `startAt`
   // и `deadlineAt`, активен ли сам опрос. Здесь только отбор по готовому флагу, без
   // своей арифметики по датам.
-  const pending = useMemo(() => (surveys ?? []).filter((s) => s?.canAnswer), [surveys]);
+  const pending = useMemo(
+    () => (surveys ?? []).filter((s) => s?.canAnswer && !isPsychTest(s)),
+    [surveys],
+  );
 
   const open = useCallback((survey) => {
     setPickerOpen(false);
@@ -539,20 +547,26 @@ function TitlePickerSheet({ visible, items, keyOf, titleOf, onSelect, onClose })
  * Психологический тест на главной ученика (PSYCHOLOGIST-002). Правило то же, что у блока
  * опроса: открытых нет — блока нет; один — плитка ведёт прямо в него; несколько — лист выбора.
  *
+ * <p>Тест — это опрос психолога (`origin=PSYCHOLOGICAL`), поэтому блок получает ту же ленту
+ * `surveys`, что и баннер, и сам отбирает из неё свои. Открывается он экраном опроса.
+ *
  * <p>Белая плитка, а не цветной баннер: макета у блока нет, а выше на главной уже стоят два
  * цветных призыва — оранжевый сканер и синий опрос; третий подряд перестал бы выделять
  * любой из них. Вид — как у плитки «Оценки», с которой главная уже знакома.
  */
-export function ActivePsychTestsBlock({ tests, onOpenTest }) {
+export function ActivePsychTestsBlock({ surveys, onOpenSurvey }) {
   const { c } = useTheme();
   const [pickerOpen, setPickerOpen] = useState(false);
   // `canAnswer` решает сервер: не отправлено, приём не закрыт, срок не прошёл.
-  const pending = useMemo(() => (tests ?? []).filter((t) => t?.canAnswer), [tests]);
+  const pending = useMemo(
+    () => (surveys ?? []).filter((s) => s?.canAnswer && isPsychTest(s)),
+    [surveys],
+  );
 
   const open = useCallback((test) => {
     setPickerOpen(false);
-    onOpenTest?.(test);
-  }, [onOpenTest]);
+    onOpenSurvey?.(test);
+  }, [onOpenSurvey]);
 
   if (pending.length === 0) return null;
 
@@ -592,7 +606,7 @@ export function ActivePsychTestsBlock({ tests, onOpenTest }) {
       <TitlePickerSheet
         visible={pickerOpen}
         items={pending}
-        keyOf={(test) => test.assignmentId}
+        keyOf={(test) => test.surveyId}
         titleOf={(test) => test.title}
         onSelect={open}
         onClose={() => setPickerOpen(false)}
