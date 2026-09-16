@@ -7,25 +7,40 @@ import { Avatar, Card, SectionTitle } from '@shared/components/ui';
 import { ProfileRow } from '@shared/ui/rows';
 import { useAuth } from '@features/auth/AuthContext';
 import { useMyProfile } from '@shared/hooks/useProfile';
+import { useMyEquipment } from '@shared/hooks/useEquipment';
+import { MyEquipmentCard } from '@features/equipment/MyEquipmentCard';
+import { useMyKeys } from '@shared/hooks/useKeys';
+import { MyKeysCard } from '@features/keys/MyKeysCard';
 
 const ROLE_LABEL = {
   ADMIN: 'Администратор школы',
   SECURITY: 'Охрана',
   CLEANING: 'Служба уборки',
   TECHNICIAN: 'Техническая служба',
+  PSYCHOLOGIST: 'Психолог',
+  SUPER_ADMIN: 'Супер-администратор',
 };
 
 /**
- * Экран «Я» администратора и охраны.
+ * Экран «Я» ролей без школьного профиля: администратор, охрана, уборка, техслужба и
+ * психолог.
  *
  * Отдельно от учительского, а не он же с пустыми блоками: школьного профиля у этих ролей
  * нет вовсе — ни классов, ни предметов, ни детей, — и «Мои классы» с подписью «классов
  * пока не назначили» обещали бы им раздел, которого не будет.
+ *
+ * Один экран на пять ролей, а не пять копий: содержимое у них совпадает полностью —
+ * заявки, своё имущество и настройки. Различает их подпись под именем, и её даёт роль.
  */
 export function StaffProfileScreen({ nav, onSignOut }) {
   const { c, dark, toggle } = useTheme();
   const { biometricsEnabled, biometricMeta, enableBiometrics, disableBiometrics } = useAuth();
   const { displayName, role } = useMyProfile();
+  // §10: техника, выданная сотруднику, — единственное, что он про модуль видит. Ключи
+  // рядом по той же причине: раздел ключей принадлежит охране, а «что за мной числится»
+  // сотрудник обязан видеть у себя.
+  const myEquipment = useMyEquipment();
+  const myKeys = useMyKeys();
 
   const toggleBio = async () => {
     if (biometricsEnabled) await disableBiometrics();
@@ -42,6 +57,11 @@ export function StaffProfileScreen({ nav, onSignOut }) {
         <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 2 }}>
           {ROLE_LABEL[role] || 'Сотрудник школы'}
         </Txt>
+      </View>
+
+      <View style={{ paddingHorizontal: 16, gap: 12 }}>
+        <MyKeysCard keys={myKeys.rows} />
+        <MyEquipmentCard rows={myEquipment.rows} />
       </View>
 
       <SectionTitle title="Сервис" />

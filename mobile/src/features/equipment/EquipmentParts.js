@@ -5,14 +5,14 @@ import { useTheme } from '@shared/theme/ThemeContext';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { Pill, StateView } from '@shared/components/ui';
-import { problemLabel } from './keyModel';
+import { problemLabel, stateMeta } from './equipmentModel';
 
 /**
- * Шапка раздела. Аватара с выходом здесь больше нет: выход живёт в профиле («Я»), а вторая
- * кнопка того же действия в углу рабочего экрана — приглашение выйти из системы посреди
- * выдачи ключа.
+ * Шапка раздела: заголовок и счётчик. Аватара с выходом здесь нет — выход живёт в профиле
+ * («Я»), и вторая кнопка того же действия в углу рабочего экрана приглашала бы выйти из
+ * системы посреди выдачи.
  */
-export function KeysHero({ title, subtitle, onBack }) {
+export function EquipmentHero({ title, subtitle, onBack }) {
   const { c } = useTheme();
   return (
     <View style={{ minHeight: 110, marginHorizontal: -16, marginTop: -4, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 22, backgroundColor: c.blue, justifyContent: 'space-between' }}>
@@ -31,13 +31,18 @@ export function KeysHero({ title, subtitle, onBack }) {
   );
 }
 
-export function KeyUnitRow({ unit, onPress, selectable = false, selected = false, onToggle, first = false, last = false }) {
+/**
+ * Строка экземпляра. В режиме выбора нажатие отмечает, а не открывает: выбор нужен ровно
+ * для выдачи пачкой (§7.2), и выдавать можно не всё — `issuable` приходит с сервера.
+ */
+export function EquipmentUnitRow({ unit, onPress, selectable = false, selected = false, onToggle, first = false, last = false }) {
   const { c } = useTheme();
   const problem = problemLabel(unit.problem);
+  const state = stateMeta(unit.state);
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${unit.groupName || 'Объект'}, ключ ${unit.label || unit.ordinal || ''}`}
+      accessibilityLabel={`${unit.itemName || 'Позиция'}, инвентарный номер ${unit.inventoryNumber || ''}`}
       onPress={selectable ? onToggle : onPress}
       disabled={selectable && !unit.issuable}
       style={({ pressed }) => ({
@@ -62,17 +67,19 @@ export function KeyUnitRow({ unit, onPress, selectable = false, selected = false
           </View>
         ) : (
           <View style={{ width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: problem ? c.redSoft : c.blueSoft }}>
-            <Icon name="key" size={20} color={problem ? c.red : c.blue} />
+            <Icon name="laptop" size={20} color={problem ? c.red : c.blue} />
           </View>
         )}
         <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Txt numberOfLines={1} style={{ flex: 1, fontSize: 14, fontWeight: '700', color: c.ink }}>{unit.label || `Ключ ${unit.ordinal || ''}`}</Txt>
-            {problem ? <Pill color="red">Проблема</Pill> : null}
+            <Txt numberOfLines={1} style={{ flex: 1, fontSize: 14, fontWeight: '700', color: c.ink }}>{unit.inventoryNumber || 'Без номера'}</Txt>
+            {problem ? <Pill color="red">{problem}</Pill> : null}
             {!problem && unit.holder?.active === false ? <Pill color="gold">Неактивен</Pill> : null}
           </View>
           <Txt numberOfLines={1} style={{ fontSize: 12, color: c.inkMuted }}>
-            {unit.state === 'ISSUED' ? `${unit.holder?.fullName || 'Выдан'}${unit.holder?.active === false ? ' · неактивен' : ''}` : problem || unit.note || 'На посту'}
+            {unit.state === 'ISSUED'
+              ? `${unit.holder?.fullName || 'Выдано'}${unit.holder?.active === false ? ' · неактивен' : ''}`
+              : unit.note || state.label}
           </Txt>
         </View>
         {!selectable ? <Icon name="chevronRight" size={18} color={c.ink3} /> : null}
@@ -81,17 +88,18 @@ export function KeyUnitRow({ unit, onPress, selectable = false, selected = false
   );
 }
 
-export function GroupHeader({ group, first = false, empty = false }) {
+/** Заголовок позиции над её экземплярами. */
+export function EquipmentItemHeader({ item, first = false, empty = false }) {
   const { c } = useTheme();
   return (
     <View style={{ marginHorizontal: 16, marginTop: first ? 0 : 12, paddingHorizontal: 14, paddingTop: 13, paddingBottom: empty ? 13 : 9, borderTopLeftRadius: 14, borderTopRightRadius: 14, borderBottomLeftRadius: empty ? 14 : 0, borderBottomRightRadius: empty ? 14 : 0, backgroundColor: c.surface }}>
-      <Txt numberOfLines={1} style={{ fontSize: 15, fontWeight: '700', color: c.ink }}>{group.name || 'Без названия'}</Txt>
-      {group.note ? <Txt numberOfLines={1} style={{ marginTop: 3, fontSize: 12, color: c.inkMuted }}>{group.note}</Txt> : null}
+      <Txt numberOfLines={1} style={{ fontSize: 15, fontWeight: '700', color: c.ink }}>{item.name || 'Без названия'}</Txt>
+      {item.note ? <Txt numberOfLines={1} style={{ marginTop: 3, fontSize: 12, color: c.inkMuted }}>{item.note}</Txt> : null}
     </View>
   );
 }
 
-export function KeysLoading({ label = 'Загружаем ключи…' }) {
+export function EquipmentLoading({ label = 'Загружаем технику…' }) {
   const { c } = useTheme();
   return (
     <View accessibilityRole="progressbar" style={{ padding: 28, alignItems: 'center', gap: 12 }}>
@@ -102,12 +110,32 @@ export function KeysLoading({ label = 'Загружаем ключи…' }) {
   );
 }
 
-export function KeysState({ kind, error, onRetry }) {
-  if (kind === 'error') return <StateView icon="alertTriangle" tone="error" title="Не удалось загрузить ключи" subtitle={error} actionLabel="Повторить" onAction={onRetry} style={{ paddingTop: 56 }} />;
-  return <StateView icon="inbox" title="Здесь пока пусто" subtitle="Ключи появятся здесь после первой операции." style={{ paddingTop: 56 }} />;
+export function EquipmentState({ kind, error, onRetry, subtitle }) {
+  if (kind === 'error') {
+    return (
+      <StateView
+        icon="alertTriangle"
+        tone="error"
+        title="Не удалось загрузить технику"
+        subtitle={error}
+        actionLabel="Повторить"
+        onAction={onRetry}
+        style={{ paddingTop: 56 }}
+      />
+    );
+  }
+  return (
+    <StateView
+      icon="inbox"
+      title="Здесь пока пусто"
+      subtitle={subtitle || 'Добавьте позицию — например «Ноутбук Lenovo ThinkPad» — и её экземпляры.'}
+      style={{ paddingTop: 56 }}
+    />
+  );
 }
 
-export function KeyActionsSheet({ visible, actions, onClose }) {
+/** Лист действий над экземпляром. Состав приходит из `unitActions`, а не собирается тут. */
+export function EquipmentActionsSheet({ visible, actions, onClose, onSelect }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   return (
@@ -115,9 +143,14 @@ export function KeyActionsSheet({ visible, actions, onClose }) {
       <Pressable style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: c.modalBackdrop }} onPress={onClose}>
         <Pressable onPress={(event) => event.stopPropagation?.()} style={{ borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16, paddingBottom: Math.max(20, insets.bottom + 12), backgroundColor: c.surface }}>
           <View style={{ alignSelf: 'center', width: 40, height: 4, marginBottom: 14, borderRadius: 2, backgroundColor: c.borderStrong }} />
-          <Txt style={{ marginBottom: 8, fontSize: 17, fontWeight: '700', color: c.ink }}>Действия с ключом</Txt>
+          <Txt style={{ marginBottom: 8, fontSize: 17, fontWeight: '700', color: c.ink }}>Действия с экземпляром</Txt>
           {actions.map((action) => (
-            <Pressable key={action.label} accessibilityRole="button" onPress={() => { onClose(); action.onPress(); }} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 50, paddingHorizontal: 8, borderRadius: 10, backgroundColor: pressed ? c.bg2 : c.surface })}>
+            <Pressable
+              key={action.key}
+              accessibilityRole="button"
+              onPress={() => { onClose(); onSelect(action.key); }}
+              style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 50, paddingHorizontal: 8, borderRadius: 10, backgroundColor: pressed ? c.bg2 : c.surface })}
+            >
               <Icon name={action.icon} size={20} color={action.danger ? c.red : c.blue} />
               <Txt style={{ fontSize: 15, fontWeight: '600', color: action.danger ? c.red : c.ink }}>{action.label}</Txt>
             </Pressable>

@@ -7,6 +7,8 @@ import { useMySchedule } from '@shared/hooks/useSchedule';
 import { useMyProfile } from '@shared/hooks/useProfile';
 import { useMyKeys } from '@shared/hooks/useKeys';
 import { MyKeysCard } from '@features/keys/MyKeysCard';
+import { useMyEquipment } from '@shared/hooks/useEquipment';
+import { MyEquipmentCard } from '@features/equipment/MyEquipmentCard';
 import { HomeHeader, HomeSectionTitle, TeacherAgendaCard, TeacherGradesTile } from './HomeParts';
 import { formatHomeDate, teacherName } from './homeDate';
 
@@ -24,16 +26,17 @@ export function TeacherHomeScreen({ nav }) {
   const { data, loading, error, reload, emptyMessage } = useMySchedule();
   const { profile, displayName } = useMyProfile();
   const myKeys = useMyKeys();
+  const myEquipment = useMyEquipment();
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([reload(true), myKeys.reload()]);
+      await Promise.all([reload(true), myKeys.reload(), myEquipment.reload()]);
     } finally {
       setRefreshing(false);
     }
-  }, [reload, myKeys.reload]);
+  }, [reload, myKeys.reload, myEquipment.reload]);
 
   const openLesson = useCallback((lesson) => nav?.('lesson', lesson), [nav]);
 
@@ -69,6 +72,9 @@ export function TeacherHomeScreen({ nav }) {
       />
 
       <MyKeysCard keys={myKeys.rows} />
+
+      {/* §10: блок появляется, только когда за учителем что-то числится. */}
+      <MyEquipmentCard rows={myEquipment.rows} />
 
       <View style={{ gap: 12 }}>
         <HomeSectionTitle compact>Расписание на сегодня</HomeSectionTitle>

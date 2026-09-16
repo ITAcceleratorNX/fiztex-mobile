@@ -12,7 +12,9 @@ import {
 } from '@features/auth';
 import { EntranceFlow } from '@features/entrance';
 import { useTheme } from '@shared/theme/ThemeContext';
-import { StudentApp, ParentApp, TeacherApp, StaffApp, SecurityApp, PsychologistApp } from './RoleNavigators';
+import {
+  StudentApp, ParentApp, TeacherApp, StaffApp, SecurityApp, SuperAdminApp, PsychologistApp,
+} from './RoleNavigators';
 
 const Root = createNativeStackNavigator();
 
@@ -25,6 +27,9 @@ const ROLE_ROUTE = {
   TEACHER: 'TeacherApp',
   ADMIN: 'StaffApp',
   SECURITY: 'SecurityApp',
+  // Super Admin входит ради одного раздела — техники и инвентаря (ТЗ §9). Остальное он
+  // делает в панели, и повторять её в телефоне задача не просила.
+  SUPER_ADMIN: 'SuperAdminApp',
   CLEANING: 'StaffApp',
   TECHNICIAN: 'StaffApp',
   // Свой навигатор, а не StaffApp: у психолога нет сервисных заявок, которые и есть
@@ -140,6 +145,7 @@ export function RootNavigator() {
       <Root.Screen name="TeacherApp" component={TeacherApp} />
       <Root.Screen name="StaffApp" component={StaffApp} />
       <Root.Screen name="SecurityApp" component={SecurityApp} />
+      <Root.Screen name="SuperAdminApp" component={SuperAdminApp} />
       <Root.Screen name="PsychologistApp" component={PsychologistApp} />
       <Root.Screen name="EntranceFlow" component={EntranceFlowRoute} />
     </Root.Navigator>

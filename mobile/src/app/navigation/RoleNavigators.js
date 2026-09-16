@@ -44,9 +44,12 @@ import { SurveyListScreen, SurveyTakeScreen } from '@features/survey';
 // Главные экраны трёх ролей живут отдельным модулем: они делят шапку, карточку
 // расписания и плитку оценок, и все три читают бэкенд, а не макетные данные.
 import { StudentHomeScreen, ParentHomeScreen, TeacherHomeScreen } from '@features/home';
-// Психолог (PSYCHOLOGIST-001) — единственный экран-заглушка, без вкладок и без
-// сервисных заявок: эта роль их не заводит и не исполняет.
-import { PsychologistHomeScreen } from '@features/psychologist';
+// Психолог: весь цикл опроса с телефона (PSYCHOLOGIST-002) — список, карточка, вопросы,
+// классы, результаты и именные ответы.
+import {
+  PsychologistSurveysScreen, SurveyCardScreen, SurveyFormScreen, SurveyQuestionsScreen,
+  SurveyAudienceScreen, SurveyResultsScreen, SurveyRespondentScreen,
+} from '@features/psychologist';
 // Сервисные заявки: один и тот же авторский модуль у учителя, администратора и охраны
 // (ТЗ SERVICE-FE-002 §16). Роль решает, откуда в него входят, а не что внутри.
 import {
@@ -56,6 +59,11 @@ import {
   SecurityOnPostScreen, SecurityIssuedScreen, KeyHistoryScreen,
   KeyDetailScreen, KeyRecipientScreen, KeyGroupFormScreen,
 } from '@features/keys';
+// Техника и инвентарь — раздел Super Admin (ТЗ «Техника и инвентарь» §2, §9).
+import {
+  EquipmentStockScreen, EquipmentIssuedScreen, EquipmentHistoryScreen,
+  EquipmentDetailScreen, EquipmentRecipientScreen, EquipmentFormScreen,
+} from '@features/equipment';
 
 const tabScreenOptions = { headerShown: false };
 
@@ -289,6 +297,10 @@ function SecurityTabs() {
         { name: 'keys-on-post', comp: SecurityOnPostScreen, label: 'На посту', icon: 'inbox' },
         { name: 'keys-issued', comp: SecurityIssuedScreen, label: 'Выданы', icon: 'key' },
         { name: 'keys-history', comp: KeyHistoryScreen, label: 'История', icon: 'history' },
+        // Профиль охране был нужен и раньше: заявки она заводит (SERVICE-FE-002 §16), но
+        // экраны висели зарегистрированными без единого входа, а выход прятался в меню
+        // аватара. Экран тот же, что у служебных ролей, — он и так знает про охрану.
+        { name: 'profile', comp: StaffProfileScreen, label: 'Я', icon: 'user' },
       ])}
     </SecurityTab.Navigator>
   );
@@ -307,6 +319,44 @@ export function SecurityApp() {
         ...SERVICE_DETAILS,
       ])}
     </SecurityStack.Navigator>
+  );
+}
+
+// ─── Super Admin — техника и инвентарь ────────────────────────────────────────
+// Роль впервые получает мобильное приложение, и состоит оно ровно из одного раздела:
+// ТЗ §9 просит мобильный flow учёта техники, а всё остальное Super Admin делает в панели.
+// Три вкладки повторяют рабочие очереди: что на месте, что на руках и что происходило.
+const SuperAdminStack = createNativeStackNavigator();
+const SuperAdminTab = createBottomTabNavigator();
+
+function SuperAdminTabs() {
+  return (
+    <SuperAdminTab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={tabScreenOptions}>
+      {renderTabs(SuperAdminTab, [
+        { name: 'equipment-stock', comp: EquipmentStockScreen, label: 'В наличии', icon: 'inbox' },
+        { name: 'equipment-issued', comp: EquipmentIssuedScreen, label: 'Выдано', icon: 'laptop' },
+        { name: 'equipment-history', comp: EquipmentHistoryScreen, label: 'История', icon: 'history' },
+        // Профиль тот же, что у остальных ролей без школьной карточки: заявки, своё
+        // имущество, настройки и выход. До него выход прятался в меню аватара на рабочем
+        // экране — вторая кнопка того же действия посреди выдачи.
+        { name: 'profile', comp: StaffProfileScreen, label: 'Я', icon: 'user' },
+      ])}
+    </SuperAdminTab.Navigator>
+  );
+}
+
+export function SuperAdminApp() {
+  return (
+    <SuperAdminStack.Navigator screenOptions={stackScreenOptions}>
+      <SuperAdminStack.Screen name="Tabs" component={SuperAdminTabs} />
+      {renderDetails(SuperAdminStack, [
+        { name: 'equipment-detail', comp: EquipmentDetailScreen },
+        { name: 'equipment-recipient', comp: EquipmentRecipientScreen },
+        { name: 'equipment-form', comp: EquipmentFormScreen },
+        // Заявки Super Admin заводит наравне с остальными — экраны те же.
+        ...SERVICE_DETAILS,
+      ])}
+    </SuperAdminStack.Navigator>
   );
 }
 
@@ -351,16 +401,40 @@ export function StaffApp() {
   );
 }
 
-// ─── Психолог — только заглушка ────────────────────────────────────────────────
-// Раздел «Психологические тесты» живёт в веб-панели (PSYCHOLOGIST-001 §2); мобильному
-// приложению эта роль нужна только для входа. Стек, а не таб-навигатор, как у Staff:
-// делить с чем-либо один экран незачем — вкладка на один пункт выглядела бы поломкой.
+// ─── Психолог — опросы и профиль ──────────────────────────────────────────────
+// Раньше здесь была заглушка «раздел в веб-панели»: приложение нужно было роли только для
+// входа. Теперь весь цикл опроса живёт и в телефоне — завести, набрать вопросы, выбрать
+// классы, опубликовать и читать ответы, — поэтому вкладок стало две. Профиль общий со
+// служебными ролями: у психолога те же заявки, та же техника и те же настройки.
 const StackPsychologist = createNativeStackNavigator();
+const TabPsychologist = createBottomTabNavigator();
+
+function PsychologistTabs() {
+  return (
+    <TabPsychologist.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={tabScreenOptions}>
+      {renderTabs(TabPsychologist, [
+        { name: 'surveys', comp: PsychologistSurveysScreen, label: 'Опросы', icon: 'clipboardCheck' },
+        { name: 'profile', comp: StaffProfileScreen, label: 'Я', icon: 'user' },
+      ])}
+    </TabPsychologist.Navigator>
+  );
+}
 
 export function PsychologistApp() {
   return (
     <StackPsychologist.Navigator screenOptions={stackScreenOptions}>
-      <StackPsychologist.Screen name="Tabs" component={withNav(PsychologistHomeScreen)} />
+      <StackPsychologist.Screen name="Tabs" component={PsychologistTabs} />
+      {renderDetails(StackPsychologist, [
+        { name: 'survey-card', comp: SurveyCardScreen },
+        { name: 'survey-form', comp: SurveyFormScreen },
+        { name: 'survey-questions', comp: SurveyQuestionsScreen },
+        { name: 'survey-audience', comp: SurveyAudienceScreen },
+        { name: 'survey-results', comp: SurveyResultsScreen },
+        { name: 'survey-respondent', comp: SurveyRespondentScreen },
+        // Заявки психолог заводит с этого же приложения: своё разрешение у роли
+        // появилось вместе с этими экранами, а исполнителем она не становится.
+        ...SERVICE_DETAILS,
+      ])}
     </StackPsychologist.Navigator>
   );
 }
