@@ -1,14 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '@features/auth/AuthContext';
 import { Screen, TAB_BAR_HEIGHT } from '@shared/components/Screen';
 import { PickerSheet, Pill, StateView } from '@shared/components/ui';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { useEquipmentHistory } from '@shared/hooks/useEquipment';
-import { EquipmentAccountMenu, EquipmentHero, EquipmentLoading } from './EquipmentParts';
+import { EquipmentHero, EquipmentLoading } from './EquipmentParts';
 import {
   actionMeta,
   collapseEvents,
@@ -22,13 +21,11 @@ import {
  * История модуля (ТЗ §7.7, §9). Пакетная команда пишет событие на каждый экземпляр —
  * лента сворачивает их обратно в одно действие по `operationId`.
  */
-export function EquipmentHistoryScreen({ onSignOut }) {
+export function EquipmentHistoryScreen() {
   const { c } = useTheme();
-  const { fullName } = useAuth();
   const insets = useSafeAreaInsets();
   const [action, setAction] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const history = useEquipmentHistory(action);
   const groups = useMemo(() => collapseEvents(history.rows), [history.rows]);
 
@@ -38,8 +35,6 @@ export function EquipmentHistoryScreen({ onSignOut }) {
         <EquipmentHero
           title="История техники"
           subtitle="Все операции в хронологическом порядке"
-          fullName={fullName}
-          onAvatarPress={() => setMenuOpen(true)}
         />
       </View>
       <View style={{ paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center' }}>
@@ -115,7 +110,6 @@ export function EquipmentHistoryScreen({ onSignOut }) {
         onSelect={(value) => { setAction(value); setFiltersOpen(false); }}
         onClose={() => setFiltersOpen(false)}
       />
-      <EquipmentAccountMenu visible={menuOpen} onClose={() => setMenuOpen(false)} onSignOut={onSignOut} />
     </Screen>
   );
 }

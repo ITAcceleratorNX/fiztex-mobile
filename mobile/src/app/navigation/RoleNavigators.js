@@ -336,6 +336,10 @@ function SuperAdminTabs() {
         { name: 'equipment-stock', comp: EquipmentStockScreen, label: 'В наличии', icon: 'inbox' },
         { name: 'equipment-issued', comp: EquipmentIssuedScreen, label: 'Выдано', icon: 'laptop' },
         { name: 'equipment-history', comp: EquipmentHistoryScreen, label: 'История', icon: 'history' },
+        // Профиль тот же, что у остальных ролей без школьной карточки: заявки, своё
+        // имущество, настройки и выход. До него выход прятался в меню аватара на рабочем
+        // экране — вторая кнопка того же действия посреди выдачи.
+        { name: 'profile', comp: StaffProfileScreen, label: 'Я', icon: 'user' },
       ])}
     </SuperAdminTab.Navigator>
   );
@@ -349,6 +353,8 @@ export function SuperAdminApp() {
         { name: 'equipment-detail', comp: EquipmentDetailScreen },
         { name: 'equipment-recipient', comp: EquipmentRecipientScreen },
         { name: 'equipment-form', comp: EquipmentFormScreen },
+        // Заявки Super Admin заводит наравне с остальными — экраны те же.
+        ...SERVICE_DETAILS,
       ])}
     </SuperAdminStack.Navigator>
   );
