@@ -4,11 +4,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
-import { Avatar, Pill, StateView } from '@shared/components/ui';
-import { shadowCard } from '@shared/components/Screen';
+import { Pill, StateView } from '@shared/components/ui';
 import { problemLabel } from './keyModel';
 
-export function KeysHero({ title, subtitle, fullName, onAvatarPress, onBack }) {
+/**
+ * Шапка раздела. Аватара с выходом здесь больше нет: выход живёт в профиле («Я»), а вторая
+ * кнопка того же действия в углу рабочего экрана — приглашение выйти из системы посреди
+ * выдачи ключа.
+ */
+export function KeysHero({ title, subtitle, onBack }) {
   const { c } = useTheme();
   return (
     <View style={{ minHeight: 110, marginHorizontal: -16, marginTop: -4, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 22, backgroundColor: c.blue, justifyContent: 'space-between' }}>
@@ -22,25 +26,8 @@ export function KeysHero({ title, subtitle, fullName, onAvatarPress, onBack }) {
           <Txt numberOfLines={1} style={{ fontSize: 19, fontWeight: '700', color: c.heroInk }}>{title}</Txt>
           {subtitle ? <Txt numberOfLines={1} style={{ marginTop: 3, fontSize: 12, color: c.heroInkSoft }}>{subtitle}</Txt> : null}
         </View>
-        {onAvatarPress ? <Pressable accessibilityRole="button" accessibilityLabel="Меню аккаунта" onPress={onAvatarPress}><Avatar name={fullName} size={38} /></Pressable> : null}
       </View>
     </View>
-  );
-}
-
-export function AccountMenu({ visible, onClose, onSignOut }) {
-  const { c } = useTheme();
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={{ flex: 1, backgroundColor: 'transparent' }} onPress={onClose}>
-        <Pressable onPress={(event) => event.stopPropagation?.()} style={[{ position: 'absolute', top: 72, right: 16, width: 190, borderRadius: 14, padding: 8, backgroundColor: c.surface, ...shadowCard }, shadowCard]}>
-          <Pressable accessibilityRole="button" onPress={onSignOut} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 10, backgroundColor: pressed ? c.bg2 : c.surface })}>
-            <Icon name="logOut" size={19} color={c.red} />
-            <Txt style={{ fontSize: 14, fontWeight: '600', color: c.red }}>Выйти из аккаунта</Txt>
-          </Pressable>
-        </Pressable>
-      </Pressable>
-    </Modal>
   );
 }
 

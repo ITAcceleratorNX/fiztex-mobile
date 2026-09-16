@@ -1,29 +1,26 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '@features/auth/AuthContext';
 import { Screen, TAB_BAR_HEIGHT } from '@shared/components/Screen';
 import { PickerSheet, Pill, StateView } from '@shared/components/ui';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { useKeyHistory } from '@shared/hooks/useKeys';
-import { AccountMenu, KeysHero, KeysLoading } from './KeyParts';
+import { KeysHero, KeysLoading } from './KeyParts';
 import { actionMeta, collapseKeyEvents, eventEmployee, formatKeyDate, historyGroupTitle, HISTORY_ACTIONS } from './keyModel';
 
-export function KeyHistoryScreen({ onSignOut }) {
+export function KeyHistoryScreen() {
   const { c } = useTheme();
-  const { fullName } = useAuth();
   const insets = useSafeAreaInsets();
   const [action, setAction] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const history = useKeyHistory(action);
   const eventGroups = useMemo(() => collapseKeyEvents(history.rows), [history.rows]);
 
   const header = (
     <View style={{ gap: 12, paddingBottom: 12 }}>
-      <View style={{ paddingHorizontal: 16 }}><KeysHero title="История ключей" subtitle="Все операции в хронологическом порядке" fullName={fullName} onAvatarPress={() => setMenuOpen(true)} /></View>
+      <View style={{ paddingHorizontal: 16 }}><KeysHero title="История ключей" subtitle="Все операции в хронологическом порядке" /></View>
       <View style={{ paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center' }}>
         <Pressable accessibilityRole="button" onPress={() => setFiltersOpen(true)} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 12, height: 38, borderRadius: 10, backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, opacity: pressed ? 0.8 : 1 })}>
           <Icon name="filter" size={16} color={c.blue} />
@@ -66,8 +63,6 @@ export function KeyHistoryScreen({ onSignOut }) {
         maxToRenderPerBatch={16}
         windowSize={8}
       />
-      <PickerSheet visible={filtersOpen} title="Показывать" options={HISTORY_ACTIONS} value={action} onSelect={(value) => { setAction(value); setFiltersOpen(false); }} onClose={() => setFiltersOpen(false)} />
-      <AccountMenu visible={menuOpen} onClose={() => setMenuOpen(false)} onSignOut={onSignOut} />
-    </Screen>
+      <PickerSheet visible={filtersOpen} title="Показывать" options={HISTORY_ACTIONS} value={action} onSelect={(value) => { setAction(value); setFiltersOpen(false); }} onClose={() => setFiltersOpen(false)} />    </Screen>
   );
 }
