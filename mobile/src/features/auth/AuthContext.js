@@ -29,11 +29,13 @@ const PROFILE_KEY = 'fiztex.auth.profile';
  * тесты» здесь нет — он живёт только в веб-панели. Мобильный экран этой роли — заглушка
  * (профиль + выход), заведена ровно чтобы код активации не терялся без входа вовсе.
  *
- * Из ролей приложения вне списка остаётся только `SUPER_ADMIN`: его раздел —
- * отдельная frontend-задача после отдельного дизайна.
+ * `SUPER_ADMIN` входит ради одного раздела — техники и инвентаря (ТЗ «Техника и
+ * инвентарь» §2, §9 прямо просят мобильный flow для этой роли). Остальное он делает в
+ * панели, и повторять её в телефоне задача не просила.
  */
 const MOBILE_ROLES = new Set([
-  'STUDENT', 'PARENT', 'TEACHER', 'ADMIN', 'SECURITY', 'CLEANING', 'TECHNICIAN', 'PSYCHOLOGIST',
+  'STUDENT', 'PARENT', 'TEACHER', 'ADMIN', 'SECURITY', 'CLEANING', 'TECHNICIAN',
+  'PSYCHOLOGIST', 'SUPER_ADMIN',
 ]);
 
 /**

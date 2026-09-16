@@ -6,6 +6,8 @@ import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { Avatar } from '@shared/components/ui';
 import { useMyProfile } from '@shared/hooks/useProfile';
+import { useMyEquipment } from '@shared/hooks/useEquipment';
+import { MyEquipmentCard } from '@features/equipment/MyEquipmentCard';
 
 /**
  * Главный (и единственный) экран психолога в мобильном приложении (PSYCHOLOGIST-001).
@@ -20,6 +22,9 @@ import { useMyProfile } from '@shared/hooks/useProfile';
 export function PsychologistHomeScreen({ onSignOut }) {
   const { c } = useTheme();
   const { displayName } = useMyProfile();
+  // §10: техника психологу выдаётся так же, как любому сотруднику, — блок появляется,
+  // только если за ним что-то числится.
+  const myEquipment = useMyEquipment();
 
   return (
     <Screen>
@@ -29,6 +34,10 @@ export function PsychologistHomeScreen({ onSignOut }) {
           {displayName}
         </Txt>
         <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 2 }}>Психолог</Txt>
+      </View>
+
+      <View style={{ paddingHorizontal: 16 }}>
+        <MyEquipmentCard rows={myEquipment.rows} />
       </View>
 
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>

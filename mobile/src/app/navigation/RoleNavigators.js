@@ -56,6 +56,11 @@ import {
   SecurityOnPostScreen, SecurityIssuedScreen, KeyHistoryScreen,
   KeyDetailScreen, KeyRecipientScreen, KeyGroupFormScreen,
 } from '@features/keys';
+// Техника и инвентарь — раздел Super Admin (ТЗ «Техника и инвентарь» §2, §9).
+import {
+  EquipmentStockScreen, EquipmentIssuedScreen, EquipmentHistoryScreen,
+  EquipmentDetailScreen, EquipmentRecipientScreen, EquipmentFormScreen,
+} from '@features/equipment';
 
 const tabScreenOptions = { headerShown: false };
 
@@ -307,6 +312,38 @@ export function SecurityApp() {
         ...SERVICE_DETAILS,
       ])}
     </SecurityStack.Navigator>
+  );
+}
+
+// ─── Super Admin — техника и инвентарь ────────────────────────────────────────
+// Роль впервые получает мобильное приложение, и состоит оно ровно из одного раздела:
+// ТЗ §9 просит мобильный flow учёта техники, а всё остальное Super Admin делает в панели.
+// Три вкладки повторяют рабочие очереди: что на месте, что на руках и что происходило.
+const SuperAdminStack = createNativeStackNavigator();
+const SuperAdminTab = createBottomTabNavigator();
+
+function SuperAdminTabs() {
+  return (
+    <SuperAdminTab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={tabScreenOptions}>
+      {renderTabs(SuperAdminTab, [
+        { name: 'equipment-stock', comp: EquipmentStockScreen, label: 'В наличии', icon: 'inbox' },
+        { name: 'equipment-issued', comp: EquipmentIssuedScreen, label: 'Выдано', icon: 'laptop' },
+        { name: 'equipment-history', comp: EquipmentHistoryScreen, label: 'История', icon: 'history' },
+      ])}
+    </SuperAdminTab.Navigator>
+  );
+}
+
+export function SuperAdminApp() {
+  return (
+    <SuperAdminStack.Navigator screenOptions={stackScreenOptions}>
+      <SuperAdminStack.Screen name="Tabs" component={SuperAdminTabs} />
+      {renderDetails(SuperAdminStack, [
+        { name: 'equipment-detail', comp: EquipmentDetailScreen },
+        { name: 'equipment-recipient', comp: EquipmentRecipientScreen },
+        { name: 'equipment-form', comp: EquipmentFormScreen },
+      ])}
+    </SuperAdminStack.Navigator>
   );
 }
 
