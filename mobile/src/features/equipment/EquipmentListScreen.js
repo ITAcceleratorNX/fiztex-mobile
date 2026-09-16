@@ -8,6 +8,8 @@ import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { useEquipmentDashboard, useMyEquipment } from '@shared/hooks/useEquipment';
+import { useMyKeys } from '@shared/hooks/useKeys';
+import { MyKeysCard } from '@features/keys/MyKeysCard';
 import {
   EquipmentAccountMenu,
   EquipmentHero,
@@ -45,6 +47,9 @@ export function EquipmentListScreen({ nav, onSignOut, payload, state = 'IN_STOCK
   const insets = useSafeAreaInsets();
   const dashboard = useEquipmentDashboard(state);
   const myEquipment = useMyEquipment();
+  // Ключи Super Admin показываются здесь же: раздела ключей у этой роли в приложении нет,
+  // а «что за мной числится» сотрудник обязан видеть. Оба блока прячутся, когда пусто.
+  const myKeys = useMyKeys();
   const [menuOpen, setMenuOpen] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState([]);
@@ -82,7 +87,8 @@ export function EquipmentListScreen({ nav, onSignOut, payload, state = 'IN_STOCK
         />
       </View>
       <View style={{ paddingHorizontal: 16, gap: 10 }}>
-        {/* §10: Super Admin тоже бывает получателем — своя техника видна ему здесь же. */}
+        {/* §10: Super Admin тоже бывает получателем — своё видно ему здесь же. */}
+        {!issued ? <MyKeysCard keys={myKeys.rows} /> : null}
         {!issued ? <MyEquipmentCard rows={myEquipment.rows} /> : null}
         {success ? (
           <Pressable onPress={() => setSuccess(null)} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 11, borderRadius: 11, backgroundColor: c.successSoft }}>

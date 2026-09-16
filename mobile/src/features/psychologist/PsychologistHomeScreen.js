@@ -8,6 +8,8 @@ import { Avatar } from '@shared/components/ui';
 import { useMyProfile } from '@shared/hooks/useProfile';
 import { useMyEquipment } from '@shared/hooks/useEquipment';
 import { MyEquipmentCard } from '@features/equipment/MyEquipmentCard';
+import { useMyKeys } from '@shared/hooks/useKeys';
+import { MyKeysCard } from '@features/keys/MyKeysCard';
 
 /**
  * Главный (и единственный) экран психолога в мобильном приложении (PSYCHOLOGIST-001).
@@ -22,9 +24,11 @@ import { MyEquipmentCard } from '@features/equipment/MyEquipmentCard';
 export function PsychologistHomeScreen({ onSignOut }) {
   const { c } = useTheme();
   const { displayName } = useMyProfile();
-  // §10: техника психологу выдаётся так же, как любому сотруднику, — блок появляется,
-  // только если за ним что-то числится.
+  // §10: техника и ключи психологу выдаются так же, как любому сотруднику, — блоки
+  // появляются, только если за ним что-то числится. Ключи здесь потому, что другого места
+  // у этой роли нет: раздел ключей принадлежит охране, а видеть своё сотрудник обязан.
   const myEquipment = useMyEquipment();
+  const myKeys = useMyKeys();
 
   return (
     <Screen>
@@ -36,7 +40,8 @@ export function PsychologistHomeScreen({ onSignOut }) {
         <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 2 }}>Психолог</Txt>
       </View>
 
-      <View style={{ paddingHorizontal: 16 }}>
+      <View style={{ paddingHorizontal: 16, gap: 12 }}>
+        <MyKeysCard keys={myKeys.rows} />
         <MyEquipmentCard rows={myEquipment.rows} />
       </View>
 

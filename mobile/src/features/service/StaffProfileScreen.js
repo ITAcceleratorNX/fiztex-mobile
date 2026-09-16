@@ -9,6 +9,8 @@ import { useAuth } from '@features/auth/AuthContext';
 import { useMyProfile } from '@shared/hooks/useProfile';
 import { useMyEquipment } from '@shared/hooks/useEquipment';
 import { MyEquipmentCard } from '@features/equipment/MyEquipmentCard';
+import { useMyKeys } from '@shared/hooks/useKeys';
+import { MyKeysCard } from '@features/keys/MyKeysCard';
 
 const ROLE_LABEL = {
   ADMIN: 'Администратор школы',
@@ -28,8 +30,11 @@ export function StaffProfileScreen({ nav, onSignOut }) {
   const { c, dark, toggle } = useTheme();
   const { biometricsEnabled, biometricMeta, enableBiometrics, disableBiometrics } = useAuth();
   const { displayName, role } = useMyProfile();
-  // §10: техника, выданная сотруднику, — единственное, что он про модуль видит.
+  // §10: техника, выданная сотруднику, — единственное, что он про модуль видит. Ключи
+  // рядом по той же причине: раздел ключей принадлежит охране, а «что за мной числится»
+  // сотрудник обязан видеть у себя.
   const myEquipment = useMyEquipment();
+  const myKeys = useMyKeys();
 
   const toggleBio = async () => {
     if (biometricsEnabled) await disableBiometrics();
@@ -48,7 +53,8 @@ export function StaffProfileScreen({ nav, onSignOut }) {
         </Txt>
       </View>
 
-      <View style={{ paddingHorizontal: 16 }}>
+      <View style={{ paddingHorizontal: 16, gap: 12 }}>
+        <MyKeysCard keys={myKeys.rows} />
         <MyEquipmentCard rows={myEquipment.rows} />
       </View>
 
