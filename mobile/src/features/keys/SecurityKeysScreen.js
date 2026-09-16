@@ -8,6 +8,8 @@ import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { useKeysDashboard } from '@shared/hooks/useKeys';
+import { useMyEquipment } from '@shared/hooks/useEquipment';
+import { MyEquipmentCard } from '@features/equipment/MyEquipmentCard';
 import { AccountMenu, GroupHeader, KeysHero, KeysLoading, KeysState, KeyUnitRow } from './KeyParts';
 
 function buildRows(groups) {
@@ -27,6 +29,9 @@ export function SecurityKeysScreen({ nav, onSignOut, payload, state = 'ON_POST' 
   const { fullName } = useAuth();
   const insets = useSafeAreaInsets();
   const dashboard = useKeysDashboard(state);
+  // «Моя техника» охранника (ТЗ «Техника и инвентарь» §10): рация и фонарь числятся за
+  // ним так же, как за любым сотрудником, а своего профиля у этой роли в приложении нет.
+  const myEquipment = useMyEquipment();
   const [menuOpen, setMenuOpen] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState([]);
@@ -64,6 +69,7 @@ export function SecurityKeysScreen({ nav, onSignOut, payload, state = 'ON_POST' 
         />
       </View>
       <View style={{ paddingHorizontal: 16, gap: 10 }}>
+        {!issued ? <MyEquipmentCard rows={myEquipment.rows} /> : null}
         {success ? (
           <Pressable onPress={() => setSuccess(null)} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 11, borderRadius: 11, backgroundColor: c.successSoft }}>
             <Icon name="check" size={17} color={c.success} strokeWidth={2.5} />

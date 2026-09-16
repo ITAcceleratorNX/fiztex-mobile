@@ -7,6 +7,8 @@ import { Avatar, Card, SectionTitle } from '@shared/components/ui';
 import { ProfileRow } from '@shared/ui/rows';
 import { useAuth } from '@features/auth/AuthContext';
 import { useMyProfile } from '@shared/hooks/useProfile';
+import { useMyEquipment } from '@shared/hooks/useEquipment';
+import { MyEquipmentCard } from '@features/equipment/MyEquipmentCard';
 
 const ROLE_LABEL = {
   ADMIN: 'Администратор школы',
@@ -26,6 +28,8 @@ export function StaffProfileScreen({ nav, onSignOut }) {
   const { c, dark, toggle } = useTheme();
   const { biometricsEnabled, biometricMeta, enableBiometrics, disableBiometrics } = useAuth();
   const { displayName, role } = useMyProfile();
+  // §10: техника, выданная сотруднику, — единственное, что он про модуль видит.
+  const myEquipment = useMyEquipment();
 
   const toggleBio = async () => {
     if (biometricsEnabled) await disableBiometrics();
@@ -42,6 +46,10 @@ export function StaffProfileScreen({ nav, onSignOut }) {
         <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 2 }}>
           {ROLE_LABEL[role] || 'Сотрудник школы'}
         </Txt>
+      </View>
+
+      <View style={{ paddingHorizontal: 16 }}>
+        <MyEquipmentCard rows={myEquipment.rows} />
       </View>
 
       <SectionTitle title="Сервис" />
