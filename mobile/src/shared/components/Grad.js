@@ -12,6 +12,9 @@ export const GRAD = {
   greenDeep: [PHYSTECH.green, PHYSTECH.greenDeep, '#7c3f0a'],
   blue: [PHYSTECH.blue, PHYSTECH.blueDeep],
   blueScene: [PHYSTECH.blue, PHYSTECH.blueDeep, '#0F172A'],
+  // Светлеет к правому краю, а не темнеет: на карточке обратной связи родителя
+  // (Figma `Monthly Feedback Card` 2162:4490) поверх лежит светлый текст отзыва.
+  blueBright: [PHYSTECH.blue, '#3B5998'],
   red: [PHYSTECH.red, PHYSTECH.redDeep],
   gold: [PHYSTECH.gold, PHYSTECH.goldDeep],
 };

@@ -55,7 +55,7 @@ export function HomeSectionTitle({ children, compact = false }) {
 }
 
 /** Белая карточка со скруглением 20 — контейнер расписания и плитки оценок. */
-function SurfaceCard({ children, radius = 20, padding = 16, style }) {
+export function SurfaceCard({ children, radius = 20, padding = 16, style }) {
   const { c } = useTheme();
   return (
     <View
