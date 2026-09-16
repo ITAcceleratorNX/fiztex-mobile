@@ -8,12 +8,14 @@ import { useSelectedChild } from '@shared/state/SelectedChild';
 import { useMyProfile } from '@shared/hooks/useProfile';
 import { useMyDiaryGrades, useMySubjectGrades } from '@shared/hooks/useGrades';
 import { useMySurveys } from '@shared/hooks/useSurveys';
+import { useChildMonthlyFeedback } from '@shared/hooks/useMonthlyFeedback';
 import {
   ActiveSurveysBlock, ChildSwitcherPill, GradesTile, HomeHeader, HomeSectionTitle,
   LearnerLessonsCard,
 } from './HomeParts';
 import { childPillLabel, formatHomeDate, parentName, todayKey } from './homeDate';
 import { latestGradeLine } from './latestGrade';
+import { MonthlyFeedbackBlock } from './MonthlyFeedbackBlock';
 
 /**
  * Главная родителя (Figma `glavnaya-Родитель-home`).
@@ -48,16 +50,25 @@ export function ParentHomeScreen({ nav }) {
   // какой ребёнок выбран пилюлей ниже (см. правило в контракте опросов) — переключение
   // ребёнка этот блок не трогает.
   const { surveys, reload: reloadSurveys } = useMySurveys();
+  // Отзывы учителей за месяц — по выбранному ребёнку, как расписание и оценки выше.
+  const feedback = useChildMonthlyFeedback(childId);
+  const reloadFeedback = feedback.reload;
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([reload(true), reloadGrades(), reloadSubjects({ silent: true }), reloadSurveys(true)]);
+      await Promise.all([
+        reload(true),
+        reloadGrades(),
+        reloadSubjects({ silent: true }),
+        reloadSurveys(true),
+        reloadFeedback(),
+      ]);
     } finally {
       setRefreshing(false);
     }
-  }, [reload, reloadGrades, reloadSubjects, reloadSurveys]);
+  }, [reload, reloadGrades, reloadSubjects, reloadSurveys, reloadFeedback]);
 
   const openSurvey = useCallback(
     (survey) => nav?.('survey-take', { surveyId: survey.surveyId, title: survey.title }),
@@ -137,6 +148,8 @@ export function ParentHomeScreen({ nav }) {
           onPress={() => nav?.('grades')}
         />
       </View>
+
+      {child ? <MonthlyFeedbackBlock feedback={feedback} /> : null}
 
       <PickerSheet
         visible={pickerOpen}

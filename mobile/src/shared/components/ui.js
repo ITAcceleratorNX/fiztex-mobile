@@ -234,10 +234,12 @@ export function OutlineButton({ children, onPress, disabled = false, size = 'sm'
 
 // Заливка. Выключенная кнопка не «включённая с прозрачностью», а свой серый:
 // полупрозрачный оранжевый на светлом фоне остаётся оранжевым и продолжает звать нажать.
-export function FilledButton({ children, onPress, disabled = false, color = 'green', size = 'lg', style }) {
+// `icon` — имя из `Icon` перед подписью («✦ Получить анализ ИИ», Figma 2162:3880).
+export function FilledButton({ children, onPress, disabled = false, color = 'green', size = 'lg', icon, style }) {
   const { c } = useTheme();
   const s = BTN_SIZES[size] || BTN_SIZES.lg;
   const bg = { green: c.green, blue: c.blue, red: c.red }[color] || c.green;
+  const ink = disabled ? c.ink3 : '#fff';
   return (
     <Pressable
       accessibilityRole="button"
@@ -250,6 +252,8 @@ export function FilledButton({ children, onPress, disabled = false, color = 'gre
           paddingHorizontal: s.paddingHorizontal,
           borderRadius: s.radius,
           backgroundColor: disabled ? c.bg2 : bg,
+          flexDirection: 'row',
+          gap: 8,
           alignItems: 'center',
           justifyContent: 'center',
           opacity: pressed ? 0.9 : 1,
@@ -257,7 +261,8 @@ export function FilledButton({ children, onPress, disabled = false, color = 'gre
         style,
       ]}
     >
-      <Txt style={{ fontSize: s.fontSize, fontWeight: s.weight, color: disabled ? c.ink3 : '#fff' }}>
+      {icon ? <Icon name={icon} size={18} color={ink} strokeWidth={2} /> : null}
+      <Txt style={{ fontSize: s.fontSize, fontWeight: s.weight, color: ink }}>
         {children}
       </Txt>
     </Pressable>
@@ -867,6 +872,111 @@ export function SegmentedSwitch({ value, options = [], onChange, style }) {
           </Pressable>
         );
       })}
+    </View>
+  );
+}
+
+// ─── ScrollTabs ──────────────────────────────────────────────────────────────
+/**
+ * Вкладки, которые не помещаются в ширину экрана и листаются пальцем (Figma `Subject Tabs`,
+ * 2162:4500): предметы месяца у родителя. {@link SegmentedSwitch} делит ширину поровну и
+ * годится для двух-трёх коротких вариантов, а предметов бывает десяток, и «Английский язык»
+ * в трети экрана не поместится.
+ *
+ * Выбранная вкладка докручивается в видимую область: иначе выбор, пришедший не от пальца
+ * (первая вкладка нового месяца), мог бы оказаться за краем.
+ */
+export function ScrollTabs({ value, options = [], onChange, style }) {
+  const { c } = useTheme();
+  const scrollRef = React.useRef(null);
+  const layouts = React.useRef({});
+
+  React.useEffect(() => {
+    const layout = layouts.current[String(value)];
+    if (layout && scrollRef.current) {
+      scrollRef.current.scrollTo({ x: Math.max(0, layout.x - 24), animated: true });
+    }
+  }, [value]);
+
+  return (
+    <View style={[{ backgroundColor: c.bg2, borderRadius: 8, padding: 4 }, style]}>
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        accessibilityRole="tablist"
+        contentContainerStyle={{ gap: 4 }}
+      >
+        {options.map((option) => {
+          const active = option.value === value;
+          return (
+            <Pressable
+              key={String(option.value)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+              onLayout={(event) => {
+                layouts.current[String(option.value)] = event.nativeEvent.layout;
+              }}
+              onPress={() => onChange?.(option.value)}
+              style={({ pressed }) => ({
+                height: 36,
+                paddingHorizontal: 8,
+                borderRadius: 8,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: active ? c.blue : 'transparent',
+                opacity: pressed ? 0.8 : 1,
+              })}
+            >
+              <Txt style={{ fontSize: 13, fontWeight: active ? '700' : '600', color: active ? '#fff' : c.inkMuted }}>
+                {option.label}
+              </Txt>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+// ─── MonthStepper ────────────────────────────────────────────────────────────
+/**
+ * «‹ Сентябрь 2026 ›» — переход по месяцам стрелками (Figma `month-switcher`, 2162:4494).
+ * История прошлых периодов — это он, а не отдельный экран (ТЗ обратной связи §3).
+ *
+ * `onDark` — поверх фирменной navy-карточки: белые подпись и стрелки на полупрозрачной
+ * подложке. Стрелка, за которой ничего нет, остаётся на месте и гаснет, чтобы подпись месяца
+ * не прыгала при листании.
+ */
+export function MonthStepper({ label, onOlder, onNewer, canOlder = true, canNewer = true, onDark = false, style }) {
+  const { c } = useTheme();
+  const ink = onDark ? c.heroInk : c.ink;
+  const surface = onDark ? c.heroSurface : c.bg2;
+  const arrow = (icon, enabled, onPress, a11y) => (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={a11y}
+      accessibilityState={{ disabled: !enabled }}
+      onPress={enabled ? onPress : undefined}
+      hitSlop={8}
+      style={({ pressed }) => ({
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: enabled ? (pressed ? 0.7 : 1) : 0.35,
+      })}
+    >
+      <Icon name={icon} size={14} color={ink} strokeWidth={2.4} />
+    </Pressable>
+  );
+  return (
+    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 8 }, style]}>
+      {arrow('chevronLeft', canOlder, onOlder, 'Предыдущий месяц')}
+      <Txt style={{ fontSize: 13, fontWeight: '600', color: ink }}>{label}</Txt>
+      {arrow('chevronRight', canNewer, onNewer, 'Следующий месяц')}
     </View>
   );
 }
