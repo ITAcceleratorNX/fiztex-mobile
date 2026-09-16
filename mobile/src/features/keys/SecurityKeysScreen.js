@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '@features/auth/AuthContext';
 import { Screen, TAB_BAR_HEIGHT, shadowLg } from '@shared/components/Screen';
 import { FilledButton, Pill, TextField } from '@shared/components/ui';
 import { Txt } from '@shared/components/Txt';
@@ -10,7 +9,7 @@ import { useTheme } from '@shared/theme/ThemeContext';
 import { useKeysDashboard } from '@shared/hooks/useKeys';
 import { useMyEquipment } from '@shared/hooks/useEquipment';
 import { MyEquipmentCard } from '@features/equipment/MyEquipmentCard';
-import { AccountMenu, GroupHeader, KeysHero, KeysLoading, KeysState, KeyUnitRow } from './KeyParts';
+import { GroupHeader, KeysHero, KeysLoading, KeysState, KeyUnitRow } from './KeyParts';
 
 function buildRows(groups) {
   const rows = [];
@@ -24,15 +23,13 @@ function buildRows(groups) {
   return rows;
 }
 
-export function SecurityKeysScreen({ nav, onSignOut, payload, state = 'ON_POST' }) {
+export function SecurityKeysScreen({ nav, payload, state = 'ON_POST' }) {
   const { c } = useTheme();
-  const { fullName } = useAuth();
   const insets = useSafeAreaInsets();
   const dashboard = useKeysDashboard(state);
   // «Моя техника» охранника (ТЗ «Техника и инвентарь» §10): рация и фонарь числятся за
   // ним так же, как за любым сотрудником, а своего профиля у этой роли в приложении нет.
   const myEquipment = useMyEquipment();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState([]);
   const [selectionError, setSelectionError] = useState(null);
@@ -64,8 +61,6 @@ export function SecurityKeysScreen({ nav, onSignOut, payload, state = 'ON_POST' 
         <KeysHero
           title={issued ? 'Выданные ключи' : 'Ключи на посту'}
           subtitle={`${dashboard.data?.summary?.total ?? 0} в выбранном разделе`}
-          fullName={fullName}
-          onAvatarPress={() => setMenuOpen(true)}
         />
       </View>
       <View style={{ paddingHorizontal: 16, gap: 10 }}>
@@ -143,8 +138,6 @@ export function SecurityKeysScreen({ nav, onSignOut, payload, state = 'ON_POST' 
           <Icon name="plus" size={25} color={c.heroInk} strokeWidth={2.5} />
         </Pressable>
       ) : null}
-
-      <AccountMenu visible={menuOpen} onClose={() => setMenuOpen(false)} onSignOut={onSignOut} />
     </Screen>
   );
 }

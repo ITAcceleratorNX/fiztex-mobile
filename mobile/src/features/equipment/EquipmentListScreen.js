@@ -1,24 +1,19 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '@features/auth/AuthContext';
 import { Screen, TAB_BAR_HEIGHT, shadowLg } from '@shared/components/Screen';
 import { FilledButton, Pill, TextField } from '@shared/components/ui';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { useTheme } from '@shared/theme/ThemeContext';
-import { useEquipmentDashboard, useMyEquipment } from '@shared/hooks/useEquipment';
-import { useMyKeys } from '@shared/hooks/useKeys';
-import { MyKeysCard } from '@features/keys/MyKeysCard';
+import { useEquipmentDashboard } from '@shared/hooks/useEquipment';
 import {
-  EquipmentAccountMenu,
   EquipmentHero,
   EquipmentItemHeader,
   EquipmentLoading,
   EquipmentState,
   EquipmentUnitRow,
 } from './EquipmentParts';
-import { MyEquipmentCard } from './MyEquipmentCard';
 
 const MAX_SELECTION = 50;
 
@@ -41,16 +36,10 @@ function buildRows(items) {
  * возврат, передача и списание живут в карточке экземпляра — там у них есть подтверждение
  * и история.
  */
-export function EquipmentListScreen({ nav, onSignOut, payload, state = 'IN_STOCK' }) {
+export function EquipmentListScreen({ nav, payload, state = 'IN_STOCK' }) {
   const { c } = useTheme();
-  const { fullName } = useAuth();
   const insets = useSafeAreaInsets();
   const dashboard = useEquipmentDashboard(state);
-  const myEquipment = useMyEquipment();
-  // Ключи Super Admin показываются здесь же: раздела ключей у этой роли в приложении нет,
-  // а «что за мной числится» сотрудник обязан видеть. Оба блока прячутся, когда пусто.
-  const myKeys = useMyKeys();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState([]);
   const [selectionError, setSelectionError] = useState(null);
@@ -82,14 +71,9 @@ export function EquipmentListScreen({ nav, onSignOut, payload, state = 'IN_STOCK
         <EquipmentHero
           title={issued ? 'Выданная техника' : 'Техника в наличии'}
           subtitle={`${dashboard.data?.summary?.total ?? 0} в выбранном разделе`}
-          fullName={fullName}
-          onAvatarPress={() => setMenuOpen(true)}
         />
       </View>
       <View style={{ paddingHorizontal: 16, gap: 10 }}>
-        {/* §10: Super Admin тоже бывает получателем — своё видно ему здесь же. */}
-        {!issued ? <MyKeysCard keys={myKeys.rows} /> : null}
-        {!issued ? <MyEquipmentCard rows={myEquipment.rows} /> : null}
         {success ? (
           <Pressable onPress={() => setSuccess(null)} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 11, borderRadius: 11, backgroundColor: c.successSoft }}>
             <Icon name="check" size={17} color={c.success} strokeWidth={2.5} />
@@ -193,8 +177,6 @@ export function EquipmentListScreen({ nav, onSignOut, payload, state = 'IN_STOCK
           <Icon name="plus" size={25} color={c.heroInk} strokeWidth={2.5} />
         </Pressable>
       ) : null}
-
-      <EquipmentAccountMenu visible={menuOpen} onClose={() => setMenuOpen(false)} onSignOut={onSignOut} />
     </Screen>
   );
 }
