@@ -13,8 +13,9 @@ import { analysisPhase, analysisSections } from '@shared/api/monthlyFeedbackMap'
  * анализ показывается сразу, без нажатия, — повторный показ ничего не стоит.
  *
  * <p>Что можно нажать, решает сервер (`canRequest`): кнопка появляется, когда анализа нет, он
- * упал или устарел после новых отзывов. Оговорка «не заключение специалиста» — всегда, при
- * неполном покрытии — ещё и основание «на основе доступных отзывов».
+ * упал или устарел после новых отзывов. Под результатом — только оговорка «не заключение
+ * специалиста»: строку «на основе доступных отзывов: N из M предметов» убрали на бэкенде
+ * (2026-09-16), вкладки предметов над анализом и так показывают, из чего он собран.
  */
 export function FeedbackAnalysis({ feedback }) {
   const { c } = useTheme();
@@ -67,7 +68,7 @@ export function FeedbackAnalysis({ feedback }) {
 
 function AnalysisResult({ analysis, canRequest, onRefresh, errorLine }) {
   const { c } = useTheme();
-  const { result, basis, disclaimer, stale } = analysis;
+  const { result, disclaimer, stale } = analysis;
   return (
     <Surface bordered style={{ gap: 10 }}>
       {stale ? (
@@ -99,9 +100,6 @@ function AnalysisResult({ analysis, canRequest, onRefresh, errorLine }) {
         </View>
       ))}
 
-      {basis?.partial && basis?.note ? (
-        <Txt style={{ fontSize: 11, lineHeight: 15, color: c.inkMuted }}>{basis.note}</Txt>
-      ) : null}
       {disclaimer ? <Txt style={{ fontSize: 11, lineHeight: 15, color: c.inkMuted }}>{disclaimer}</Txt> : null}
     </Surface>
   );
