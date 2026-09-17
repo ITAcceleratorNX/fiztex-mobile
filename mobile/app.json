@@ -41,6 +41,13 @@
       ],
       "expo-secure-store",
       [
+        "expo-notifications",
+        {
+          "color": "#2A8847",
+          "defaultChannel": "general"
+        }
+      ],
+      [
         "expo-local-authentication",
         {
           "faceIDPermission": "Вход в Fiztex с помощью Face ID"

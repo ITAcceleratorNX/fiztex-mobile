@@ -15,8 +15,34 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
  */
 const SelectedChildCtx = createContext(null);
 
+/**
+ * Выбор ребёнка снаружи родительского раздела — нажатие на push-уведомление о конкретном ребёнке.
+ *
+ * <p>Уведомление обрабатывается вне `ParentApp`, куда провайдеру не дотянуться контекстом. Поэтому
+ * просьба передаётся событием, а последняя запоминается: на холодном старте провайдер может появиться
+ * позже, чем пришло нажатие.
+ */
+let requestedChildId = null;
+const childRequestListeners = new Set();
+
+export function requestChildSelection(childId) {
+  requestedChildId = childId;
+  childRequestListeners.forEach((listener) => listener(childId));
+}
+
 export function SelectedChildProvider({ children }) {
-  const [childId, setChildId] = useState(null);
+  const [childId, setChildId] = useState(() => requestedChildId);
+  useEffect(() => {
+    const listener = (requested) => setChildId(requested);
+    childRequestListeners.add(listener);
+    return () => {
+      childRequestListeners.delete(listener);
+    };
+  }, []);
+  // Просьба исполнена — следующий вход в раздел (другой родитель на том же телефоне) начнёт с чистого выбора.
+  useEffect(() => {
+    if (childId != null && childId === requestedChildId) requestedChildId = null;
+  }, [childId]);
   const value = useMemo(() => ({ childId, setChildId }), [childId]);
   return <SelectedChildCtx.Provider value={value}>{children}</SelectedChildCtx.Provider>;
 }

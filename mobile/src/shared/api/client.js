@@ -119,11 +119,17 @@ async function parseError(res) {
  * транспорта: `Idempotency-Key` у генерации ДЗ. Токен и content-type он не
  * перекрывает — ставятся после него.
  *
- * @param {{ method?: string, body?: unknown, token?: string|null, keepalive?: boolean, skipSessionExpiry?: boolean, extraHeaders?: Record<string,string> }} options
+ * `timeoutMs` — короче обычного там, где ждать нельзя: отвязка телефона от push при выходе
+ * не должна держать кнопку «Выйти» пятнадцать секунд.
+ *
+ * @param {{ method?: string, body?: unknown, token?: string|null, keepalive?: boolean, skipSessionExpiry?: boolean, extraHeaders?: Record<string,string>, timeoutMs?: number }} options
  */
 export async function request(
   path,
-  { method = 'GET', body, token, keepalive = false, skipSessionExpiry = false, extraHeaders } = {},
+  {
+    method = 'GET', body, token, keepalive = false, skipSessionExpiry = false, extraHeaders,
+    timeoutMs = REQUEST_TIMEOUT_MS,
+  } = {},
 ) {
   const headers = { Accept: 'application/json', ...(extraHeaders || {}) };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -136,7 +142,7 @@ export async function request(
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
       keepalive,
-    });
+    }, timeoutMs);
   } catch (e) {
     if (e instanceof ApiError) throw e;
     throw networkError();
