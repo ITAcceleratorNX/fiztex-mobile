@@ -507,6 +507,24 @@ PDFBox**: у неё худший случай из таблицы и превр�
 `EXPO_PUBLIC_PUSH_ON_EMULATOR=1` — это для APK профиля `preview`, где `__DEV__` уже выключен. В релизной
 сборке без переменной поведение прежнее, и это держит `verify-push-routes.cjs`.
 
+**Среда APNs — главная засада iOS.** Она обязана совпадать в трёх местах: entitlement сборки, запись
+токена у Expo и ключ APNs. Поэтому `aps-environment` прибит в `app.json` (`ios.entitlements`) значением
+`production`: `prebuild` по умолчанию пишет `development`, и EAS на internal-сборке его не подменяет —
+приложение получало sandbox-токен. Среду запроса токена `expo-notifications` берёт из entitlement сама
+(`getExpoPushTokenAsync` → `shouldUseDevelopmentNotificationService`), передать `development: false`
+бесполезно: в коде стоит `options.development || …`, и `false` уходит в автоопределение. `deviceId` у
+токена — свой `installationId`, а не IDFV: за IDFV у Expo остаётся запись прежней сборки, и переустановка
+приложения её не чистит.
+
+**Ключ APNs в портале Apple создаётся с выбором среды, и «Sandbox» ломает всё молча.** Симптом — Expo
+принимает пуш и отдаёт `ticketId`, а в квитанции `BadEnvironmentKeyInToken`, APNs 403. Нужен ключ
+**Sandbox & Production**. Квитанция — единственное место, где это видно, билет об этом не знает:
+
+```bash
+curl -s -X POST https://exp.host/--/api/v2/push/getReceipts -H 'Content-Type: application/json' \
+  -d '{"ids":["ТИКЕТ"]}'
+```
+
 **Без доступов пуш не придёт** — нужны `eas init` (`extra.eas.projectId` в `app.json`; без него регистрация
 молча пропускается с предупреждением в dev), ключ APNs и `google-services.json` (`android.googleServicesFile`)
 в EAS и development build: в Expo Go и на симуляторе push-токена нет. Шаги —

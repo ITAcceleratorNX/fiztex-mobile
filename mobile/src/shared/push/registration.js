@@ -126,10 +126,10 @@ export async function registerThisDevice(authToken, { askPermission = true } = {
       return plan;
     }
 
-    const [installationId, pushToken] = await Promise.all([
-      getInstallationId(),
-      Notifications.getExpoPushTokenAsync({ projectId }),
-    ]);
+    const installationId = await getInstallationId();
+    // deviceId по умолчанию — IDFV телефона; своя установка надёжнее: у Expo за IDFV могла остаться
+    // запись прежней сборки с development: true, и она переживает переустановку приложения.
+    const pushToken = await Notifications.getExpoPushTokenAsync({ projectId, deviceId: installationId });
     await notificationDevicesApi.register(authToken, installationId, {
       token: pushToken.data,
       platform: Platform.OS === 'ios' ? 'IOS' : 'ANDROID',
