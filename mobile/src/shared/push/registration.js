@@ -33,15 +33,28 @@ export function resolveProjectId(constants) {
 }
 
 /**
+ * Разрешена ли регистрация на эмуляторе. Android-эмулятор с сервисами Google (образ `google_apis_playstore`)
+ * получает пуши по-настоящему — это единственный способ проверить конвейер целиком, не имея телефона.
+ * Симулятор iOS так не умеет, поэтому лазейка только для Android.
+ *
+ * В релизной сборке `__DEV__` — false, так что на проде поведение прежнее. Переменная нужна, чтобы
+ * проверить пуши на эмуляторе и в собранном APK (профиль `preview`), где `__DEV__` уже выключен.
+ */
+export function emulatorPushAllowed(platform = Platform.OS) {
+  if (platform !== 'android') return false;
+  return __DEV__ || process.env.EXPO_PUBLIC_PUSH_ON_EMULATOR === '1';
+}
+
+/**
  * Что делать при регистрации — без побочных эффектов, чтобы проверять скриптом.
  *
- * @param {{ platform: string, isDevice: boolean, projectId: string|null, permissionGranted: boolean|null }} state
+ * @param {{ platform: string, isDevice: boolean, allowEmulator?: boolean, projectId: string|null, permissionGranted: boolean|null }} state
  * @returns {{ action: 'register'|'unregister'|'skip', reason?: string }}
  */
-export function registrationPlan({ platform, isDevice, projectId, permissionGranted }) {
+export function registrationPlan({ platform, isDevice, allowEmulator = false, projectId, permissionGranted }) {
   if (platform !== 'ios' && platform !== 'android') return { action: 'skip', reason: 'unsupported-platform' };
   // Симулятор push-токена Expo не получает — и это не ошибка, о которой стоит шуметь.
-  if (!isDevice) return { action: 'skip', reason: 'not-a-device' };
+  if (!isDevice && !allowEmulator) return { action: 'skip', reason: 'not-a-device' };
   if (!projectId) return { action: 'skip', reason: 'no-eas-project' };
   // Уведомления запрещены — телефон отвязывается: иначе бэк слал бы пуши, которые никто не увидит.
   if (!permissionGranted) return { action: 'unregister', reason: 'permission-denied' };
@@ -88,9 +101,18 @@ export async function registerThisDevice(authToken, { askPermission = true } = {
     if (Platform.OS === 'web') return { action: 'skip', reason: 'unsupported-platform' };
     await ensureAndroidChannels();
     const projectId = resolveProjectId(Constants);
-    const eligible = Device.isDevice && Boolean(projectId);
+    const allowEmulator = emulatorPushAllowed();
+    // Условие то же, что в плане: иначе разрешение не спросится, permissionGranted останется null,
+    // и план стал бы `unregister` вместо `register`.
+    const eligible = (Device.isDevice || allowEmulator) && Boolean(projectId);
     const permissionGranted = eligible ? await readPermission(askPermission) : null;
-    const plan = registrationPlan({ platform: Platform.OS, isDevice: Device.isDevice, projectId, permissionGranted });
+    const plan = registrationPlan({
+      platform: Platform.OS,
+      isDevice: Device.isDevice,
+      allowEmulator,
+      projectId,
+      permissionGranted,
+    });
 
     if (plan.action === 'skip') {
       if (__DEV__ && plan.reason === 'no-eas-project') {

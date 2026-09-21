@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "63577600591",
+    "project_id": "fiztex-1aea0",
+    "storage_bucket": "fiztex-1aea0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:63577600591:android:d712597511f4e98465303a",
+        "android_client_info": {
+          "package_name": "kz.fiztex.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBIAyjULR2OtHPEAid5TPo4f7i3QQAsnBI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

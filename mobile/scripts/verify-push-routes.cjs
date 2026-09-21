@@ -173,6 +173,20 @@ section('Регистрация телефона');
   });
   check('телефон, проект, разрешение → регистрировать', plan({}).action === 'register');
   check('симулятор → пропустить молча', plan({ isDevice: false }).reason === 'not-a-device');
+  check('эмулятор Android с лазейкой → регистрировать',
+    plan({ isDevice: false, allowEmulator: true }).action === 'register');
+  check('лазейка только для Android: симулятор iOS пушей не получает никогда',
+    registration.emulatorPushAllowed('ios') === false);
+  // Загрузчик выполняет модуль с __DEV__ = false — то есть так, как он поведёт себя в релизной сборке.
+  // `process.env.EXPO_PUBLIC_*` babel подменяет на `expo/virtual/env`, поэтому переменная задаётся заглушкой.
+  const withEnv = (env) => load('src/shared/push/registration.js', {
+    'expo-notifications': Notifications,
+    'react-native': { Platform: { OS: 'android' } },
+    'expo/virtual/env': { env },
+  });
+  check('в релизной сборке лазейки нет', withEnv({}).emulatorPushAllowed('android') === false);
+  check('EXPO_PUBLIC_PUSH_ON_EMULATOR=1 открывает лазейку и в релизной сборке — APK на эмуляторе',
+    withEnv({ EXPO_PUBLIC_PUSH_ON_EMULATOR: '1' }).emulatorPushAllowed('android') === true);
   check('нет проекта EAS → пропустить', plan({ projectId: null }).reason === 'no-eas-project');
   check('уведомления запрещены → отвязать телефон', plan({ permissionGranted: false }).action === 'unregister');
   check('веб → пропустить', plan({ platform: 'web' }).action === 'skip');

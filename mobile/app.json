@@ -15,14 +15,22 @@
       "supportsTablet": true,
       "bundleIdentifier": "kz.fiztex.app",
       "infoPlist": {
-        "NSFaceIDUsageDescription": "Вход в Fiztex с помощью Face ID"
+        "NSFaceIDUsageDescription": "Вход в Fiztex с помощью Face ID",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "kz.fiztex.app",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#2A8847"
-      }
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
     "plugins": [
       [
@@ -60,6 +68,12 @@
     ],
     "web": {
       "bundler": "metro"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c92d2e10-65b4-46e3-a128-35304ba9da57"
+      }
+    },
+    "owner": "zhubanyshzhs-team"
   }
 }

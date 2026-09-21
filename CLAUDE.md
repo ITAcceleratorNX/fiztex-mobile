@@ -500,6 +500,13 @@ PDFBox**: у неё худший случай из таблицы и превр�
 новая тема на бэке начинается со строки здесь. Проверка всего перечисленного —
 `node scripts/verify-push-routes.cjs` (сверяет каналы с темами бэка, если он лежит рядом).
 
+**Проверить push без телефона можно на Android-эмуляторе** с сервисами Google (образ
+`google_apis_playstore`): FCM там работает по-настоящему, в отличие от симулятора iOS, где push-токена не
+бывает вовсе. `Device.isDevice` на эмуляторе — `false`, поэтому регистрацию открывает отдельная лазейка
+`emulatorPushAllowed()`: только Android и только в дев-сборке (`__DEV__`) либо с
+`EXPO_PUBLIC_PUSH_ON_EMULATOR=1` — это для APK профиля `preview`, где `__DEV__` уже выключен. В релизной
+сборке без переменной поведение прежнее, и это держит `verify-push-routes.cjs`.
+
 **Без доступов пуш не придёт** — нужны `eas init` (`extra.eas.projectId` в `app.json`; без него регистрация
 молча пропускается с предупреждением в dev), ключ APNs и `google-services.json` (`android.googleServicesFile`)
 в EAS и development build: в Expo Go и на симуляторе push-токена нет. Шаги —
