@@ -15,6 +15,9 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "kz.fiztex.app",
+      "entitlements": {
+        "aps-environment": "production"
+      },
       "infoPlist": {
         "NSFaceIDUsageDescription": "Вход в Fiztex с помощью Face ID",
         "ITSAppUsesNonExemptEncryption": false
