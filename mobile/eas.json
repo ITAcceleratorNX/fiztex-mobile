@@ -16,6 +16,9 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "ios": {
+        "distribution": "store"
       }
     }
   },
