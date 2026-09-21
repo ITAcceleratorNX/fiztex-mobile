@@ -41,7 +41,8 @@ mobile/src/
   shared/components/  дизайн-система: ui.js, Icon, Hex, Txt, Screen, Grad
   shared/ui/          rows.js
   shared/theme/       tokens.js (PHYSTECH, FONT, brand()), ThemeContext (light/dark)
-  shared/state/       AppState.js
+  shared/state/       AppState.js, SelectedChild.js
+  shared/push/        push-уведомления: регистрация телефона, каналы Android, переход по нажатию
   shared/math/        MathText (формулы: WebView + KaTeX), katexAsset.js — генерируется
   shared/pdf/         PdfPageViewer (учебник: WebView + pdf.js), pdfViewerAsset.js — генерируется
   shared/data/mock.js демо-данные — при подключении реального API убирать
@@ -475,3 +476,57 @@ PDFBox**: у неё худший случай из таблицы и превр�
 кнопка того же действия в углу экрана выдачи приглашала выйти из системы посреди работы.
 Личные блоки («Мои ключи», «Моя техника») переехали туда же: рабочий список — про школьное
 имущество, а не про своё.
+
+**Push-уведомления** (PUSH-001, `shared/push`). Уведомления шлёт модуль уведомлений бэка через Expo;
+приложение делает две вещи — регистрирует телефон и открывает нужный экран по нажатию.
+
+**Регистрация** (`usePushRegistration`, `registration.js`): после входа и на каждом старте с сессией —
+разрешение, push-токен Expo, `PUT /api/notifications/devices/{installationId}`. `installationId` — свой UUID
+установки в SecureStore, от аккаунта и токена не зависит: сменился токен или на телефоне вошёл другой человек
+— бэк переносит ту же установку. Повторно регистрируется при смене токена и когда разрешение выдали или
+отозвали в настройках (отозвали — `DELETE`). Регистрация никогда не бросает: без уведомлений приложение
+работает. **Выход** сначала отвязывает телефон (`DELETE`, не дольше 3 с, ошибки глотаются) и только потом
+выходит — после выхода токен отозван, и отвязать уже нечем; бэк при выходе и сам выключает телефоны аккаунта.
+
+**Переход** (`PushNavigationBridge`, `routes.js`): экран выбирается по `route` из данных пуша и роли, а не по
+виду уведомления — новый вид со знакомым маршрутом новой версии приложения не требует. Словарь маршрутов — в
+шапке `routes.js`, это контракт со сценариями бэка. Незнакомое — «Главная» роли; уведомление другому аккаунту
+(на телефоне вошёл другой человек, `accountId` из JWT) — никуда; родителю сначала выбирается ребёнок из
+уведомления (`requestChildSelection`). Нажатие ждёт, пока сессия восстановлена, Face ID пройден и открыт
+раздел роли: на холодном старте оно приходит раньше всего этого.
+
+**Каналы Android** (`channels.js`) — те же идентификаторы, что `NotificationTopic` на бэке, плюс `general` по
+умолчанию (`defaultChannel` плагина в `app.json`). Канал, которого нет на телефоне, Android не показывает —
+новая тема на бэке начинается со строки здесь. Проверка всего перечисленного —
+`node scripts/verify-push-routes.cjs` (сверяет каналы с темами бэка, если он лежит рядом).
+
+**Проверить push без телефона можно на Android-эмуляторе** с сервисами Google (образ
+`google_apis_playstore`): FCM там работает по-настоящему, в отличие от симулятора iOS, где push-токена не
+бывает вовсе. `Device.isDevice` на эмуляторе — `false`, поэтому регистрацию открывает отдельная лазейка
+`emulatorPushAllowed()`: только Android и только в дев-сборке (`__DEV__`) либо с
+`EXPO_PUBLIC_PUSH_ON_EMULATOR=1` — это для APK профиля `preview`, где `__DEV__` уже выключен. В релизной
+сборке без переменной поведение прежнее, и это держит `verify-push-routes.cjs`.
+
+**Среда APNs — главная засада iOS.** Она обязана совпадать в трёх местах: entitlement сборки, запись
+токена у Expo и ключ APNs. Поэтому `aps-environment` прибит в `app.json` (`ios.entitlements`) значением
+`production`: `prebuild` по умолчанию пишет `development`, и EAS на internal-сборке его не подменяет —
+приложение получало sandbox-токен. Среду запроса токена `expo-notifications` берёт из entitlement сама
+(`getExpoPushTokenAsync` → `shouldUseDevelopmentNotificationService`), передать `development: false`
+бесполезно: в коде стоит `options.development || …`, и `false` уходит в автоопределение. `deviceId` у
+токена — свой `installationId`, а не IDFV: за IDFV у Expo остаётся запись прежней сборки, и переустановка
+приложения её не чистит.
+
+**Ключ APNs в портале Apple создаётся с выбором среды, и «Sandbox» ломает всё молча.** Симптом — Expo
+принимает пуш и отдаёт `ticketId`, а в квитанции `BadEnvironmentKeyInToken`, APNs 403. Нужен ключ
+**Sandbox & Production**. Квитанция — единственное место, где это видно, билет об этом не знает:
+
+```bash
+curl -s -X POST https://exp.host/--/api/v2/push/getReceipts -H 'Content-Type: application/json' \
+  -d '{"ids":["ТИКЕТ"]}'
+```
+
+**Без доступов пуш не придёт** — нужны `eas init` (`extra.eas.projectId` в `app.json`; без него регистрация
+молча пропускается с предупреждением в dev), ключ APNs и `google-services.json` (`android.googleServicesFile`)
+в EAS и development build: в Expo Go и на симуляторе push-токена нет. Шаги —
+`.cursor/tasks/push-notifications/02-plan.md`, подзадача 5.
+

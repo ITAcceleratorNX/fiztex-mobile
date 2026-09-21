@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import * as SecureStore from 'expo-secure-store';
 import { authApi } from '@shared/api/authApi';
 import { onSessionExpired } from '@shared/api/client';
+import { unregisterThisDevice } from '@shared/push/registration';
 import {
   getBiometricsEnabled,
   setBiometricsEnabled,
@@ -62,15 +63,27 @@ const AuthContext = createContext(null);
  * входить в приложение с этим токеном или сразу показать вход.
  */
 function tokenExpiresAt(token) {
+  const exp = tokenClaims(token)?.exp;
+  return typeof exp === 'number' ? exp * 1000 : null;
+}
+
+function tokenClaims(token) {
   const payload = String(token || '').split('.')[1];
   if (!payload) return null;
   try {
-    const json = decodeBase64Url(payload);
-    const exp = JSON.parse(json)?.exp;
-    return typeof exp === 'number' ? exp * 1000 : null;
+    return JSON.parse(decodeBase64Url(payload));
   } catch {
     return null;
   }
+}
+
+/**
+ * Аккаунт токена — тем же локальным чтением, что и срок. Нужен, чтобы не открывать по push-уведомлению
+ * чужие данные: на телефоне мог войти другой человек, а уведомление прежнему владельцу уже лежало в шторке.
+ */
+export function tokenAccountId(token) {
+  const accountId = tokenClaims(token)?.accountId;
+  return Number.isInteger(accountId) && accountId > 0 ? accountId : null;
 }
 
 function decodeBase64Url(value) {
@@ -189,6 +202,10 @@ export function AuthProvider({ children }) {
 
   const signOut = useCallback(async () => {
     const current = token;
+    // Телефон отвязывается от push до выхода: выход на бэке отзывает токен, и после него отвязать уже
+    // нечем. Не дольше трёх секунд и без ошибок — выход от сети не зависит, а бэк при выходе и сам
+    // выключит все телефоны аккаунта.
+    if (current) await unregisterThisDevice(current);
     await clearLocal();
     if (current) authApi.logout(current);
   }, [clearLocal, token]);
@@ -246,6 +263,7 @@ export function AuthProvider({ children }) {
     () => ({
       bootstrapping,
       token,
+      accountId: tokenAccountId(token),
       profile,
       role: profile?.role || null,
       fullName: profile?.fullName || '',

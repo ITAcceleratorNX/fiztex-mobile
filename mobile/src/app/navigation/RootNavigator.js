@@ -37,6 +37,11 @@ const ROLE_ROUTE = {
   PSYCHOLOGIST: 'PsychologistApp',
 };
 
+/** Раздел приложения роли — туда ведёт вход и туда же переходы по push-уведомлениям. */
+export function rootRouteForRole(role) {
+  return ROLE_ROUTE[role] || null;
+}
+
 function BootSplash() {
   const { c } = useTheme();
   return (

@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import {
+  NavigationContainer, DefaultTheme, DarkTheme, createNavigationContainerRef,
+} from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
@@ -13,9 +15,14 @@ import { ThemeProvider, useTheme } from '@shared/theme/ThemeContext';
 import { PhysTechAppStateProvider } from '@shared/state/AppState';
 import { EntranceProvider } from '@features/entrance';
 import { AuthProvider } from '@features/auth';
-import { RootNavigator } from '@app/navigation/RootNavigator';
+import { RootNavigator, rootRouteForRole } from '@app/navigation/RootNavigator';
+import { PushNotifications, configurePushPresentation } from '@shared/push';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+configurePushPresentation();
+
+/** Навигатор снаружи дерева экранов — для перехода по нажатию на push-уведомление. */
+const navigationRef = createNavigationContainerRef();
 
 function Inner() {
   const { dark, c } = useTheme();
@@ -35,9 +42,10 @@ function Inner() {
     <AuthProvider>
       <PhysTechAppStateProvider>
         <EntranceProvider>
-          <NavigationContainer theme={navTheme}>
+          <NavigationContainer ref={navigationRef} theme={navTheme}>
             <StatusBar style={dark ? 'light' : 'dark'} />
             <RootNavigator />
+            <PushNotifications navigationRef={navigationRef} rootRouteFor={rootRouteForRole} />
           </NavigationContainer>
         </EntranceProvider>
       </PhysTechAppStateProvider>
