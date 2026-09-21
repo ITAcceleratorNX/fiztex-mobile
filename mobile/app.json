@@ -3,6 +3,7 @@
     "name": "PhysTech",
     "slug": "fiztex",
     "version": "1.0.0",
+    "icon": "./assets/icon.png",
     "orientation": "portrait",
     "scheme": "fiztex",
     "userInterfaceStyle": "automatic",
@@ -23,7 +24,8 @@
       "package": "kz.fiztex.app",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#2A8847"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#274185"
       },
       "permissions": [
         "android.permission.RECORD_AUDIO",
@@ -51,6 +53,7 @@
       [
         "expo-notifications",
         {
+          "icon": "./assets/notification-icon.png",
           "color": "#2A8847",
           "defaultChannel": "general"
         }
