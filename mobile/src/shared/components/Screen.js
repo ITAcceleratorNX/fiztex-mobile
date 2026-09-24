@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView, RefreshControl } from 'react-native';
+import { View, ScrollView, RefreshControl, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 
@@ -69,18 +69,26 @@ export const shadowLg = {
 export function Screen({ children, scroll = true, contentStyle, style, refreshing = false, onRefresh }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
-  const pad = { paddingTop: insets.top + 4 };
+  // `paddingTop` у конкретного экрана — это дополнительный визуальный отступ.
+  // Не даём ему затереть safe area: иначе кнопки в шапке оказываются под вырезом
+  // или статус-баром на устройствах с Dynamic Island.
+  const content = StyleSheet.flatten(contentStyle) || {};
+  const contentTop = insets.top + 4 + (Number(content.paddingTop) || 0);
+  const safeContentStyle = { ...content, paddingTop: contentTop };
+  const screen = StyleSheet.flatten(style) || {};
+  const screenTop = insets.top + 4 + (Number(screen.paddingTop) || 0);
+  const safeScreenStyle = { ...screen, paddingTop: screenTop };
 
   if (!scroll) {
     return (
-      <View style={[{ flex: 1, backgroundColor: c.bg }, pad, style]}>{children}</View>
+      <View style={[{ flex: 1, backgroundColor: c.bg }, safeScreenStyle]}>{children}</View>
     );
   }
 
   return (
     <ScrollView
       style={[{ flex: 1, backgroundColor: c.bg }, style]}
-      contentContainerStyle={[pad, contentStyle]}
+      contentContainerStyle={safeContentStyle}
       showsVerticalScrollIndicator={false}
       refreshControl={
         onRefresh ? (
