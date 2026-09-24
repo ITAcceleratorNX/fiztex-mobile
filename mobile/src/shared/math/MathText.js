@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Txt } from '@shared/components/Txt';
 import { KATEX_HTML } from './katexAsset';
@@ -20,7 +20,7 @@ import { hasForbiddenCommand, splitMath, unescapeText } from './mathMarkup';
  * шрифта приложения там нет. Формулы у KaTeX собственные, поэтому расхождение видно только
  * на словах вокруг формулы.
  */
-export function MathText({ text, style, numberOfLines }) {
+export function MathText({ text, style, numberOfLines, respectFontScale = false }) {
   const value = typeof text === 'string' ? text : '';
   const segments = useMemo(() => splitMath(value), [value]);
   const hasFormula = segments.some((segment) => segment.kind === 'math');
@@ -34,13 +34,15 @@ export function MathText({ text, style, numberOfLines }) {
     );
   }
 
-  return <FormulaBlock segments={segments} plain={value} style={style} />;
+  return <FormulaBlock segments={segments} plain={value} style={style} respectFontScale={respectFontScale} />;
 }
 
-function FormulaBlock({ segments, plain, style }) {
+function FormulaBlock({ segments, plain, style, respectFontScale }) {
+  const { fontScale } = useWindowDimensions();
   const flat = StyleSheet.flatten(style) || {};
-  const fontSize = flat.fontSize || 16;
-  const lineHeight = flat.lineHeight ? flat.lineHeight / fontSize : 1.35;
+  const baseSize = flat.fontSize || 16;
+  const fontSize = baseSize * (respectFontScale ? fontScale : 1);
+  const lineHeight = flat.lineHeight ? flat.lineHeight / baseSize : 1.35;
   const color = flat.color || '#1E293B';
   const fontWeight = String(flat.fontWeight || '400');
 

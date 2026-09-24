@@ -17,6 +17,8 @@ function childQuery(childId) {
 }
 
 export const lessonApi = {
+  summary: (token, lessonId, childId) =>
+    request('/api/lessons/' + lessonId + '/summary' + childQuery(childId), { token }),
   /** Карточка урока. `lessonId` — id LessonInstance (не слота расписания). */
   card: (token, lessonId, childId) =>
     request(`/api/lessons/${lessonId}${childQuery(childId)}`, { token }),

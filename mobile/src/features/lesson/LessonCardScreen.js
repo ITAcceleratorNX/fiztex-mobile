@@ -1,4 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
+import { LessonSummaryEntry } from './LessonSummaryEntry';
 import { View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -326,6 +327,7 @@ export function LessonCardScreen({ nav, payload }) {
           />
         </View>
 
+        <LessonSummaryEntry lessonId={lessonId} childId={childId} nav={nav} staff refreshing={refreshing} />
         {/* Разделы урока. Все четыре плитки читают бэк; каждая ведёт на свой экран,
             и активна лишь та, чей экран смотрящему положен. */}
         <View style={{ gap: 10 }}>

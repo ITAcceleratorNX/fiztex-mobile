@@ -9,6 +9,7 @@ import { ScheduleScreen } from '@features/schedule';
 import {
   LessonCardScreen,
   LessonMaterialsScreen,
+  LessonSummaryScreen,
   LessonTextbookViewerScreen,
   StudentLessonScreen,
 } from '@features/lesson';
@@ -150,6 +151,7 @@ export function StudentApp() {
         // Материалы урока — один экран на все три роли: что показывать, решает бэк,
         // отдавая ученику только то, что учитель открыл.
         { name: 'lesson-materials', comp: LessonMaterialsScreen },
+        { name: 'lesson-summary', comp: LessonSummaryScreen },
         // Учебник урока — как материалы: файл отдаётся через урок, и экран один на ученика
         // и родителя.
         { name: 'lesson-textbook', comp: LessonTextbookViewerScreen },
@@ -214,6 +216,7 @@ export function ParentApp() {
           // через capabilities — отдельный «родительский» экран разошёлся бы с ученическим.
           { name: 'lesson', comp: StudentLessonScreen },
           { name: 'lesson-materials', comp: LessonMaterialsScreen },
+          { name: 'lesson-summary', comp: LessonSummaryScreen },
           { name: 'lesson-textbook', comp: LessonTextbookViewerScreen },
           // Карточка ДЗ у родителя своя, а не общая с учеником: ученическая показывает
           // ответ и форму отправки, а родителю не положено ни то, ни другое.
@@ -264,6 +267,7 @@ export function TeacherApp() {
       {renderDetails(TStack, [
         { name: 'lesson', comp: LessonCardScreen },
         { name: 'lesson-materials', comp: LessonMaterialsScreen },
+        { name: 'lesson-summary', comp: LessonSummaryScreen },
         // Лист посещаемости открывается из карточки урока и в неё же возвращается —
         // отдельной вкладки у него нет: это часть урока, а не самостоятельный раздел.
         { name: 'attendance', comp: AttendanceScreen },

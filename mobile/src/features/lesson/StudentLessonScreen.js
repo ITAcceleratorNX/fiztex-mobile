@@ -19,6 +19,7 @@ import { attendanceLabel } from '@shared/api/attendanceMap';
 import { homeworkStateLabel } from '@shared/api/lessonHomeworkState';
 import { textbookEntry } from '@shared/api/textbookMap';
 import { LessonHero } from './LessonHero';
+import { LessonSummaryEntry } from './LessonSummaryEntry';
 import { LessonCardFallback, LessonCardHeader } from './LessonCardStates';
 
 /** Подпись раздела: маленькая иконка и капсом название (Figma `Label`). */
@@ -472,6 +473,7 @@ export function StudentLessonScreen({ nav, payload }) {
             nav('homework-card', childId ? { homeworkId, childId } : { homeworkId })}
         />
 
+        <LessonSummaryEntry lessonId={lessonId} childId={childId} nav={nav} refreshing={refreshing} />
         {/* Все три раздела читают бэк. */}
         <ModuleRow
           icon="userCheck"

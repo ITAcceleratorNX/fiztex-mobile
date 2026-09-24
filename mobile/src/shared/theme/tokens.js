@@ -23,6 +23,13 @@ export const FONT = {
   extrabold: 'Onest_800ExtraBold',
 };
 
+// Long-form lesson documents share one readable measure and spacing rhythm.
+export const DOCUMENT = {
+  gutter: 16, gap: 16, sectionGap: 32, inset: 24, maxWidth: 720,
+  titleSize: 24, titleLine: 32, headingSize: 18, headingLine: 26,
+  bodySize: 16, bodyLine: 26, captionSize: 14, captionLine: 22,
+};
+
 // Map a brand colour name ("green" | "blue" | "red" | "gold") to its hex.
 export function brand(name) {
   return PHYSTECH[name] || PHYSTECH.green;
