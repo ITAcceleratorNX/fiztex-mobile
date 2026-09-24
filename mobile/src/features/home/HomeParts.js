@@ -278,11 +278,22 @@ export function TeacherAgendaCard({ lessons, onOpenLesson, onShowAll, emptyText 
   );
 }
 
-/** Плитка «Оценки» ученика и родителя: иконка в кружке, подпись, шеврон. */
-export function GradesTile({ title, subtitle, onPress }) {
+/**
+ * Плитка раздела на главной ученика и родителя: иконка в кружке, название, подпись и
+ * шеврон (Figma `Grades Section` и `Attendance Section`, 2170:5052 / 2170:5063).
+ *
+ * Была одна — «Оценки»; с «Посещаемостью» макет поставил вторую такую же под первой, и
+ * одна плитка на оба раздела держит их одинаковыми. Цвет кружка — раздела: оценки синие,
+ * посещаемость зелёная, как точка «присутствовал».
+ *
+ * @param {object} props
+ * @param {string} props.icon имя иконки
+ * @param {string} props.tone токен цвета иконки; кружок — `${tone}Soft`
+ */
+export function LearnerHomeTile({ icon, tone = 'blue', iconSize = 18, title, subtitle, onPress }) {
   const { c } = useTheme();
   return (
-    <Pressable onPress={onPress}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`${title}. ${subtitle}`} onPress={onPress}>
       <SurfaceCard
         radius={16}
         padding={12}
@@ -293,12 +304,12 @@ export function GradesTile({ title, subtitle, onPress }) {
             width: 36,
             height: 36,
             borderRadius: 18,
-            backgroundColor: c.blueSoft,
+            backgroundColor: c[`${tone}Soft`],
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Icon name="award" size={18} color={c.blue} strokeWidth={2} />
+          <Icon name={icon} size={iconSize} color={c[tone]} strokeWidth={2} />
         </View>
         <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
           <Txt style={{ fontSize: 14, fontWeight: '600', color: c.ink }}>{title}</Txt>
@@ -624,22 +635,36 @@ function testsWord(count) {
   return 'тестов';
 }
 
-/** Плитка «Оценки» учителя: заливка без рамки, иконка и шеврон в одну строку сверху. */
-export function TeacherGradesTile({ title, subtitle, onPress }) {
+/**
+ * Плитка раздела на главной учителя (Figma 2170:3874, `Tile Оценки` и `Tile Посещаемость`):
+ * заливка без рамки, в одну строку — иконка, название с подписью и шеврон.
+ *
+ * Раньше плитка была одна («Оценки») и в две строки; с появлением второй раздел
+ * макет перерисовал обе в строку, и одна плитка на два раздела держит их одинаковыми.
+ */
+export function TeacherHomeTile({ icon, title, subtitle, onPress }) {
   const { c } = useTheme();
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${title}. ${subtitle}`}
       onPress={onPress}
-      style={{ backgroundColor: c.bg2, borderRadius: 12, padding: 16, gap: 12 }}
+      style={({ pressed }) => ({
+        backgroundColor: c.bg2,
+        borderRadius: 12,
+        padding: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+        opacity: pressed ? 0.85 : 1,
+      })}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Icon name="award" size={24} color={c.blue} strokeWidth={2} />
-        <Icon name="chevronRight" size={16} color={c.inkMuted} strokeWidth={2} />
-      </View>
-      <View style={{ gap: 2 }}>
+      <Icon name={icon} size={24} color={c.blue} strokeWidth={2} />
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
         <Txt style={{ fontSize: 14, fontWeight: '500', color: c.ink }}>{title}</Txt>
         <Txt style={{ fontSize: 12, color: c.inkMuted }}>{subtitle}</Txt>
       </View>
+      <Icon name="chevronRight" size={16} color={c.inkMuted} strokeWidth={2} />
     </Pressable>
   );
 }

@@ -46,10 +46,12 @@ export const attendanceApi = {
    * не следует — три реализации одного правила разъедутся.
    */
   /**
-   * Месячная сводка отметок: сколько было, пропущено, опоздано, освобождено.
+   * Месяц ученика: все уроки (с `lessonStatus`, `published` и опубликованной отметкой),
+   * счётчики и границы учебного года — календарь «Посещаемость» и плитка главной.
    *
    * Цифры считает бэкенд — клиент их не выводит из списка отметок: тот же расчёт
-   * показывают веб и журнал учителя, и разойтись им нельзя.
+   * показывают веб и журнал учителя, и разойтись им нельзя. Черновика в ответе нет:
+   * неопубликованный урок приходит с `published: false` и без отметки.
    *
    * @param {{month?: string, childId?: number|null}} params `month` — «YYYY-MM»,
    *   по умолчанию текущий; `childId` — сводка ребёнка для родителя.
@@ -107,4 +109,25 @@ export const attendanceApi = {
   /** История изменений листа: что было, что стало, кто и когда. Свежее сверху. */
   history: (token, lessonId, { page = 0, size = 20 } = {}) =>
     request(`/api/lessons/${lessonId}/attendance/history?page=${page}&size=${size}`, { token }),
+
+  /**
+   * Журнал учителя за месяц: уроки с опубликованными отметками и итоги по всему составу
+   * (ATTENDANCE-TEACHER-001). Отменённые уроки приходят со `status: CANCELLED` и без
+   * отметок — календарю ученика нужно отличать отмену от дня без урока.
+   *
+   * @param {{month: string, classId: number, subgroupId?: number|null}} query
+   *   `month` — «YYYY-MM»; без `subgroupId` — все уроки класса.
+   */
+  teacherJournal: (token, { month, classId, subgroupId } = {}) => {
+    const search = new URLSearchParams({ month, classId: String(classId) });
+    if (subgroupId != null) search.set('subgroupId', String(subgroupId));
+    return request(`/api/attendance/teacher-journal?${search}`, { token });
+  },
+
+  /**
+   * Чем заполнить фильтры журнала: учебный год (из него — месяцы) и пары «класс +
+   * подгруппа» учителя. Считаются тем же правилом видимости, что и журнал.
+   */
+  teacherJournalOptions: (token) => request('/api/attendance/teacher-journal/options', { token }),
+
 };

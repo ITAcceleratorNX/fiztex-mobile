@@ -992,3 +992,38 @@ export function SectionTitle({ title, right }) {
 }
 
 export { Hex, HexBadge, PhysTechMark };
+
+/**
+ * Один фильтр строки: значение и шеврон, выбор — в шите (Figma `Dropdown`).
+ *
+ * Жил в журнале оценок; вынесен сюда, когда такой же ряд «класс + месяц» понадобился
+ * журналу посещаемости (ATTENDANCE-TEACHER-001): два одинаковых фильтра не должны
+ * расходиться по высоте и радиусу.
+ */
+export function FilterChip({ label, onPress, flex = 1 }) {
+  const { c } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flex,
+        height: 36,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: c.border,
+        backgroundColor: c.surface,
+        paddingHorizontal: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
+      <Txt style={{ flex: 1, fontSize: 13, fontWeight: '500', color: c.ink }} numberOfLines={1}>
+        {label}
+      </Txt>
+      <Icon name="chevronDown" size={12} color={c.ink3} strokeWidth={2.2} />
+    </Pressable>
+  );
+}

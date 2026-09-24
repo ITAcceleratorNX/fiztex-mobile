@@ -9,8 +9,10 @@ import { useMyProfile } from '@shared/hooks/useProfile';
 import { useMyDiaryGrades, useMySubjectGrades } from '@shared/hooks/useGrades';
 import { useMySurveys } from '@shared/hooks/useSurveys';
 import { useChildMonthlyFeedback } from '@shared/hooks/useMonthlyFeedback';
+import { useAttendanceSummary } from '@shared/hooks/useAttendance';
+import { summaryTileLine } from '@shared/api/learnerAttendanceMap';
 import {
-  ActiveSurveysBlock, ChildSwitcherPill, GradesTile, HomeHeader, HomeSectionTitle,
+  ActiveSurveysBlock, ChildSwitcherPill, HomeHeader, HomeSectionTitle, LearnerHomeTile,
   LearnerLessonsCard,
 } from './HomeParts';
 import { childPillLabel, formatHomeDate, parentName, todayKey } from './homeDate';
@@ -53,6 +55,9 @@ export function ParentHomeScreen({ nav }) {
   // Отзывы учителей за месяц — по выбранному ребёнку, как расписание и оценки выше.
   const feedback = useChildMonthlyFeedback(childId);
   const reloadFeedback = feedback.reload;
+  // Посещаемость выбранного ребёнка за текущий месяц — подпись плитки.
+  const attendance = useAttendanceSummary({ childId, enabled: childId != null });
+  const reloadAttendance = attendance.reload;
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -64,11 +69,12 @@ export function ParentHomeScreen({ nav }) {
         reloadSubjects({ silent: true }),
         reloadSurveys(true),
         reloadFeedback(),
+        reloadAttendance(true),
       ]);
     } finally {
       setRefreshing(false);
     }
-  }, [reload, reloadGrades, reloadSubjects, reloadSurveys, reloadFeedback]);
+  }, [reload, reloadGrades, reloadSubjects, reloadSurveys, reloadFeedback, reloadAttendance]);
 
   const openSurvey = useCallback(
     (survey) => nav?.('survey-take', { surveyId: survey.surveyId, title: survey.title }),
@@ -140,14 +146,21 @@ export function ParentHomeScreen({ nav }) {
         />
       </View>
 
-      <View style={{ gap: 10 }}>
-        <HomeSectionTitle>Оценки</HomeSectionTitle>
-        <GradesTile
-          title="Оценки по предметам"
-          subtitle={gradeLine || 'Оценок за четверть пока нет'}
-          onPress={() => nav?.('grades')}
-        />
-      </View>
+      {/* Разделы — плитками подряд, без заголовка секции (Figma 2170:5561). */}
+      <LearnerHomeTile
+        icon="award"
+        title="Оценки по предметам"
+        subtitle={gradeLine || 'Оценок за четверть пока нет'}
+        onPress={() => nav?.('grades')}
+      />
+      <LearnerHomeTile
+        icon="calendarCheck"
+        tone="markPresent"
+        iconSize={20}
+        title="Посещаемость"
+        subtitle={summaryTileLine(attendance.summary) || 'Календарь за месяц'}
+        onPress={() => nav?.('attendance')}
+      />
 
       {child ? <MonthlyFeedbackBlock feedback={feedback} /> : null}
 

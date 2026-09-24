@@ -153,15 +153,6 @@ export const PARENT = {
   ],
 };
 
-export const ATTENDANCE_LOG = [
-  { d: 'Сегодня', time: '08:30', kind: 'in', room: 'Главный вход', icon: 'arrowRight', color: 'green' },
-  { d: 'Сегодня', time: '08:33', kind: 'class', room: 'Каб. 204 · Математика', icon: 'check', color: 'green' },
-  { d: 'Сегодня', time: '10:00', kind: 'class', room: 'Каб. 312 · Английский', icon: 'check', color: 'green' },
-  { d: 'Вчера', time: '14:15', kind: 'out', room: 'Главный выход', icon: 'arrowRight', color: 'blue' },
-  { d: 'Вчера', time: '14:00', kind: 'class', room: 'Каб. 207 · Чтение', icon: 'check', color: 'green' },
-  { d: 'Вчера', time: '12:30', kind: 'late', room: 'Каб. 110 · Музыка', icon: 'clock', color: 'gold' },
-];
-
 export const FEEDBACK = {
   month: 'Май 2026',
   teacher: 'Айгерим Болатовна',

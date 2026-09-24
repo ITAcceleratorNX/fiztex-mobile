@@ -78,6 +78,37 @@ const attendanceInkDark = {
   attExcusedInk: '#88A7F9',
 };
 
+// Журнал посещаемости учителя за месяц (Figma 2170:4404 — пиллы, 2170:4586 — календарь
+// ученика). Палитра у журнала своя, не чипа расписания: макеты журнала в вебе и мобилке
+// рисуют пропуск красным #EF4444, освобождение синим #3B82F6, «не опубликовано» серым —
+// и таблица учителя в вебе с ними совпадает. Чип расписания остался как был.
+//
+// Точки — статус, а не оформление: в тёмной теме меняются только подложки пиллов,
+// иначе светлые #FEF2F2 и #EFF6FF легли бы на тёмный фон пятнами.
+const journalMarks = {
+  markPresent: '#16A34A',
+  markAbsent: '#EF4444',
+  markLate: '#FB923C',
+  markExcused: '#3B82F6',
+  markUnpublished: '#94A3B8',
+};
+
+// `markPresentSoft` — круг иконки плитки «Посещаемость» на главной ученика и родителя
+// (Figma 2170:5065, #F0FDF4): та же зелень «присутствовал», что у точки календаря.
+const journalMarkSoft = {
+  markPresentSoft: '#F0FDF4',
+  markAbsentSoft: '#FEF2F2',
+  markLateSoft: '#FFF7ED',
+  markExcusedSoft: '#EFF6FF',
+};
+
+const journalMarkSoftDark = {
+  markPresentSoft: 'rgba(22,163,74,0.16)',
+  markAbsentSoft: 'rgba(239,68,68,0.16)',
+  markLateSoft: 'rgba(251,146,60,0.16)',
+  markExcusedSoft: 'rgba(59,130,246,0.18)',
+};
+
 // Статусы работы по домашнему заданию (Figma «ДЗ (моб.)», node 853:19518, и карточки
 // 897:26384…). Заливка одна на обе темы — она полупрозрачная и ложится и на белый фон,
 // и на тёмный; меняется только чернило, иначе #16A34A на тёмном читался бы как пятно.
@@ -202,6 +233,8 @@ const light = {
   successSoft: '#E0FBE3',
   ...attendance,
   ...attendanceInk,
+  ...journalMarks,
+  ...journalMarkSoft,
   ...homework,
   ...homeworkInk,
   ...service,
@@ -233,6 +266,8 @@ const dark = {
   successSoft: '#123527',
   ...attendance,
   ...attendanceInkDark,
+  ...journalMarks,
+  ...journalMarkSoftDark,
   ...homework,
   ...homeworkInkDark,
   ...service,

@@ -5,7 +5,7 @@ import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
-import { ConfirmDialog, PickerSheet, SegmentedSwitch, StateView } from '@shared/components/ui';
+import { ConfirmDialog, FilterChip, PickerSheet, SegmentedSwitch, StateView } from '@shared/components/ui';
 import { FinalChip } from '@shared/ui/grades';
 import { useClassFinals, useGradebookContext, useJournal } from '@shared/hooks/useGrades';
 import { finalsProgress, formatAverage, incompleteStudentIds } from '@shared/api/gradesMap';
@@ -44,35 +44,6 @@ function JournalHeader({ tab, onTab, onBack }) {
         onChange={onTab}
       />
     </View>
-  );
-}
-
-/** Один фильтр строки: значение и шеврон, выбор — в шите (Figma `Dropdown`). */
-function FilterChip({ label, onPress, flex = 1 }) {
-  const { c } = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => ({
-        flex,
-        height: 36,
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: c.border,
-        backgroundColor: c.surface,
-        paddingHorizontal: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        opacity: pressed ? 0.7 : 1,
-      })}
-    >
-      <Txt style={{ flex: 1, fontSize: 13, fontWeight: '500', color: c.ink }} numberOfLines={1}>
-        {label}
-      </Txt>
-      <Icon name="chevronDown" size={12} color={c.ink3} strokeWidth={2.2} />
-    </Pressable>
   );
 }
 

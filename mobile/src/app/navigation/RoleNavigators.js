@@ -12,7 +12,10 @@ import {
   LessonTextbookViewerScreen,
   StudentLessonScreen,
 } from '@features/lesson';
-import { AttendanceScreen, QrScanScreen } from '@features/attendance';
+import {
+  AttendanceScreen, QrScanScreen, AttendanceMonthScreen, AttendanceStudentScreen,
+  StudentAttendanceScreen, ParentAttendanceScreen,
+} from '@features/attendance';
 import {
   JournalScreen, JournalStudentScreen, LessonGradesScreen,
   ParentGradesScreen, StudentGradesScreen, StudentSubjectGradesScreen,
@@ -24,7 +27,7 @@ import {
 } from '@features/student';
 import { StudentHeroes } from '@features/journey';
 import {
-  ParentAttendance, ParentFeedback, ParentService, ParentProfile,
+  ParentFeedback, ParentService, ParentProfile,
 } from '@features/parent';
 import {
   TeacherScanner, TeacherAIUpload,
@@ -151,6 +154,8 @@ export function StudentApp() {
         // и родителя.
         { name: 'lesson-textbook', comp: LessonTextbookViewerScreen },
         { name: 'attendance-scan', comp: QrScanScreen },
+        // Посещаемость за месяц — вход с плитки на главной (ATTENDANCE-LEARNER-001).
+        { name: 'attendance', comp: StudentAttendanceScreen },
         { name: 'homework-card', comp: StudentHomeworkDetailScreen },
         { name: 'homework-test', comp: StudentHomeworkTestScreen },
         { name: 'survey-list', comp: StudentSurveyList },
@@ -216,7 +221,9 @@ export function ParentApp() {
           { name: 'survey-list', comp: ParentSurveyList },
           { name: 'survey-take', comp: SurveyTakeScreen },
           { name: 'subject', comp: StudentSubjectGradesScreen },
-          { name: 'attendance', comp: ParentAttendance },
+          // Тот же календарь, что у ученика, по выбранному ребёнку (ATTENDANCE-LEARNER-001).
+          // Раньше здесь был мок турникета, до которого навигация не доводила.
+          { name: 'attendance', comp: ParentAttendanceScreen },
           { name: 'service', comp: ParentService },
           { name: 'clubs', comp: StudentClubs },
           { name: 'club', comp: StudentClub },
@@ -260,6 +267,10 @@ export function TeacherApp() {
         // Лист посещаемости открывается из карточки урока и в неё же возвращается —
         // отдельной вкладки у него нет: это часть урока, а не самостоятельный раздел.
         { name: 'attendance', comp: AttendanceScreen },
+        // Журнал посещаемости за месяц — вход с главной (плитка «Посещаемость»), не из урока:
+        // урок открывает лист одного занятия, а здесь месяц класса и календарь ученика.
+        { name: 'attendance-month', comp: AttendanceMonthScreen },
+        { name: 'attendance-student', comp: AttendanceStudentScreen },
         // Оценки урока открываются с его карточки и в неё же возвращаются: это часть
         // урока. Журнал живёт отдельной вкладкой — у него другой вход и другой контекст.
         { name: 'lesson-grades', comp: LessonGradesScreen },

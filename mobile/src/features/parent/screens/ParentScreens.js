@@ -8,8 +8,8 @@ import { HexBadge } from '@shared/components/Hex';
 import { Card, Pill, Avatar, PrimaryButton, AppHeader, ScreenHeader, SectionTitle, CircleButton } from '@shared/components/ui';
 import { GradCard, GRAD } from '@shared/components/Grad';
 import { useAppState } from '@shared/state/AppState';
-import { PARENT, ATTENDANCE_LOG, FEEDBACK, TODAY_SCHEDULE } from '@shared/data/mock';
-import { LessonRow, ProfileRow, QuickAction, brandColor, softColor } from '@shared/ui/rows';
+import { PARENT, FEEDBACK, TODAY_SCHEDULE } from '@shared/data/mock';
+import { LessonRow, ProfileRow, QuickAction, brandColor } from '@shared/ui/rows';
 import { useMyProfile } from '@shared/hooks/useProfile';
 import { useAuth } from '@features/auth/AuthContext';
 
@@ -157,65 +157,6 @@ export function ParentHome({ nav }) {
             ))}
           </View>
         ))}
-      </View>
-    </Screen>
-  );
-}
-
-// ═══ ATTENDANCE ═══
-export function ParentAttendance() {
-  const { c } = useTheme();
-  const label = { in: 'Зашёл в школу', out: 'Вышел из школы' };
-  return (
-    <Screen>
-      <ScreenHeader title="Посещаемость" large sub="Айкоркем · 4 «Б»" />
-
-      <Card style={{ marginHorizontal: 16, marginBottom: 16, padding: 18 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: c.green }} />
-          <Txt style={{ fontSize: 13, fontWeight: '600', color: c.green }}>В школе сейчас</Txt>
-        </View>
-        <View style={{ flexDirection: 'row', gap: 20, marginTop: 14 }}>
-          {[
-            { l: 'Зашёл', v: '08:30' },
-            { l: 'Уроков пройдено', v: '2 / 6' },
-            { l: 'За месяц', v: '96%' },
-          ].map((it, i) => (
-            <View key={i}>
-              <Txt style={{ fontSize: 11, color: c.ink3, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3 }}>{it.l}</Txt>
-              <Txt style={{ fontSize: 16, fontWeight: '700', marginTop: 2 }}>{it.v}</Txt>
-            </View>
-          ))}
-        </View>
-      </Card>
-
-      <SectionTitle title="Журнал" />
-      <View style={{ marginHorizontal: 16, marginBottom: 100 }}>
-        {ATTENDANCE_LOG.map((row, i) => {
-          const prevDay = i > 0 ? ATTENDANCE_LOG[i - 1].d : null;
-          const tone = row.color === 'gold' ? 'goldDeep' : row.color;
-          return (
-            <View key={i}>
-              {row.d !== prevDay ? (
-                <Txt style={{ fontSize: 11, fontWeight: '600', color: c.ink3, textTransform: 'uppercase', letterSpacing: 0.4, paddingHorizontal: 4, paddingTop: 10, paddingBottom: 6 }}>{row.d}</Txt>
-              ) : null}
-              <Card style={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-                <View style={{ width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: softColor(c, row.color) }}>
-                  <Icon name={row.icon} size={18} color={brandColor(c, tone)} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Txt style={{ fontSize: 14, fontWeight: '600' }}>
-                    {row.kind === 'class' ? row.room : row.kind === 'late' ? `Опоздание · ${row.room}` : label[row.kind]}
-                  </Txt>
-                  {row.kind === 'in' || row.kind === 'out' ? (
-                    <Txt style={{ fontSize: 12, color: c.ink3, marginTop: 1 }}>{row.room}</Txt>
-                  ) : null}
-                </View>
-                <Txt style={{ fontSize: 13, fontWeight: '600', color: c.ink3 }}>{row.time}</Txt>
-              </Card>
-            </View>
-          );
-        })}
       </View>
     </Screen>
   );

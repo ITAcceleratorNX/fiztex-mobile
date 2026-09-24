@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@features/auth/AuthContext';
 import { attendanceApi } from '@shared/api/attendanceApi';
 import {
@@ -407,4 +407,140 @@ export function useAttendanceEditor(lessonId, { enabled = true } = {}) {
     refresh,
     reload: load,
   };
+}
+
+/**
+ * Фильтры журнала посещаемости учителя: учебный год (из него — месяцы) и пары «класс +
+ * подгруппа», в которых у учителя есть уроки (ATTENDANCE-TEACHER-001). Какие классы
+ * положены учителю, решает бэкенд тем же правилом, что и сам журнал.
+ */
+export function useTeacherJournalOptions({ enabled = true } = {}) {
+  const { token } = useAuth();
+  const [loading, setLoading] = useState(enabled);
+  const [error, setError] = useState(null);
+  const [options, setOptions] = useState(null);
+
+  const reload = useCallback(async () => {
+    if (!token || !enabled) {
+      setOptions(null);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      setOptions(await attendanceApi.teacherJournalOptions(token));
+    } catch (e) {
+      setError(e?.message || 'Не удалось загрузить журнал');
+      setOptions(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [token, enabled]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  return {
+    loading,
+    error,
+    year: options?.academicYear ?? null,
+    scopes: options?.scopes ?? [],
+    reload,
+  };
+}
+
+/**
+ * Журнал учителя за месяц по паре «класс + подгруппа». Пока класс или месяц не выбраны,
+ * запрос не уходит: экран показывает приглашение выбрать, а не пустой список.
+ *
+ * `reload(silent)` не сбрасывает журнал на экран загрузки — для pull-to-refresh и стрелок
+ * месяца, где прежний месяц на секунду лучше мигающего скелета.
+ */
+export function useTeacherJournal({ month, classId, subgroupId = null } = {}) {
+  const { token } = useAuth();
+  const ready = Boolean(token && month && classId);
+
+  const [loading, setLoading] = useState(ready);
+  const [error, setError] = useState(null);
+  const [journal, setJournal] = useState(null);
+
+  const reload = useCallback(async (silent = false) => {
+    if (!ready) {
+      setJournal(null);
+      setLoading(false);
+      return;
+    }
+    if (!silent) setLoading(true);
+    setError(null);
+    try {
+      setJournal(await attendanceApi.teacherJournal(token, { month, classId, subgroupId }));
+    } catch (e) {
+      setError(e?.message || 'Не удалось загрузить журнал');
+      if (!silent) setJournal(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [ready, token, month, classId, subgroupId]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  return { loading, error, journal, reload };
+}
+
+/**
+ * Месяц ученика или ребёнка родителя: все уроки, отметки и счётчики — календарь
+ * «Посещаемость» и плитка на главной (ATTENDANCE-LEARNER-001).
+ *
+ * `month: null` — текущий месяц по часам школы: так плитка главной не зависит от часов
+ * телефона, а календарь узнаёт из первого ответа границы учебного года.
+ *
+ * Стрелки месяца и переключение ребёнка шлют запросы быстрее, чем приходят ответы, —
+ * поэтому в состояние попадает только ответ на последний запрос: иначе запоздавший
+ * августовский ответ мог бы лечь поверх сентября. Обычная перезагрузка сбрасывает прежние
+ * данные — месяц другого ребёнка не должен мелькнуть и на секунду; `reload(true)` (свайп)
+ * держит их на экране.
+ */
+export function useAttendanceSummary({ month = null, childId = null, enabled = true } = {}) {
+  const { token } = useAuth();
+  const ready = Boolean(token && enabled);
+
+  const [loading, setLoading] = useState(ready);
+  const [error, setError] = useState(null);
+  const [summary, setSummary] = useState(null);
+  const lastRequest = useRef(0);
+
+  const reload = useCallback(async (silent = false) => {
+    const requestId = lastRequest.current + 1;
+    lastRequest.current = requestId;
+    if (!ready) {
+      setSummary(null);
+      setLoading(false);
+      return;
+    }
+    if (!silent) {
+      setLoading(true);
+      setSummary(null);
+    }
+    setError(null);
+    try {
+      const data = await attendanceApi.summary(token, { month, childId });
+      if (requestId === lastRequest.current) setSummary(data);
+    } catch (e) {
+      if (requestId === lastRequest.current) {
+        setError(e?.message || 'Не удалось загрузить посещаемость');
+      }
+    } finally {
+      if (requestId === lastRequest.current) setLoading(false);
+    }
+  }, [ready, token, month, childId]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  return { loading, error, summary, reload };
 }

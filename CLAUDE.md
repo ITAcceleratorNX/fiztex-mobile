@@ -138,6 +138,30 @@ cd mobile && node scripts/verify-undefined-names.cjs
 `.cursor/tasks/attendance/screens/AttendanceScreen.md`, проверка логики —
 `node scripts/verify-attendance-logic.cjs [ответ /attendance]`.
 
+**Журнал посещаемости за месяц** (ATTENDANCE-TEACHER-001). Вход — плитка «Посещаемость»
+на главной учителя, а не урок: урок открывает лист одного занятия, журнал — месяц класса.
+`attendance-month` — ученики с пиллами (пропуски, опоздания, освобождения),
+`attendance-student` — календарь ученика; оба на одном `GET /api/attendance/teacher-journal`,
+фильтры — из `teacher-journal/options`. Переход «уроки → дни» и итоги — в
+`shared/api/attendanceJournalMap.js`: это осознанный дубль веба
+(`fiztex-web/src/lib/attendanceJournalModel.ts`), менять правила — в обоих местах. Цвета
+журнала — свои токены `mark*` в теме, не чип расписания: макеты журнала рисуют пропуск
+#EF4444 и освобождение синим. Проверка — `node scripts/verify-attendance-journal.cjs
+[ответ /teacher-journal]`: на живых данных она сверяет точки календаря каждого ученика с
+итогами бэкенда.
+
+**Посещаемость ученика и родителя** (ATTENDANCE-LEARNER-001). Плитка «Посещаемость» на
+главной (подпись — счётчики текущего месяца) ведёт в `attendance` — календарь месяца; у
+родителя тот же экран по выбранному ребёнку, пилюля и шит — `shared/ui/childSwitcher`.
+Данные — `GET /api/attendance/summary`: все уроки месяца с `lessonStatus` и `published`, а
+не только отмеченные. У ученика 5–7 уроков в день, поэтому маркер ставится на **день**, а
+не на урок, как у учителя: одна точка, если все уроки одного вида, иначе «точка + число» по
+каждому виду, кроме «присутствовал»; «–» — отменено всё. Правило —
+`shared/api/learnerAttendanceMap.js`, сетка и легенда общие с календарём учителя
+(`features/attendance/AttendanceCalendar.js`, у ученика — `framed`). Проверка —
+`node scripts/verify-learner-attendance.cjs [ответ /summary …]`: на живых данных маркеры
+дней в сумме обязаны дать счётчики бэка.
+
 **Оценки учителя.** Три экрана одного модуля (`features/grades`), и граница между ними
 важна: оценки урока (`lesson-grades`, вход с плитки на карточке урока) — единственное
 место, где оценку ставят; журнал (вкладка `journal`) — зеркало, которое показывает и

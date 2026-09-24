@@ -9,7 +9,7 @@ import { useMyKeys } from '@shared/hooks/useKeys';
 import { MyKeysCard } from '@features/keys/MyKeysCard';
 import { useMyEquipment } from '@shared/hooks/useEquipment';
 import { MyEquipmentCard } from '@features/equipment/MyEquipmentCard';
-import { HomeHeader, HomeSectionTitle, TeacherAgendaCard, TeacherGradesTile } from './HomeParts';
+import { HomeHeader, HomeSectionTitle, TeacherAgendaCard, TeacherHomeTile } from './HomeParts';
 import { formatHomeDate, teacherName } from './homeDate';
 
 /**
@@ -86,11 +86,22 @@ export function TeacherHomeScreen({ nav }) {
         />
       </View>
 
-      <TeacherGradesTile
-        title="Оценки"
-        subtitle="Журнал и итоги четверти"
-        onPress={() => nav?.('journal')}
-      />
+      <View style={{ gap: 12 }}>
+        <TeacherHomeTile
+          icon="award"
+          title="Оценки"
+          subtitle="Журнал и итоги четверти"
+          onPress={() => nav?.('journal')}
+        />
+        {/* Журнал посещаемости — раздел учителя, а не часть урока: из урока открывается
+            лист одного занятия, отсюда — месяц класса (ATTENDANCE-TEACHER-001). */}
+        <TeacherHomeTile
+          icon="calendarCheck"
+          title="Посещаемость"
+          subtitle="Журнал по классам"
+          onPress={() => nav?.('attendance-month')}
+        />
+      </View>
     </Screen>
   );
 }

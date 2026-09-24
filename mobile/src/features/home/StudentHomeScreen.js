@@ -8,8 +8,10 @@ import { useMySchedule } from '@shared/hooks/useSchedule';
 import { useMyProfile } from '@shared/hooks/useProfile';
 import { useMyDiaryGrades, useMySubjectGrades } from '@shared/hooks/useGrades';
 import { useMySurveys } from '@shared/hooks/useSurveys';
+import { useAttendanceSummary } from '@shared/hooks/useAttendance';
+import { summaryTileLine } from '@shared/api/learnerAttendanceMap';
 import {
-  ActivePsychTestsBlock, ActiveSurveysBlock, HomeHeader, HomeSectionTitle, LearnerLessonsCard, GradesTile,
+  ActivePsychTestsBlock, ActiveSurveysBlock, HomeHeader, HomeSectionTitle, LearnerLessonsCard, LearnerHomeTile,
   ScanQrTile,
 } from './HomeParts';
 import { formatHomeDate, greetingName, todayKey } from './homeDate';
@@ -36,6 +38,10 @@ export function StudentHomeScreen({ nav }) {
   // Тесты школьного психолога — опросы той же ленты (PSYCHOLOGIST-002): баннер и плитка
   // теста разбирают один ответ, каждый — своё.
   const { surveys, reload: reloadSurveys } = useMySurveys();
+  // Подпись плитки «Посещаемость» — счётчики текущего месяца. Ошибка молчит: плитка
+  // остаётся входом в календарь с нейтральной подписью.
+  const attendance = useAttendanceSummary();
+  const reloadAttendance = attendance.reload;
 
   // Пройденный опрос или тест должен уйти с главной сразу по возвращении, а не после ручного
   // обновления: вкладка остаётся смонтированной, и без этого баннер и плитка вели бы в «Ответы
@@ -55,11 +61,12 @@ export function StudentHomeScreen({ nav }) {
     try {
       await Promise.all([
         reload(true), reloadGrades(), reloadSubjects({ silent: true }), reloadSurveys(true),
+        reloadAttendance(true),
       ]);
     } finally {
       setRefreshing(false);
     }
-  }, [reload, reloadGrades, reloadSubjects, reloadSurveys]);
+  }, [reload, reloadGrades, reloadSubjects, reloadSurveys, reloadAttendance]);
 
   const openLesson = useCallback(
     (lesson) => nav?.('lesson', { ...lesson, childId: null, childName: null }),
@@ -124,14 +131,21 @@ export function StudentHomeScreen({ nav }) {
         />
       </View>
 
-      <View style={{ gap: 10 }}>
-        <HomeSectionTitle>Оценки</HomeSectionTitle>
-        <GradesTile
-          title="Оценки по предметам"
-          subtitle={gradeLine || 'Оценок за четверть пока нет'}
-          onPress={() => nav?.('diary')}
-        />
-      </View>
+      {/* Разделы — плитками подряд, без заголовка секции (Figma 2170:5003). */}
+      <LearnerHomeTile
+        icon="award"
+        title="Оценки по предметам"
+        subtitle={gradeLine || 'Оценок за четверть пока нет'}
+        onPress={() => nav?.('diary')}
+      />
+      <LearnerHomeTile
+        icon="calendarCheck"
+        tone="markPresent"
+        iconSize={20}
+        title="Посещаемость"
+        subtitle={summaryTileLine(attendance.summary) || 'Календарь за месяц'}
+        onPress={() => nav?.('attendance')}
+      />
     </Screen>
   );
 }
