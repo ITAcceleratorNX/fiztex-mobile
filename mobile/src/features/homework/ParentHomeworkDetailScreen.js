@@ -1,4 +1,3 @@
-import { gradeValueLabel } from '@shared/api/gradesMap';
 import React, { useMemo } from 'react';
 import { View, ScrollView, Pressable, Linking } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
@@ -9,7 +8,7 @@ import Icon from '@shared/components/Icon';
 import { useAuth } from '@features/auth/AuthContext';
 import { homeworkFiles, authHeaders } from '@shared/api/homeworkApi';
 import { closedNotice, dueLong, stamp, subjectLine } from '@shared/api/homeworkMap';
-import { gradeTypeLabel } from '@shared/api/gradesMap';
+import { gradeTypeLabel, gradeValueLabel } from '@shared/api/gradesMap';
 import { useChildHomework } from '@shared/hooks/useHomework';
 import { useMyHomeworkGrade } from '@shared/hooks/useGrades';
 import { Pill } from '@shared/components/ui';

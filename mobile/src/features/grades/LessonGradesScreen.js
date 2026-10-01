@@ -8,7 +8,7 @@ import Icon from '@shared/components/Icon';
 import { StateView } from '@shared/components/ui';
 import { useLesson } from '@shared/hooks/useLesson';
 import { useGradeScale, useLessonGrades } from '@shared/hooks/useGrades';
-import { sheetBadge, writeStateBanner } from '@shared/api/gradesMap';
+import { gradeValueBody, sheetBadge, writeStateBanner } from '@shared/api/gradesMap';
 import { LessonGradeRow } from './LessonGradeRow';
 import { LessonGradeSheet } from './LessonGradeSheet';
 import {
@@ -177,14 +177,35 @@ export function LessonGradesScreen({ nav, payload }) {
   const cancelled = lesson?.status === 'CANCELLED' || sheet?.writeState === 'LESSON_CANCELLED';
   const canManage = Boolean(sheet?.canManageGrades);
   const maxGrades = sheet?.maxGradesPerStudent ?? 3;
+  // GRADES-003: шкала или баллы — решает сервер по четверти урока.
+  const pointsMode = sheet?.valueMode === 'POINTS';
+  /**
+   * Максимум СОР/СОЧ общий для класса — строка «Максимальные баллы» формы журнала, —
+   * поэтому новый ввод подставляет последний максимум такой работы на этом уроке.
+   */
+  const suggestedMax = (type) => {
+    let found = null;
+    for (const row of rows) {
+      for (const item of row.grades || []) {
+        if (item.gradeType === type && item.maxScore != null) found = Number(item.maxScore);
+      }
+    }
+    return found;
+  };
   const banner = cancelled ? null : writeStateBanner(sheet);
   const audience = [lesson?.className, lesson?.subgroupName].filter(Boolean).join(' · ');
 
-  async function pickValue(scaleCode, gradeType) {
+  /**
+   * `value` — `{ scaleCode }` или `{ score, maxScore }`. В баллах вид работы уходит вместе
+   * со значением (смена вида может сменить шкалу); по шкале у существующей оценки тип
+   * меняется отдельно, как раньше.
+   */
+  async function pickValue(value, gradeType) {
     setSheetError(null);
+    const type = pointsMode ? gradeType : pickedGrade ? pickedGrade.gradeType ?? null : gradeType;
     const message = pickedGrade
-      ? await updateGrade(pickedGrade.id, scaleCode, pickedGrade.gradeType ?? null)
-      : await createGrade(picker.studentProfileId, scaleCode, gradeType ?? null);
+      ? await updateGrade(pickedGrade.id, value, type ?? null)
+      : await createGrade(picker.studentProfileId, value, type ?? null);
     if (message) setSheetError(message);
     else closePicker();
   }
@@ -193,7 +214,7 @@ export function LessonGradesScreen({ nav, payload }) {
   async function pickType(type) {
     if (!pickedGrade) return;
     setSheetError(null);
-    const message = await updateGrade(pickedGrade.id, pickedGrade.scaleCode, type);
+    const message = await updateGrade(pickedGrade.id, gradeValueBody(pickedGrade), type);
     if (message) setSheetError(message);
   }
 
@@ -322,6 +343,10 @@ export function LessonGradesScreen({ nav, payload }) {
         grade={pickedGrade}
         busy={busy}
         error={sheetError}
+        pointsMode={pointsMode}
+        workTypes={sheet?.workTypes || []}
+        defaultWorkType={sheet?.defaultWorkType}
+        suggestedMax={suggestedMax}
         onPickValue={pickValue}
         onPickType={pickType}
         onRemove={remove}

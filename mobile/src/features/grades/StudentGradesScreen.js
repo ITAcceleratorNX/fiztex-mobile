@@ -1,4 +1,3 @@
-import { gradeValueLabel } from '@shared/api/gradesMap';
 import React, { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,7 +8,7 @@ import Icon from '@shared/components/Icon';
 import { PickerSheet, StateView } from '@shared/components/ui';
 import { GradeChip } from '@shared/ui/grades';
 import { useMySubjectGrades } from '@shared/hooks/useGrades';
-import { formatAverage } from '@shared/api/gradesMap';
+import { formatAverage, gradeValueLabel } from '@shared/api/gradesMap';
 import { GradesSkeleton, NoGradesState, NoPeriodDataState } from './GradeStates';
 
 /**
@@ -232,7 +231,10 @@ function SubjectCard({ subject, onPress }) {
           ))}
         </View>
         <Txt style={{ fontSize: 13, fontWeight: '500', color: c.ink3 }}>
-          Ср. балл: {formatAverage(subject.average?.average)}
+          {/* GRADES-003: по политике — процент четверти, иначе средний балл. */}
+          {subject.result
+            ? `Итог: ${subject.result.roundedPercent != null ? `${subject.result.roundedPercent}%` : '—'}`
+            : `Ср. балл: ${formatAverage(subject.average?.average)}`}
         </Txt>
       </View>
       <Icon name="chevronRight" size={20} color={c.ink3} strokeWidth={2} />

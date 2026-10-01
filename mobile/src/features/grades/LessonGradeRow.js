@@ -1,9 +1,9 @@
-import { gradeValueLabel } from '@shared/api/gradesMap';
 import React from 'react';
 import { View } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Txt } from '@shared/components/Txt';
 import { GradeChip } from '@shared/ui/grades';
+import { gradeValueLabel } from '@shared/api/gradesMap';
 
 /**
  * Строка ученика в листе оценок (Figma `mobile-grades-list`, `list-container`).

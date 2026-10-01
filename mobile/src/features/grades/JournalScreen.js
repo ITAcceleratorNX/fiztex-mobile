@@ -8,7 +8,13 @@ import Icon from '@shared/components/Icon';
 import { ConfirmDialog, FilterChip, PickerSheet, SegmentedSwitch, StateView } from '@shared/components/ui';
 import { FinalChip } from '@shared/ui/grades';
 import { useClassFinals, useGradebookContext, useJournal } from '@shared/hooks/useGrades';
-import { finalsProgress, formatAverage, incompleteStudentIds } from '@shared/api/gradesMap';
+import {
+  finalValuesOf,
+  finalsProgress,
+  formatAverage,
+  formatPercent,
+  incompleteStudentIds,
+} from '@shared/api/gradesMap';
 import { GradesSkeleton, NoGradesState, NoPeriodDataState } from './GradeStates';
 import { FinalGradeSheet } from './FinalGradeSheet';
 
@@ -274,6 +280,7 @@ export function JournalScreen({ nav }) {
         visible={Boolean(editing)}
         studentName={editing?.studentName || ''}
         value={editing?.finalGrade?.value ?? null}
+        values={finalValuesOf(finals.finals)}
         busy={finals.busy}
         onPick={pickFinal}
         onClose={() => setEditing(null)}
@@ -380,7 +387,10 @@ function JournalTab({ journal, nav, finals, className, subjectName }) {
               {row.studentName}
             </Txt>
             <Txt style={{ fontSize: 14, fontWeight: '600', color: c.ink2 }}>
-              Ср. балл: {formatAverage(row.average?.value)}
+              {/* GRADES-003: четверть по политике — процент, иначе средний балл. */}
+              {row.result
+                ? `Итог: ${row.result.roundedPercent != null ? `${row.result.roundedPercent}%` : '—'}`
+                : `Ср. балл: ${formatAverage(row.average?.value)}`}
             </Txt>
             <Icon name="chevronRight" size={14} color={c.ink3} strokeWidth={2.2} />
           </Pressable>
@@ -516,7 +526,15 @@ function FinalsTab({ finals, missing, error, context, onEdit, onPublish }) {
             <Txt style={{ flex: 1, fontSize: 15, fontWeight: '500', color: c.ink }} numberOfLines={1}>
               {row.studentName}
             </Txt>
+            {row.result ? (
+              <Txt style={{ fontSize: 13, fontWeight: '600', color: c.ink2 }}>
+                {formatPercent(row.result.percent)}
+              </Txt>
+            ) : null}
             <FinalChip value={row.recommendedValue} tone="hint" />
+            {row.recommendationChanged ? (
+              <Icon name="alertTriangle" size={16} color={c.green} strokeWidth={2} />
+            ) : null}
             {row.yearLocked ? (
               <View style={{ width: 32, alignItems: 'center' }}>
                 <Icon name="lock" size={16} color={c.ink3} strokeWidth={2} />

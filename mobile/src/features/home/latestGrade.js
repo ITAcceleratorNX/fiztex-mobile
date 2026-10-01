@@ -1,4 +1,4 @@
-import { gradeTypeLabel } from '@shared/api/gradesMap';
+import { gradeTypeLabel, gradeValueLabel } from '@shared/api/gradesMap';
 
 /**
  * Подпись плитки «Оценки»: последняя полученная оценка — «Математика — 5, Контрольная».
@@ -18,9 +18,9 @@ export function latestGradeLine(subjects) {
   for (const subject of subjects || []) {
     for (const grade of subject.grades || []) {
       const at = grade?.createdAt || grade?.publishedAt;
-      if (!at || !grade?.scaleCode) continue;
+      if (!at || !gradeValueLabel(grade)) continue;
       if (!best || at > best.at) {
-        best = { at, code: grade.scaleCode, type: grade.gradeType, subject: subject.subjectName };
+        best = { at, code: gradeValueLabel(grade), type: grade.gradeType, subject: subject.subjectName };
       }
     }
   }

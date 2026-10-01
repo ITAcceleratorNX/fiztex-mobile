@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Txt } from '@shared/components/Txt';
 import { GRADE_TYPES, GRADE_TYPE_LABELS } from '@shared/api/gradesMap';
+import { PointsPicker } from './PointsPicker';
 
 /**
  * Выбор оценки (Figma `mobile-grades-bottom-sheet`, `mobile-grades-type-expanded`).
@@ -17,6 +18,10 @@ import { GRADE_TYPES, GRADE_TYPE_LABELS } from '@shared/api/gradesMap';
  * <b>Одно нажатие — одно действие.</b> Кнопки «Сохранить» в макете нет: выбранный балл
  * уходит на сервер сразу, и шит закрывается сам. У новой оценки тип, выбранный заранее,
  * ждёт балла — сохранять ещё нечего.
+ *
+ * <b>Баллы вместо шкалы</b> (GRADES-003): в четверти по политике оценивания лист приходит
+ * с `valueMode: POINTS`, и вместо сетки «2…5±» шит показывает `PointsPicker` — вид работы
+ * и балл. Режим называет сервер, шит его не вычисляет.
  */
 export function LessonGradeSheet({
   visible,
@@ -26,6 +31,10 @@ export function LessonGradeSheet({
   grade,
   busy,
   error,
+  pointsMode = false,
+  workTypes,
+  defaultWorkType,
+  suggestedMax,
   onPickValue,
   onPickType,
   onRemove,
@@ -93,6 +102,16 @@ export function LessonGradeSheet({
             ) : null}
           </View>
 
+          {pointsMode ? (
+            <PointsPicker
+              grade={grade}
+              workTypes={workTypes}
+              defaultType={defaultWorkType || 'FORMATIVE'}
+              suggestedMax={suggestedMax}
+              busy={busy}
+              onSubmit={(value, type) => onPickValue?.(value, type)}
+            />
+          ) : (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16 }}>
             {scale.map((item) => {
               const code = item.code;
@@ -103,7 +122,7 @@ export function LessonGradeSheet({
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                   disabled={busy}
-                  onPress={() => onPickValue?.(code, currentType)}
+                  onPress={() => onPickValue?.({ scaleCode: code }, currentType)}
                   style={({ pressed }) => ({
                     width: 60,
                     height: 44,
@@ -129,10 +148,11 @@ export function LessonGradeSheet({
               );
             })}
           </View>
+          )}
 
           <View style={{ height: 1, backgroundColor: c.border, marginHorizontal: 16, marginTop: 16 }} />
 
-          {typesOpen ? (
+          {pointsMode ? null : typesOpen ? (
             <ScrollView style={{ maxHeight: 260 }} bounces={false}>
               {GRADE_TYPES.map((type) => {
                 const selected = type === currentType;
