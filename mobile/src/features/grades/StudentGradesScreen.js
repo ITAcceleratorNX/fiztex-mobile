@@ -1,3 +1,4 @@
+import { gradeValueLabel } from '@shared/api/gradesMap';
 import React, { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -227,7 +228,7 @@ function SubjectCard({ subject, onPress }) {
         </Txt>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
           {grades.map((grade) => (
-            <GradeChip key={grade.id} value={grade.scaleCode} size={28} />
+            <GradeChip key={grade.id} value={gradeValueLabel(grade)} size={28} />
           ))}
         </View>
         <Txt style={{ fontSize: 13, fontWeight: '500', color: c.ink3 }}>

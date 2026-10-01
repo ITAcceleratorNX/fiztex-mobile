@@ -1,3 +1,4 @@
+import { gradeValueLabel } from '@shared/api/gradesMap';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -246,7 +247,7 @@ export function StudentSubjectGradesScreen({ nav, payload }) {
                     {longDate(event.date)}
                   </Txt>
                 </View>
-                <GradeChip value={event.grade?.scaleCode} />
+                <GradeChip value={gradeValueLabel(event.grade)} />
               </View>
             ))}
           </View>

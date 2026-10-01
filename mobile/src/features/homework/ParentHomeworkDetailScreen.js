@@ -1,3 +1,4 @@
+import { gradeValueLabel } from '@shared/api/gradesMap';
 import React, { useMemo } from 'react';
 import { View, ScrollView, Pressable, Linking } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
@@ -290,7 +291,7 @@ function Work({ homework, childId, work, headers, grade }) {
  */
 function GradeLine({ grade }) {
   const { c } = useTheme();
-  if (!grade?.scaleCode) return null;
+  if (!gradeValueLabel(grade)) return null;
   return (
     <View style={{ paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
       <View
@@ -304,7 +305,7 @@ function GradeLine({ grade }) {
           justifyContent: 'center',
         }}
       >
-        <Txt style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{grade.scaleCode}</Txt>
+        <Txt style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{gradeValueLabel(grade)}</Txt>
       </View>
       <Txt style={{ fontSize: 13, fontWeight: '500', color: c.inkMuted }}>
         {gradeTypeLabel(grade.gradeType)}

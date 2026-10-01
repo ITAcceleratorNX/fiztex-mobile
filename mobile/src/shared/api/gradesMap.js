@@ -8,6 +8,9 @@
 
 /** Порядок и подписи типов — ТЗ GRADES-FE-001 §5.1, набор — справочник бэка. */
 export const GRADE_TYPE_LABELS = {
+  FORMATIVE: 'Формативная оценка',
+  SUMMATIVE_SECTION: 'СОР — суммативное за раздел',
+  SUMMATIVE_TERM: 'СОЧ — суммативное за четверть',
   LESSON_WORK: 'Работа на уроке',
   ORAL_ANSWER: 'Устный ответ',
   BOARD_WORK: 'Работа у доски',
@@ -179,7 +182,7 @@ export function diaryGradesByLesson(entries) {
   const map = {};
   for (const entry of entries || []) {
     const lessonId = entry?.lessonId;
-    const code = entry?.grade?.scaleCode;
+    const code = gradeValueLabel(entry?.grade);
     if (!lessonId || !code) continue;
     (map[lessonId] = map[lessonId] || []).push(code);
   }
@@ -230,4 +233,18 @@ export function subjectSubtitle({ childLabel, className, periodName } = {}) {
 export function incompleteStudentIds(details) {
   const raw = details && typeof details === 'object' ? details.studentProfileIds : null;
   return Array.isArray(raw) ? raw.filter((id) => typeof id === 'number') : [];
+}
+
+/**
+ * Как показать оценку (GRADES-003): «4+» по старой шкале, «7» у 10-балльной, «15/20» у СОР
+ * и СОЧ. У оценки заполнено ровно одно из двух представлений — то же правило, что в вебе
+ * (`gradeValueLabel` в `fiztex-web/src/lib/gradesModel.ts`).
+ */
+export function gradeValueLabel(grade) {
+  if (!grade) return null;
+  if (grade.scaleCode) return grade.scaleCode;
+  if (grade.score == null) return null;
+  const trim = (v) => String(v).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1').replace('.', ',');
+  if (grade.maxScore == null || Number(grade.maxScore) === 10) return trim(grade.score);
+  return `${trim(grade.score)}/${trim(grade.maxScore)}`;
 }

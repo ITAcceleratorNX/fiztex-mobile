@@ -1,3 +1,4 @@
+import { gradeValueLabel } from '@shared/api/gradesMap';
 import React, { useCallback, useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -146,7 +147,7 @@ export function JournalStudentScreen({ nav, payload }) {
                 </Txt>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   {entry.grades.map((grade) => (
-                    <GradeChip key={grade.id} value={grade.scaleCode} />
+                    <GradeChip key={grade.id} value={gradeValueLabel(grade)} />
                   ))}
                 </View>
               </Pressable>

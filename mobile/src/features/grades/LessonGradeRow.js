@@ -1,3 +1,4 @@
+import { gradeValueLabel } from '@shared/api/gradesMap';
 import React from 'react';
 import { View } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
@@ -48,7 +49,7 @@ export function LessonGradeRow({ row, maxGrades = 3, canManage = false, openSlot
           return (
             <GradeChip
               key={grade?.id ?? `free-${index}`}
-              value={grade?.scaleCode}
+              value={gradeValueLabel(grade)}
               active={openSlot === index}
               onPress={editable ? () => onOpen?.(index, grade) : undefined}
             />
