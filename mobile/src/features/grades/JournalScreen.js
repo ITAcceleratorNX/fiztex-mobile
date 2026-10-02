@@ -589,7 +589,7 @@ function FinalsTab({ finals, missing, error, context, onEdit, onPublish }) {
         <View style={{ paddingHorizontal: 16, paddingTop: 4, gap: 8 }}>
           <Pressable
             accessibilityRole="button"
-            disabled={!progress.allFilled || progress.published || finals.busy}
+            disabled={!progress.allFilled || progress.published || !progress.publicationOpen || finals.busy}
             onPress={onPublish}
             style={({ pressed }) => ({
               height: 48,
@@ -597,7 +597,7 @@ function FinalsTab({ finals, missing, error, context, onEdit, onPublish }) {
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor:
-                !progress.allFilled || progress.published ? c.stripeIdle : c.green,
+                !progress.allFilled || progress.published || !progress.publicationOpen ? c.stripeIdle : c.green,
               opacity: pressed ? 0.9 : 1,
             })}
           >
@@ -608,7 +608,11 @@ function FinalsTab({ finals, missing, error, context, onEdit, onPublish }) {
           <Txt style={{ fontSize: 12, fontWeight: '500', color: c.ink3, textAlign: 'center' }}>
             {progress.published
               ? 'Итоги можно менять до публикации годовой оценки'
-              : progress.allFilled
+              : !progress.publicationOpen
+                ? `Выставлять можно уже сейчас, опубликовать — после окончания четверти${
+                    progress.publishableFrom ? `, с ${progress.publishableFrom.split('-').reverse().slice(0, 2).join('.')}` : ''
+                  } (${progress.filled} из ${progress.total})`
+                : progress.allFilled
                 ? `Все итоги выставлены (${progress.filled} из ${progress.total})`
                 : `Выставьте итоговые оценки всем ученикам (${progress.filled} из ${progress.total})`}
           </Txt>

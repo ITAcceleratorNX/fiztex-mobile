@@ -161,6 +161,9 @@ export function finalsProgress(classFinals) {
     total: rows.length,
     allFilled: rows.length > 0 && filled === rows.length,
     published: rows.length > 0 && rows.every((row) => row.finalGrade?.status === 'PUBLISHED'),
+    // Публиковать итоги можно только после окончания четверти: дату и признак считает сервер.
+    publicationOpen: classFinals?.publicationOpen !== false,
+    publishableFrom: classFinals?.publishableFrom ?? null,
   };
 }
 
