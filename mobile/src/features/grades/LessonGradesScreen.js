@@ -176,7 +176,7 @@ export function LessonGradesScreen({ nav, payload }) {
 
   const cancelled = lesson?.status === 'CANCELLED' || sheet?.writeState === 'LESSON_CANCELLED';
   const canManage = Boolean(sheet?.canManageGrades);
-  const maxGrades = sheet?.maxGradesPerStudent ?? 3;
+  const maxGrades = sheet?.maxGradesPerStudent ?? 1;
   // GRADES-003: шкала или баллы — решает сервер по четверти урока.
   const pointsMode = sheet?.valueMode === 'POINTS';
   /**
@@ -338,7 +338,7 @@ export function LessonGradesScreen({ nav, payload }) {
       <LessonGradeSheet
         visible={Boolean(picker)}
         studentName={picked?.fullName || ''}
-        slotLabel={picker ? `Оценка ${picker.slot + 1}` : ''}
+        slotLabel={picker && maxGrades > 1 ? `Оценка ${picker.slot + 1}` : ''}
         scale={scale}
         grade={pickedGrade}
         busy={busy}

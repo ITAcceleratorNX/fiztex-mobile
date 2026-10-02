@@ -18,7 +18,7 @@ import { gradeValueLabel } from '@shared/api/gradesMap';
  * <b>Чужая оценка не нажимается.</b> Право на конкретную оценку приходит в ней самой
  * (`canEdit`, GRADES-002 §5): замещающему принадлежат только те, что он поставил сам.
  */
-export function LessonGradeRow({ row, maxGrades = 3, canManage = false, openSlot = null, onOpen }) {
+export function LessonGradeRow({ row, maxGrades = 1, canManage = false, openSlot = null, onOpen }) {
   const { c } = useTheme();
   const grades = row.grades || [];
   const free = canManage ? Math.max(0, maxGrades - grades.length) : 0;
