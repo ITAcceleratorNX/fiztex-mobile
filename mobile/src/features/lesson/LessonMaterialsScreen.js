@@ -6,11 +6,12 @@ import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
-import { Card, Pill, ScreenHeader, PrimaryButton } from '@shared/components/ui';
+import { Card, Pill, ScreenHeader, PrimaryButton, OutlineButton } from '@shared/components/ui';
 import { useAuth } from '@features/auth/AuthContext';
 import { authHeaders } from '@shared/api/upload';
 import { lessonFiles } from '@shared/api/lessonApi';
 import { useLessonMaterials } from '@shared/hooks/useLesson';
+import { WorkspaceLessonMaterialPicker } from './WorkspaceLessonMaterialPicker';
 
 /**
  * Материалы урока — конспект, презентация, фотография доски, ссылка.
@@ -20,11 +21,10 @@ import { useLessonMaterials } from '@shared/hooks/useLesson';
  * правилу. Отбирать список здесь ещё раз нельзя — это было бы второе место, где живёт
  * видимость, и первое же расхождение показало бы ученику чужой файл.
  *
- * <p><b>Экран только читает.</b> Загрузка, видимость и удаление остаются в вебе: урок
- * готовят за компьютером, а с телефона смотрят. Поэтому у учителя пустое состояние прямо
- * говорит, где материалы прикладывают, — иначе экран выглядит сломанным.
+ * Учитель может выбрать готовый документ из своего рабочего пространства; ученик и
+ * родитель видят только разрешённый бэкендом список без кнопки добавления.
  *
- * Контракт — `.cursor/tasks/ai-homework/screens/LessonMaterialsMobile.md`.
+ * Контракт выбора — `.cursor/tasks/teacher-workspace/screens/MobileLessonMaterialsPicker.md`.
  */
 export function LessonMaterialsScreen({ nav, payload }) {
   const { c } = useTheme();
@@ -37,6 +37,7 @@ export function LessonMaterialsScreen({ nav, payload }) {
   const headers = useMemo(() => authHeaders(token), [token]);
 
   const [opened, setOpened] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
@@ -69,6 +70,12 @@ export function LessonMaterialsScreen({ nav, payload }) {
       <ScreenHeader title="Материалы урока" back={() => nav?.back?.()} />
 
       <View style={{ paddingHorizontal: 16, gap: 10 }}>
+        {canManage ? (
+          <OutlineButton size="lg" onPress={() => setPickerOpen(true)}
+            style={{ alignSelf: 'stretch' }}>
+            Выбрать из рабочего пространства
+          </OutlineButton>
+        ) : null}
         {loading ? (
           <View style={{ paddingVertical: 56, alignItems: 'center' }}>
             <ActivityIndicator color={c.blue} />
@@ -76,17 +83,17 @@ export function LessonMaterialsScreen({ nav, payload }) {
         ) : error ? (
           <EmptyBody
             icon="alertTriangle"
-            title="Не удалось загрузить материалы"
+            title="Не удалось загрузить данные"
             subtitle={error}
-            action={<PrimaryButton title="Повторить" onPress={() => reload()} />}
+            action={<PrimaryButton onPress={() => reload()}>Повторить</PrimaryButton>}
           />
         ) : materials.length === 0 ? (
           <EmptyBody
             icon="paperclip"
-            title={canManage ? 'Материалов нет' : 'Учитель не приложил материалов'}
+            title={canManage ? 'Здесь пока нет материалов' : 'Учитель не приложил материалов'}
             subtitle={
               canManage
-                ? 'Конспект, презентацию или ссылку прикладывают в веб-версии — там же по ним генерируется задание.'
+                ? 'Выберите готовый материал из рабочего пространства.'
                 : 'Если они появятся, вы увидите их здесь.'
             }
           />
@@ -103,6 +110,10 @@ export function LessonMaterialsScreen({ nav, payload }) {
         headers={headers}
         onClose={() => setOpened(null)}
       />
+      {canManage && pickerOpen ? (
+        <WorkspaceLessonMaterialPicker lessonId={lessonId} onClose={() => setPickerOpen(false)}
+          onAttached={() => reload(true)} />
+      ) : null}
     </Screen>
   );
 }
@@ -132,7 +143,7 @@ function MaterialRow({ material, onPress }) {
           backgroundColor: c.blueSoft,
         }}
       >
-        <Icon name={icon} size={18} color={c.blue} strokeWidth={2} />
+        <Icon name={icon} size={18} color={c.blueInk} strokeWidth={2} />
       </View>
 
       <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
