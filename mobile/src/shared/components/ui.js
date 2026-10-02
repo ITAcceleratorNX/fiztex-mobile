@@ -216,7 +216,7 @@ export function OutlineButton({ children, onPress, disabled = false, size = 'sm'
           paddingHorizontal: s.paddingHorizontal,
           borderRadius: s.radius,
           borderWidth: s.border,
-          borderColor: disabled ? c.border : c.blue,
+          borderColor: disabled ? c.border : c.blueInk,
           backgroundColor: c.surface,
           alignItems: 'center',
           justifyContent: 'center',
@@ -225,7 +225,7 @@ export function OutlineButton({ children, onPress, disabled = false, size = 'sm'
         style,
       ]}
     >
-      <Txt style={{ fontSize: s.fontSize, fontWeight: s.weight, color: disabled ? c.ink3 : c.blue }}>
+      <Txt style={{ fontSize: s.fontSize, fontWeight: s.weight, color: disabled ? c.ink3 : c.blueInk }}>
         {children}
       </Txt>
     </Pressable>
@@ -748,7 +748,8 @@ export function SelectionDialog({
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={busy ? undefined : onClose}>
+    <Modal visible={visible} transparent animationType="fade"
+      onRequestClose={() => { if (!busy) onClose?.(); }}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.modalBackdrop,
           paddingHorizontal: 16, paddingTop: insets.top + 8, paddingBottom: insets.bottom + 8 }}>
