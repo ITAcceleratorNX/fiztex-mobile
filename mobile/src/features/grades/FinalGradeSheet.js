@@ -15,8 +15,19 @@ import { FINAL_VALUES } from '@shared/api/gradesMap';
  * удаления — не «запрещено ролью», а маршрута не существует (§2, `DELETE` отвечает 405).
  * Кнопка, которая всегда возвращает ошибку, хуже отсутствующей; исправляется значение
  * выбором другого балла.
+ *
+ * Набор значений приходит с сервера (`allowedValues`, GRADES-003): по политике оценивания
+ * это значения её порогов. `FINAL_VALUES` — только запасной вариант для старого ответа.
  */
-export function FinalGradeSheet({ visible, studentName, value, busy, onPick, onClose }) {
+export function FinalGradeSheet({
+  visible,
+  studentName,
+  value,
+  values = FINAL_VALUES,
+  busy,
+  onPick,
+  onClose,
+}) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -49,7 +60,7 @@ export function FinalGradeSheet({ visible, studentName, value, busy, onPick, onC
           </View>
 
           <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16 }}>
-            {FINAL_VALUES.map((option) => {
+            {values.map((option) => {
               const selected = option === value;
               return (
                 <Pressable

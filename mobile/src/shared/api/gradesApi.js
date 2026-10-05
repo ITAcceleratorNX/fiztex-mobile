@@ -16,14 +16,17 @@ function query(params) {
  * сервере — воспроизводить их в приложении нельзя: три реализации одного правила
  * (веб, мобилка, бэк) разъедутся, и первым это заметит учитель с неактивной кнопкой.
  *
- * Значение оценки — всегда `scaleCode` («4+»), а не число. Шкала приходит справочником.
+ * Значение оценки — `scaleCode` («4+») по старой шкале или `score`/`maxScore` в четверти,
+ * которая считается по политике оценивания (GRADES-003). Какую форму слать, говорит лист
+ * (`valueMode`); экран её не выбирает. `value` — объект ровно одной формы
+ * (`gradeValueBody` в `gradesMap.js`).
  */
 export const gradesApi = {
   scale: (token) => request('/api/grades/scale', { token }),
 
   lessonSheet: (token, lessonId) => request(`/api/lessons/${lessonId}/grades/sheet`, { token }),
 
-  create: (token, { studentProfileId, lessonId, scaleCode, gradeType }) =>
+  create: (token, { studentProfileId, lessonId, value, gradeType }) =>
     request('/api/grades', {
       token,
       method: 'POST',
@@ -31,7 +34,7 @@ export const gradesApi = {
         studentProfileId,
         sourceType: 'LESSON',
         sourceId: lessonId,
-        scaleCode,
+        ...value,
         gradeType: gradeType ?? null,
       },
     }),
@@ -40,11 +43,11 @@ export const gradesApi = {
    * Правка описывает **полное** состояние обоих полей: не переданный `gradeType`
    * означает «типа нет», а не «оставить прежний» (grades-read-contract §6).
    */
-  update: (token, gradeId, { scaleCode, gradeType }) =>
+  update: (token, gradeId, { value, gradeType }) =>
     request(`/api/grades/${gradeId}`, {
       token,
       method: 'PATCH',
-      body: { scaleCode, gradeType: gradeType ?? null },
+      body: { ...value, gradeType: gradeType ?? null },
     }),
 
   /** Мягкое удаление: ответ — состояние оценки после снятия, повтор идемпотентен. */
@@ -71,6 +74,18 @@ export const gradesApi = {
    */
   myHomeworkGrades: (token, homeworkId, { childStudentProfileId } = {}) =>
     request(`/api/grades/my/homework/${homeworkId}${query({ childStudentProfileId })}`, { token }),
+
+  /**
+   * Расшифровка своего процента за период (GRADES-003, grading-policy-contract §6): работы,
+   * проценты ФО/СОР/СОЧ и формула строкой. Без рекомендации — её ученик видит только
+   * опубликованным итогом. Период без политики отвечает 409 — вызывать, только если у
+   * предмета пришёл `result`.
+   */
+  myBreakdown: (token, { subjectId, academicPeriodId, childStudentProfileId }) =>
+    request(
+      `/api/final-grades/my/breakdown${query({ subjectId, academicPeriodId, childStudentProfileId })}`,
+      { token },
+    ),
 };
 
 /**

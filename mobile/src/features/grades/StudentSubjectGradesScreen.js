@@ -7,10 +7,14 @@ import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { StateView } from '@shared/components/ui';
 import { GradeChip } from '@shared/ui/grades';
-import { useMySubjectDetail } from '@shared/hooks/useGrades';
+import { useMyBreakdown, useMySubjectDetail } from '@shared/hooks/useGrades';
 import {
+  COMPONENT_SHORT,
   formatAverage,
+  formatPercent,
   gradeTypeLabel,
+  gradeValueLabel,
+  resultStatusHint,
   longDate,
   myFinalsForSubject,
   subjectSubtitle,
@@ -66,6 +70,10 @@ function ValueCard({ title, hint, value }) {
  * <b>Средний балл не считается здесь.</b> Он приходит вместе с лентой, тот же, что видит
  * учитель в журнале.
  *
+ * <b>Четверть по политике оценивания</b> (GRADES-003) вместо среднего показывает процент:
+ * доли ФО, СОР и СОЧ и формулу с числами — из расшифровки сервера. Рекомендации итоговой
+ * здесь нет: до публикации итога это подсказка учителю, а не оценка ученика.
+ *
  * `payload` — из раздела «Оценки»: предмет, период, профиль ученика и список четвертей.
  */
 export function StudentSubjectGradesScreen({ nav, payload }) {
@@ -81,6 +89,14 @@ export function StudentSubjectGradesScreen({ nav, payload }) {
     subjectId,
     academicPeriodId: periodId,
     academicYearId: payload?.academicYearId,
+    childStudentProfileId: payload?.childStudentProfileId ?? null,
+  });
+
+  const result = history?.result ?? null;
+  const breakdown = useMyBreakdown({
+    enabled: Boolean(result),
+    subjectId,
+    academicPeriodId: periodId,
     childStudentProfileId: payload?.childStudentProfileId ?? null,
   });
 
@@ -141,7 +157,9 @@ export function StudentSubjectGradesScreen({ nav, payload }) {
           }}
         >
           <Txt style={{ fontSize: 13, fontWeight: '600', color: c.blue }}>
-            Ср. балл: {formatAverage(history?.average?.average)}
+            {result
+              ? `Итог: ${result.roundedPercent != null ? `${result.roundedPercent}%` : '—'}`
+              : `Ср. балл: ${formatAverage(history?.average?.average)}`}
           </Txt>
         </View>
       </View>
@@ -246,12 +264,14 @@ export function StudentSubjectGradesScreen({ nav, payload }) {
                     {longDate(event.date)}
                   </Txt>
                 </View>
-                <GradeChip value={event.grade?.scaleCode} />
+                <GradeChip value={gradeValueLabel(event.grade)} />
               </View>
             ))}
           </View>
         )}
       </View>
+
+      {result ? <ResultBlock result={result} breakdown={breakdown} /> : null}
 
       <View style={{ paddingTop: 24, gap: 10 }}>
         <BlockTitle>Итог четверти</BlockTitle>
@@ -340,6 +360,109 @@ export function StudentSubjectGradesScreen({ nav, payload }) {
           }
         />
       </View>
+
+      {/* GRADES-003: экзаменационная и итоговая есть только у предметов с экзаменом —
+          пустых блоков «экзамена нет» ученику не показываем. */}
+      {subjectFinals.examValue != null || subjectFinals.finalValue != null ? (
+        <View style={{ paddingTop: 24, gap: 10 }}>
+          <BlockTitle>Экзамен и итоговая</BlockTitle>
+          <ValueCard
+            title="Экзаменационная"
+            value={<BigValue value={subjectFinals.examValue} />}
+          />
+          <ValueCard
+            title="Итоговая"
+            hint={subjectFinals.finalValue == null ? 'Ещё не опубликована' : null}
+            value={<BigValue value={subjectFinals.finalValue} />}
+          />
+        </View>
+      ) : null}
     </Screen>
   );
 }
+
+function BigValue({ value }) {
+  const { c } = useTheme();
+  return (
+    <Txt style={{ fontSize: 22, fontWeight: '700', color: value == null ? c.ink3 : c.ink }}>
+      {value ?? '—'}
+    </Txt>
+  );
+}
+
+/**
+ * «Как посчитана четверть» (GRADES-003): процент, доли компонентов и формула. Всё из ответа
+ * сервера — экран ничего не складывает и не округляет. Без расшифровки (сбой запроса)
+ * блок держится на сводке из ленты.
+ */
+function ResultBlock({ result, breakdown }) {
+  const { c } = useTheme();
+  const components = breakdown?.result?.components || result.components || [];
+  const hint = resultStatusHint(result);
+  return (
+    <View style={{ paddingTop: 24, gap: 10 }}>
+      <BlockTitle>Расчёт за четверть</BlockTitle>
+      <View
+        style={{
+          marginHorizontal: 16,
+          backgroundColor: c.surface,
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: c.border,
+          padding: 16,
+          gap: 12,
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
+          <Txt style={{ fontSize: 28, fontWeight: '700', color: c.ink }}>
+            {formatPercent(result.percent)}
+          </Txt>
+          {result.roundedPercent != null ? (
+            <Txt style={{ fontSize: 14, fontWeight: '500', color: c.ink3 }}>
+              округлено до {result.roundedPercent}%
+            </Txt>
+          ) : null}
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {components.map((component) => {
+            const counted = component.contribution != null;
+            return (
+              <View
+                key={component.code}
+                style={{
+                  flex: 1,
+                  backgroundColor: c.bg2,
+                  borderRadius: 12,
+                  padding: 10,
+                  gap: 2,
+                  opacity: counted ? 1 : 0.6,
+                }}
+              >
+                <Txt style={{ fontSize: 11, fontWeight: '700', color: c.ink3 }}>
+                  {COMPONENT_SHORT[component.code] || component.code} · {Number(component.weightPercent)}%
+                </Txt>
+                <Txt style={{ fontSize: 16, fontWeight: '700', color: c.ink }}>
+                  {component.workCount ? formatPercent(component.percent) : '—'}
+                </Txt>
+                <Txt style={{ fontSize: 11, color: c.ink3 }}>
+                  {component.workCount ? `работ: ${component.workCount}` : 'работ нет'}
+                </Txt>
+              </View>
+            );
+          })}
+        </View>
+
+        {breakdown?.formula ? (
+          <Txt style={{ fontSize: 13, lineHeight: 18, color: c.ink2 }}>{breakdown.formula}</Txt>
+        ) : null}
+        {/* Формула уже говорит про недостающие компоненты — подсказка нужна, только когда
+            расшифровки нет или процент не посчитан. */}
+        {hint && !breakdown?.formula ? (
+          <Txt style={{ fontSize: 12, color: c.ink3 }}>{hint}</Txt>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+

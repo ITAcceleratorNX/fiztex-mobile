@@ -6,7 +6,7 @@ import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { GradeChip } from '@shared/ui/grades';
-import { formatAverage, longDate, studentTimeline } from '@shared/api/gradesMap';
+import { formatAverage, gradeValueLabel, longDate, studentTimeline } from '@shared/api/gradesMap';
 import { NoGradesState } from './GradeStates';
 
 /**
@@ -85,7 +85,10 @@ export function JournalStudentScreen({ nav, payload }) {
             }}
           >
             <Txt style={{ fontSize: 13, fontWeight: '600', color: c.blue }}>
-              Ср. балл: {formatAverage(row?.average?.value)}
+              {row?.result
+                ? `Итог: ${row.result.roundedPercent != null ? `${row.result.roundedPercent}%` : '—'}${
+                    row.result.recommendedValue != null ? ` · рек. ${row.result.recommendedValue}` : ''}`
+                : `Ср. балл: ${formatAverage(row?.average?.value)}`}
             </Txt>
           </View>
           {payload?.finalGrade != null ? (
@@ -146,7 +149,7 @@ export function JournalStudentScreen({ nav, payload }) {
                 </Txt>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   {entry.grades.map((grade) => (
-                    <GradeChip key={grade.id} value={grade.scaleCode} />
+                    <GradeChip key={grade.id} value={gradeValueLabel(grade)} />
                   ))}
                 </View>
               </Pressable>

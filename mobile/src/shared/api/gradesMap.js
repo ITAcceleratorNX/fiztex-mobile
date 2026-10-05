@@ -8,6 +8,9 @@
 
 /** Порядок и подписи типов — ТЗ GRADES-FE-001 §5.1, набор — справочник бэка. */
 export const GRADE_TYPE_LABELS = {
+  FORMATIVE: 'Формативная оценка',
+  SUMMATIVE_SECTION: 'СОР — суммативное за раздел',
+  SUMMATIVE_TERM: 'СОЧ — суммативное за четверть',
   LESSON_WORK: 'Работа на уроке',
   ORAL_ANSWER: 'Устный ответ',
   BOARD_WORK: 'Работа у доски',
@@ -158,6 +161,9 @@ export function finalsProgress(classFinals) {
     total: rows.length,
     allFilled: rows.length > 0 && filled === rows.length,
     published: rows.length > 0 && rows.every((row) => row.finalGrade?.status === 'PUBLISHED'),
+    // Публиковать итоги можно только после окончания четверти: дату и признак считает сервер.
+    publicationOpen: classFinals?.publicationOpen !== false,
+    publishableFrom: classFinals?.publishableFrom ?? null,
   };
 }
 
@@ -179,7 +185,7 @@ export function diaryGradesByLesson(entries) {
   const map = {};
   for (const entry of entries || []) {
     const lessonId = entry?.lessonId;
-    const code = entry?.grade?.scaleCode;
+    const code = gradeValueLabel(entry?.grade);
     if (!lessonId || !code) continue;
     (map[lessonId] = map[lessonId] || []).push(code);
   }
@@ -203,13 +209,16 @@ export function lessonGradesSummary(codes) {
  * В этой выборке нет черновиков вовсе, поэтому фильтровать статусы не нужно: всё, что
  * пришло, ученику показывать можно.
  *
- * @returns {{periodValues: Record<string, number>, yearValue: number|null}}
+ * @returns {{periodValues: Record<string, number>, yearValue: number|null, examValue: number|null, finalValue: number|null}}
  */
 export function myFinalsForSubject(myFinals, subjectId) {
   const subject = (myFinals?.subjects || []).find((item) => item.subjectId === subjectId);
   return {
     periodValues: subject?.periodValues || {},
     yearValue: subject?.yearValue ?? null,
+    // GRADES-003: экзаменационная и итоговая — тоже только опубликованные.
+    examValue: subject?.examValue ?? null,
+    finalValue: subject?.finalValue ?? null,
   };
 }
 
@@ -230,4 +239,58 @@ export function subjectSubtitle({ childLabel, className, periodName } = {}) {
 export function incompleteStudentIds(details) {
   const raw = details && typeof details === 'object' ? details.studentProfileIds : null;
   return Array.isArray(raw) ? raw.filter((id) => typeof id === 'number') : [];
+}
+
+/**
+ * Как показать оценку (GRADES-003): «4+» по старой шкале, «7» у 10-балльной, «15/20» у СОР
+ * и СОЧ. У оценки заполнено ровно одно из двух представлений — то же правило, что в вебе
+ * (`gradeValueLabel` в `fiztex-web/src/lib/gradesModel.ts`).
+ */
+export function gradeValueLabel(grade) {
+  if (!grade) return null;
+  if (grade.scaleCode) return grade.scaleCode;
+  if (grade.score == null) return null;
+  const trim = (v) => String(v).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1').replace('.', ',');
+  if (grade.maxScore == null || Number(grade.maxScore) === 10) return trim(grade.score);
+  return `${trim(grade.score)}/${trim(grade.maxScore)}`;
+}
+
+/**
+ * Тело значения для запроса — ровно одна форма. Сервер отклоняет `scaleCode` рядом с баллом
+ * (`GRADE_VALUE_FORM_MISMATCH`), поэтому лишнее поле здесь не пропускается.
+ */
+export function gradeValueBody(grade) {
+  if (grade?.scaleCode) return { scaleCode: grade.scaleCode };
+  return { score: grade.score, maxScore: grade.maxScore ?? null };
+}
+
+/** Короткие имена компонентов процента — те же, что в вебе (`gradingModel.ts`). */
+export const COMPONENT_SHORT = { FORMATIVE: 'ФО', SOR: 'СОР', SOCH: 'СОЧ' };
+
+/** «84,2%» — запятая, целые без «,00». Проценты приходят с сервера, здесь только формат. */
+export function formatPercent(value) {
+  if (value === null || value === undefined) return '—';
+  const fixed = Number(value).toFixed(2);
+  return `${(fixed.endsWith('.00') ? fixed.slice(0, -3) : fixed).replace('.', ',')}%`;
+}
+
+/**
+ * Допустимые итоги: по политике оценивания — значения её порогов (`allowedValues` в ответе
+ * экрана итогов), без политики — 2…5. Своей шкалы у приложения нет.
+ */
+export function finalValuesOf(classFinals) {
+  const allowed = classFinals?.allowedValues;
+  return Array.isArray(allowed) && allowed.length > 0 ? allowed : FINAL_VALUES;
+}
+
+/**
+ * Почему у предмета нет процента — словами: «нет работ» и «нет СОЧ при обязательных
+ * компонентах» — разные новости.
+ */
+export function resultStatusHint(result) {
+  if (!result) return null;
+  const missing = (result.missingComponents || []).map((code) => COMPONENT_SHORT[code]).join(', ');
+  if (result.status === 'NO_WORKS') return 'Нет учитываемых работ — процент не считается';
+  if (result.status === 'INCOMPLETE') return `Нет работ: ${missing} — процент без них не считается`;
+  return missing ? `Нет работ: ${missing} — веса пересчитаны` : null;
 }

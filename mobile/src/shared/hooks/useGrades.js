@@ -100,15 +100,16 @@ export function useLessonGrades(lessonId, { enabled = true } = {}) {
     }
   }, [load]);
 
+  /** `value` — `{ scaleCode }` или `{ score, maxScore }`: форму называет лист (GRADES-003). */
   const createGrade = useCallback(
-    (studentProfileId, scaleCode, gradeType) =>
-      run(() => gradesApi.create(token, { studentProfileId, lessonId, scaleCode, gradeType })),
+    (studentProfileId, value, gradeType) =>
+      run(() => gradesApi.create(token, { studentProfileId, lessonId, value, gradeType })),
     [run, token, lessonId],
   );
 
   const updateGrade = useCallback(
-    (gradeId, scaleCode, gradeType) =>
-      run(() => gradesApi.update(token, gradeId, { scaleCode, gradeType })),
+    (gradeId, value, gradeType) =>
+      run(() => gradesApi.update(token, gradeId, { value, gradeType })),
     [run, token],
   );
 
@@ -437,6 +438,35 @@ export function useMySubjectDetail({
   }, [reload]);
 
   return { loading, error, history, finals, reload };
+}
+
+/**
+ * Расшифровка процента предмета за период (GRADES-003) — для ученика и родителя.
+ *
+ * Спрашивается, только если лента пришла с `result`: у четверти по старой шкале
+ * расшифровки нет, и бэк ответил бы 409. Некритичный запрос, как и итоги: сбой гасится, и
+ * экран остаётся лентой оценок.
+ */
+export function useMyBreakdown({ enabled, subjectId, academicPeriodId, childStudentProfileId = null }) {
+  const { token } = useAuth();
+  const [breakdown, setBreakdown] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    if (!enabled || !token || !subjectId || !academicPeriodId) {
+      setBreakdown(null);
+      return undefined;
+    }
+    gradesApi
+      .myBreakdown(token, { subjectId, academicPeriodId, childStudentProfileId })
+      .then((data) => alive && setBreakdown(data))
+      .catch(() => alive && setBreakdown(null));
+    return () => {
+      alive = false;
+    };
+  }, [enabled, token, subjectId, academicPeriodId, childStudentProfileId]);
+
+  return breakdown;
 }
 
 /**

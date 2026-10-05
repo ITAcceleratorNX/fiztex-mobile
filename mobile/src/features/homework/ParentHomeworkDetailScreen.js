@@ -8,7 +8,7 @@ import Icon from '@shared/components/Icon';
 import { useAuth } from '@features/auth/AuthContext';
 import { homeworkFiles, authHeaders } from '@shared/api/homeworkApi';
 import { closedNotice, dueLong, stamp, subjectLine } from '@shared/api/homeworkMap';
-import { gradeTypeLabel } from '@shared/api/gradesMap';
+import { gradeTypeLabel, gradeValueLabel } from '@shared/api/gradesMap';
 import { useChildHomework } from '@shared/hooks/useHomework';
 import { useMyHomeworkGrade } from '@shared/hooks/useGrades';
 import { Pill } from '@shared/components/ui';
@@ -290,7 +290,7 @@ function Work({ homework, childId, work, headers, grade }) {
  */
 function GradeLine({ grade }) {
   const { c } = useTheme();
-  if (!grade?.scaleCode) return null;
+  if (!gradeValueLabel(grade)) return null;
   return (
     <View style={{ paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
       <View
@@ -304,7 +304,7 @@ function GradeLine({ grade }) {
           justifyContent: 'center',
         }}
       >
-        <Txt style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{grade.scaleCode}</Txt>
+        <Txt style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{gradeValueLabel(grade)}</Txt>
       </View>
       <Txt style={{ fontSize: 13, fontWeight: '500', color: c.inkMuted }}>
         {gradeTypeLabel(grade.gradeType)}

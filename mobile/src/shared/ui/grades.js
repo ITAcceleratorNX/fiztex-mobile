@@ -22,7 +22,8 @@ export function GradeChip({ value, onPress, disabled = false, active = false, si
   const body = (
     <View
       style={{
-        width: size,
+        minWidth: size,
+        paddingHorizontal: 4,
         height: size,
         borderRadius: 10,
         alignItems: 'center',
