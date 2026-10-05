@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Pressable, Modal, ScrollView, ActivityIndicator, TextInput } from 'react-native';
+import { View, Pressable, Modal, ScrollView, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { FONT } from '../theme/tokens';
@@ -216,7 +216,7 @@ export function OutlineButton({ children, onPress, disabled = false, size = 'sm'
           paddingHorizontal: s.paddingHorizontal,
           borderRadius: s.radius,
           borderWidth: s.border,
-          borderColor: disabled ? c.border : c.blue,
+          borderColor: disabled ? c.border : c.blueInk,
           backgroundColor: c.surface,
           alignItems: 'center',
           justifyContent: 'center',
@@ -225,7 +225,7 @@ export function OutlineButton({ children, onPress, disabled = false, size = 'sm'
         style,
       ]}
     >
-      <Txt style={{ fontSize: s.fontSize, fontWeight: s.weight, color: disabled ? c.ink3 : c.blue }}>
+      <Txt style={{ fontSize: s.fontSize, fontWeight: s.weight, color: disabled ? c.ink3 : c.blueInk }}>
         {children}
       </Txt>
     </Pressable>
@@ -541,7 +541,7 @@ export function ScreenHeader({ title, back, right, large = false, sub }) {
 }
 
 // ─── Banner ───────────────────────────────────────────────────────────────────
-// A full-width notice above the content: icon + one line of text.
+// A full-width notice above the content: icon + wrapping text.
 //
 // `tone` picks how loud it is, not which colour — the colour is always the brand
 // CTA orange, because both current uses are "something about this lesson is not
@@ -570,9 +570,9 @@ export function Banner({ icon, children, tone = 'soft', style }) {
       ]}
     >
       {icon ? <Icon name={icon} size={18} color={fg} strokeWidth={2} /> : null}
-      <Ink color={fg}>
-        {wrapStrings(children, { fontSize: 13, fontWeight: '600', color: fg })}
-      </Ink>
+      <Txt style={{ flex: 1, fontSize: 13, fontWeight: '600', color: fg }}>
+        {children}
+      </Txt>
     </View>
   );
 }
@@ -735,6 +735,54 @@ export function ConfirmDialog({
           </View>
         </View>
       </View>
+    </Modal>
+  );
+}
+
+/** Центральное окно выбора: заголовок, прокручиваемое содержимое и явные действия. */
+export function SelectionDialog({
+  visible, title, children, onClose, onConfirm,
+  confirmLabel = 'Добавить', busy = false, disabled = false,
+}) {
+  const { c } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  return (
+    <Modal visible={visible} transparent animationType="fade"
+      onRequestClose={() => { if (!busy) onClose?.(); }}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.modalBackdrop,
+          paddingHorizontal: 16, paddingTop: insets.top + 8, paddingBottom: insets.bottom + 8 }}>
+        <View style={{ width: Math.min(342, width - 32), maxHeight: height - insets.top - insets.bottom - 32,
+          borderRadius: 20, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface,
+          overflow: 'hidden', ...shadowLg }}>
+          <View style={{ minHeight: 64, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Txt style={{ flex: 1, fontSize: 18, fontWeight: '700', color: c.ink }}>{title}</Txt>
+            <Pressable accessibilityRole="button" accessibilityLabel="Закрыть окно" onPress={busy ? undefined : onClose}
+              style={{ width: 32, height: 32, borderRadius: 12, borderWidth: 1, borderColor: c.border,
+                backgroundColor: c.bg2, alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="x" size={17} color={c.ink3} />
+            </Pressable>
+          </View>
+          <View style={{ height: 1, backgroundColor: c.border }} />
+          <View style={{ flexShrink: 1 }}>{children}</View>
+          <View style={{ height: 1, backgroundColor: c.border }} />
+          <View style={{ flexDirection: 'row', gap: 12, padding: 16 }}>
+            <Pressable accessibilityRole="button" onPress={busy ? undefined : onClose}
+              style={{ flex: 1, height: 44, borderRadius: 12, borderWidth: 1, borderColor: c.border,
+                backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center' }}>
+              <Txt style={{ fontSize: 14, fontWeight: '600', color: c.ink3 }}>Отмена</Txt>
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy || disabled }}
+              onPress={busy || disabled ? undefined : onConfirm}
+              style={{ flex: 1, height: 44, borderRadius: 12, backgroundColor: c.blue,
+                alignItems: 'center', justifyContent: 'center', opacity: busy || disabled ? 0.5 : 1 }}>
+              {busy ? <ActivityIndicator size="small" color={c.surface} />
+                : <Txt style={{ fontSize: 14, fontWeight: '700', color: c.surface }}>{confirmLabel}</Txt>}
+            </Pressable>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
