@@ -541,7 +541,7 @@ export function ScreenHeader({ title, back, right, large = false, sub }) {
 }
 
 // ─── Banner ───────────────────────────────────────────────────────────────────
-// A full-width notice above the content: icon + one line of text.
+// A full-width notice above the content: icon + wrapping text.
 //
 // `tone` picks how loud it is, not which colour — the colour is always the brand
 // CTA orange, because both current uses are "something about this lesson is not
@@ -570,9 +570,9 @@ export function Banner({ icon, children, tone = 'soft', style }) {
       ]}
     >
       {icon ? <Icon name={icon} size={18} color={fg} strokeWidth={2} /> : null}
-      <Ink color={fg}>
-        {wrapStrings(children, { fontSize: 13, fontWeight: '600', color: fg })}
-      </Ink>
+      <Txt style={{ flex: 1, fontSize: 13, fontWeight: '600', color: fg }}>
+        {children}
+      </Txt>
     </View>
   );
 }
