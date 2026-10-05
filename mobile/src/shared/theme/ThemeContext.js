@@ -109,6 +109,22 @@ const journalMarkSoftDark = {
   markExcusedSoft: 'rgba(59,130,246,0.18)',
 };
 
+// Исправление работы (Figma 1962:32221, 1962:32719): карточка с полосой — оранжевая, пока
+// срок идёт, красная после; временная оценка — оранжевым пунктиром. Чернила — статус и в обеих
+// темах одни, подложки в тёмной полупрозрачные, как у журнала.
+const correctionInk = {
+  correctionWarn: '#D97706',
+  correctionDanger: '#DC2626',
+};
+const correctionSoft = {
+  correctionWarnSoft: '#FFF7ED',
+  correctionDangerSoft: '#FEF2F2',
+};
+const correctionSoftDark = {
+  correctionWarnSoft: 'rgba(217,119,6,0.16)',
+  correctionDangerSoft: 'rgba(220,38,38,0.16)',
+};
+
 // Статусы работы по домашнему заданию (Figma «ДЗ (моб.)», node 853:19518, и карточки
 // 897:26384…). Заливка одна на обе темы — она полупрозрачная и ложится и на белый фон,
 // и на тёмный; меняется только чернило, иначе #16A34A на тёмном читался бы как пятно.
@@ -236,6 +252,8 @@ const light = {
   ...attendanceInk,
   ...journalMarks,
   ...journalMarkSoft,
+  ...correctionInk,
+  ...correctionSoft,
   ...homework,
   ...homeworkInk,
   ...service,
@@ -270,6 +288,8 @@ const dark = {
   ...attendanceInkDark,
   ...journalMarks,
   ...journalMarkSoftDark,
+  ...correctionInk,
+  ...correctionSoftDark,
   ...homework,
   ...homeworkInkDark,
   ...service,

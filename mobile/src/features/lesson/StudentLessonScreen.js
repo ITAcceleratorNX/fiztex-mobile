@@ -14,6 +14,7 @@ import { dueShort, isOverdueOpen } from '@shared/api/homeworkMap';
 import { countLabel } from '@shared/format';
 import { useMyLessonAttendance } from '@shared/hooks/useAttendance';
 import { useMyDiaryGrades } from '@shared/hooks/useGrades';
+import { useMyGradeCorrections } from '@shared/hooks/useGradeCorrections';
 import { lessonGradesSummary } from '@shared/api/gradesMap';
 import { attendanceLabel } from '@shared/api/attendanceMap';
 import { homeworkStateLabel } from '@shared/api/lessonHomeworkState';
@@ -21,6 +22,7 @@ import { textbookEntry } from '@shared/api/textbookMap';
 import { LessonHero } from './LessonHero';
 import { LessonSummaryEntry } from './LessonSummaryEntry';
 import { LessonCardFallback, LessonCardHeader } from './LessonCardStates';
+import { LessonCorrectionCard } from './LessonCorrectionCard';
 
 /** Подпись раздела: маленькая иконка и капсом название (Figma `Label`). */
 function CardLabel({ icon, children }) {
@@ -386,6 +388,11 @@ export function StudentLessonScreen({ nav, payload }) {
   });
   const lessonGrades = lessonId ? diaryGrades[lessonId] : null;
 
+  // Исправление работы — свой запрос, как посещаемость: сервер отдаёт только открытое, и после
+  // итоговой оценки блок исчезает сам, а оценка приходит строкой «Оценки» (ТЗ FE §8).
+  const corrections = useMyGradeCorrections({ childId, lessonId, enabled: Boolean(lessonId) });
+  const correction = corrections.corrections[0] ?? null;
+
   // Учебники — свой запрос, как посещаемость: сбой гасится, и строки «Учебник» просто нет.
   const textbooks = useLessonTextbooks(lessonId, { childId });
   const textbookRow = textbookEntry(textbooks.data);
@@ -405,11 +412,12 @@ export function StudentLessonScreen({ nav, payload }) {
       // публикует лист после урока, и жест «потянуть» затем и делают.
       await Promise.all([
         reload(true), reloadAttendance(), reloadGrades(), assignments.reload(true), textbooks.reload(),
+        corrections.reload(),
       ]);
     } finally {
       setRefreshing(false);
     }
-  }, [reload, reloadAttendance, reloadGrades, assignments, textbooks]);
+  }, [reload, reloadAttendance, reloadGrades, assignments, textbooks, corrections]);
 
   // Роль — из ответа бэка: клиент не должен решать «я родитель» по тому, что ему
   // передали childId, иначе экран и права разъедутся на первом же нестандартном заходе.
@@ -473,6 +481,11 @@ export function StudentLessonScreen({ nav, payload }) {
             nav('homework-card', childId ? { homeworkId, childId } : { homeworkId })}
         />
 
+        {/* Родителю исправление — сразу под заданием (Figma 1960:20487): он смотрит урок
+            ради того, что ребёнку нужно сделать. Ученику — у строки «Оценки», рядом с тем,
+            на что исправление влияет (Figma 1962:32221). */}
+        {isParent && correction ? <LessonCorrectionCard correction={correction} /> : null}
+
         <LessonSummaryEntry lessonId={lessonId} childId={childId} nav={nav} refreshing={refreshing} />
         {/* Все три раздела читают бэк. */}
         <ModuleRow
@@ -499,6 +512,7 @@ export function StudentLessonScreen({ nav, payload }) {
             onPress={() => nav('lesson-materials', { lessonInstanceId: lessonId })}
           />
         ) : null}
+        {!isParent && correction ? <LessonCorrectionCard correction={correction} /> : null}
         <ModuleRow
           icon="award"
           tint="red"

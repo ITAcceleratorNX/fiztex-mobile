@@ -290,15 +290,32 @@ export function TeacherAgendaCard({ lessons, onOpenLesson, onShowAll, emptyText 
  * @param {string} props.icon имя иконки
  * @param {string} props.tone токен цвета иконки; кружок — `${tone}Soft`
  */
-export function LearnerHomeTile({ icon, tone = 'blue', iconSize = 18, title, subtitle, onPress }) {
+export function LearnerHomeTile({ icon, tone = 'blue', iconSize = 18, title, subtitle, alert, onPress }) {
   const { c } = useTheme();
+  // `alert` — строка, которая важнее обычной подписи (Figma 1964:1775: «Требуется исправление ·
+  // Английский язык» оранжевым и точка в углу). Подпись она заменяет, а не дополняет: в одну
+  // строку плитки две новости не помещаются.
+  const line = alert || subtitle;
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`${title}. ${subtitle}`} onPress={onPress}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`${title}. ${line}`} onPress={onPress}>
       <SurfaceCard
         radius={16}
         padding={12}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
       >
+        {alert ? (
+          <View
+            style={{
+              position: 'absolute',
+              top: 8,
+              right: 10,
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              backgroundColor: c.green,
+            }}
+          />
+        ) : null}
         <View
           style={{
             width: 36,
@@ -313,8 +330,8 @@ export function LearnerHomeTile({ icon, tone = 'blue', iconSize = 18, title, sub
         </View>
         <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
           <Txt style={{ fontSize: 14, fontWeight: '600', color: c.ink }}>{title}</Txt>
-          <Txt numberOfLines={1} style={{ fontSize: 12, fontWeight: '500', color: c.inkMuted }}>
-            {subtitle}
+          <Txt numberOfLines={1} style={{ fontSize: 12, fontWeight: '500', color: alert ? c.correctionWarn : c.inkMuted }}>
+            {line}
           </Txt>
         </View>
         <Icon name="chevronRight" size={20} color={c.ink3} strokeWidth={2} />

@@ -9,6 +9,8 @@ import { useMyProfile } from '@shared/hooks/useProfile';
 import { useMyDiaryGrades, useMySubjectGrades } from '@shared/hooks/useGrades';
 import { useMySurveys } from '@shared/hooks/useSurveys';
 import { useAttendanceSummary } from '@shared/hooks/useAttendance';
+import { useMyGradeCorrections } from '@shared/hooks/useGradeCorrections';
+import { homeCorrectionLine } from '@shared/api/gradeCorrectionMap';
 import { summaryTileLine } from '@shared/api/learnerAttendanceMap';
 import {
   ActivePsychTestsBlock, ActiveSurveysBlock, HomeHeader, HomeSectionTitle, LearnerLessonsCard, LearnerHomeTile,
@@ -42,6 +44,10 @@ export function StudentHomeScreen({ nav }) {
   // остаётся входом в календарь с нейтральной подписью.
   const attendance = useAttendanceSummary();
   const reloadAttendance = attendance.reload;
+  // Открытые исправления — строка-предупреждение на плитке «Оценки». Сбой молчит: плитка
+  // остаётся обычной.
+  const corrections = useMyGradeCorrections();
+  const reloadCorrections = corrections.reload;
 
   // Пройденный опрос или тест должен уйти с главной сразу по возвращении, а не после ручного
   // обновления: вкладка остаётся смонтированной, и без этого баннер и плитка вели бы в «Ответы
@@ -50,9 +56,15 @@ export function StudentHomeScreen({ nav }) {
   const focusedBefore = useRef(false);
   useFocusEffect(
     useCallback(() => {
-      if (focusedBefore.current) reloadSurveys(true);
-      else focusedBefore.current = true;
-    }, [reloadSurveys]),
+      // Исправление закрывают в вебе, пока ученик в приложении, — без перезапроса плитка
+      // ещё звала бы к уроку, где исправлять уже нечего.
+      if (focusedBefore.current) {
+        reloadSurveys(true);
+        reloadCorrections();
+      } else {
+        focusedBefore.current = true;
+      }
+    }, [reloadSurveys, reloadCorrections]),
   );
 
   const [refreshing, setRefreshing] = useState(false);
@@ -61,12 +73,12 @@ export function StudentHomeScreen({ nav }) {
     try {
       await Promise.all([
         reload(true), reloadGrades(), reloadSubjects({ silent: true }), reloadSurveys(true),
-        reloadAttendance(true),
+        reloadAttendance(true), reloadCorrections(),
       ]);
     } finally {
       setRefreshing(false);
     }
-  }, [reload, reloadGrades, reloadSubjects, reloadSurveys, reloadAttendance]);
+  }, [reload, reloadGrades, reloadSubjects, reloadSurveys, reloadAttendance, reloadCorrections]);
 
   const openLesson = useCallback(
     (lesson) => nav?.('lesson', { ...lesson, childId: null, childName: null }),
@@ -136,6 +148,7 @@ export function StudentHomeScreen({ nav }) {
         icon="award"
         title="Оценки по предметам"
         subtitle={gradeLine || 'Оценок за четверть пока нет'}
+        alert={homeCorrectionLine(corrections.corrections)}
         onPress={() => nav?.('diary')}
       />
       <LearnerHomeTile
