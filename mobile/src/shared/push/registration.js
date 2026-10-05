@@ -3,7 +3,7 @@ import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '@shared/storage/secureStore';
 import { notificationDevicesApi } from '@shared/api/notificationDevicesApi';
 import { ensureAndroidChannels } from './channels';
 import { getInstallationId } from './installationId';

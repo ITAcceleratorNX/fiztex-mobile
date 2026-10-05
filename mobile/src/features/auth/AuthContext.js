@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '@shared/storage/secureStore';
 import { authApi } from '@shared/api/authApi';
 import { onSessionExpired } from '@shared/api/client';
 import { unregisterThisDevice } from '@shared/push/registration';

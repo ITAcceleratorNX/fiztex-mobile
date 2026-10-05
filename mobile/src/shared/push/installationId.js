@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '@shared/storage/secureStore';
 
 const KEY = 'fiztex.push.installationId';
 
