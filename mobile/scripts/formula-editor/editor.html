@@ -1,0 +1,23 @@
+<main id="editor">
+  <div id="visual"></div>
+  <button id="keyboard" type="button">Клавиатура формул</button>
+  <section id="palette"></section>
+  <section id="chemistry" hidden>
+    <h3>Химическая запись</h3>
+    <label>Химический блок<select id="block"></select></label>
+    <p>Пишите H2O, (NH4)2SO4, Fe3+. CO и Co — разные вещества. Меняется только выбранный блок.</p>
+    <label>Вещество или реакция<input id="argument" spellcheck="false"></label>
+    <div class="grid"><label>Элемент или группа<input id="species" value="Fe"></label><label>Заряд<input id="charge" value="3+"></label><label>Массовое число<input id="mass" inputmode="numeric"></label><label>Атомный номер<input id="atomic" inputmode="numeric"></label></div>
+    <button id="species-build" type="button">Собрать ион или изотоп</button>
+    <div class="grid"><label>Реагенты<input id="left" value="2H2 + O2"></label><label>Продукты<input id="right" value="2H2O"></label></div>
+    <label>Стрелка реакции<select id="arrow"><option value="->">Прямая →</option><option value="<=>">Равновесие ⇌</option><option value="<-">Обратная ←</option></select></label>
+    <label>Условия реакции<input id="condition" placeholder="T,p"></label>
+    <button id="reaction-build" type="button">Собрать реакцию</button>
+    <div id="chemical-preview" class="preview"></div>
+    <button id="chemical-apply" type="button">Применить к блоку</button><button id="chemical-cancel" type="button">Отменить правку блока</button>
+  </section>
+  <label>Разметка (для тех, кто знает LaTeX)<textarea id="source" rows="2" spellcheck="false"></textarea></label>
+  <label class="inline"><input id="display" type="checkbox"> Отдельным блоком</label>
+  <p>Так увидит ученик</p><div id="preview" class="preview"></div><p id="problem" role="alert"></p>
+  <button id="save" type="button">Вставить формулу</button>
+</main>

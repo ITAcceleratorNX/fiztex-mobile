@@ -30,6 +30,8 @@ export const DOCUMENT = {
   bodySize: 16, bodyLine: 26, captionSize: 14, captionLine: 22,
 };
 
+export const FORMULA = { gap: 8, size: 20 };
+
 // Map a brand colour name ("green" | "blue" | "red" | "gold") to its hex.
 export function brand(name) {
   return PHYSTECH[name] || PHYSTECH.green;

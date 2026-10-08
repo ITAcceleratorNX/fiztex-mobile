@@ -258,18 +258,19 @@ export function useHomeworkSave() {
  */
 export function useHomeworkQuestions(homeworkId) {
   const { token } = useAuth();
-  const [state, setState] = useState({ loading: true, error: null, questions: null });
+  const [state, setState] = useState({ loading: true, error: null, questions: null, homework: null });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
 
   const load = useCallback(async () => {
     if (!token || !homeworkId) {
-      setState({ loading: false, error: null, questions: null });
+      setState({ loading: false, error: null, questions: null, homework: null });
       return;
     }
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      setState({ loading: false, error: null, questions: await homeworkApi.questions(token, homeworkId) });
+      const [questions, homework] = await Promise.all([homeworkApi.questions(token, homeworkId), homeworkApi.one(token, homeworkId)]);
+      setState({ loading: false, error: null, questions, homework });
     } catch (e) {
       setState({ loading: false, error: errorKind(e), questions: null });
     }

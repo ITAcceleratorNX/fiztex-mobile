@@ -15,6 +15,7 @@ import {
   StateView,
 } from '@shared/components/ui';
 import { HomeworkCardSkeleton } from '@features/homework/HomeworkStates';
+import { FormulaField } from '@shared/components/FormulaField';
 import { MathText } from '@shared/math/MathText';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { useHomeworkQuestions } from '@shared/hooks/useTeacherHomework';
@@ -55,7 +56,7 @@ export function TeacherHomeworkQuestionsScreen({ nav, payload }) {
   const insets = useSafeAreaInsets();
   const homeworkId = payload?.homeworkId;
 
-  const { questions, loading, error, reload, save, saving, saveError, clearSaveError } =
+  const { questions, homework, loading, error, reload, save, saving, saveError, clearSaveError } =
     useHomeworkQuestions(homeworkId);
 
   const [drafts, setDrafts] = useState(null);
@@ -68,7 +69,8 @@ export function TeacherHomeworkQuestionsScreen({ nav, payload }) {
   }, [questions, drafts]);
 
   const problems = useMemo(() => validate(drafts ?? []), [drafts]);
-  const blocked = hasProblems(problems);
+  const readOnly = homework?.hasAnswers || homework?.status === 'COMPLETED' || homework?.status === 'CANCELLED';
+  const blocked = hasProblems(problems) || readOnly;
 
   const patch = useCallback((key, next) => {
     setDrafts((prev) => prev.map((question) => (question.key === key ? next : question)));
@@ -136,6 +138,8 @@ export function TeacherHomeworkQuestionsScreen({ nav, payload }) {
             <QuestionCard
               key={question.key}
               question={question}
+              profile={homework?.formulaProfile ?? 'GENERAL'}
+              editable={!readOnly}
               index={index + 1}
               problems={problems[index]}
               expanded={openKey === question.key}
@@ -149,6 +153,7 @@ export function TeacherHomeworkQuestionsScreen({ nav, payload }) {
           ))}
 
           <OutlineButton
+            disabled={readOnly}
             size="lg"
             onPress={() => {
               const added = emptyQuestion();
@@ -176,7 +181,7 @@ export function TeacherHomeworkQuestionsScreen({ nav, payload }) {
         >
           {blocked ? (
             <Txt style={{ fontSize: 12, color: c.inkMuted, textAlign: 'center' }}>
-              Раскройте вопросы с пометками — там сказано, чего не хватает.
+              {readOnly ? 'Вопросы закрыты для изменений: есть ответы или задание завершено.' : 'Раскройте вопросы с пометками — там сказано, чего не хватает.'}
             </Txt>
           ) : null}
           <FilledButton disabled={blocked || saving} onPress={onSave}>
@@ -192,7 +197,7 @@ export function TeacherHomeworkQuestionsScreen({ nav, payload }) {
  * Вопрос сложён в строку, пока его не открыли: тест из десяти вопросов, развёрнутых
  * целиком, — это экран, по которому невозможно перемещаться.
  */
-function QuestionCard({ question, index, problems, expanded, onToggle, onChange, onDrop }) {
+function QuestionCard({ question, profile, editable, index, problems, expanded, onToggle, onChange, onDrop }) {
   const { c } = useTheme();
   const choice = isChoice(question.type);
 
@@ -230,21 +235,20 @@ function QuestionCard({ question, index, problems, expanded, onToggle, onChange,
       ) : null}
 
       {expanded ? (
-        <View style={{ gap: 10 }}>
+        <View pointerEvents={editable ? 'auto' : 'none'} style={{ gap: 10 }}>
           <SegmentedSwitch
             value={question.type}
             options={QUESTION_TYPES}
             onChange={(type) => onChange(withType(question, type))}
           />
 
-          <TextInput
+          <FormulaField profile={profile} editable={editable}
             value={question.text}
             onChangeText={(text) => onChange({ ...question, text })}
-            placeholder="Текст вопроса. Формулы — между знаками доллара: $\\frac{m}{V}$"
-            placeholderTextColor={c.ink3}
+            label="Текст вопроса" placeholder="Введите условие и добавьте формулы"
             multiline
             maxLength={4000}
-            style={{ ...inputStyle(c), minHeight: 84, textAlignVertical: 'top', paddingTop: 12 }}
+
           />
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -285,13 +289,12 @@ function QuestionCard({ question, index, problems, expanded, onToggle, onChange,
                   >
                     {option.correct ? <Icon name="check" size={14} color="#fff" strokeWidth={3} /> : null}
                   </Pressable>
-                  <TextInput
+                  <FormulaField profile={profile} editable={editable}
                     value={option.text}
                     onChangeText={(text) => onChange(withOption(question, optionIndex, text))}
                     placeholder={`Вариант ${optionIndex + 1}`}
-                    placeholderTextColor={c.ink3}
                     maxLength={2000}
-                    style={{ ...inputStyle(c), flex: 1 }}
+                    style={{ flex: 1 }}
                   />
                   {question.options.length > 2 ? (
                     <Pressable
@@ -309,23 +312,21 @@ function QuestionCard({ question, index, problems, expanded, onToggle, onChange,
             </View>
           ) : (
             <View style={{ gap: 10 }}>
-              <TextInput
+              <FormulaField profile={profile} editable={editable}
                 value={question.referenceAnswer}
                 onChangeText={(referenceAnswer) => onChange({ ...question, referenceAnswer })}
                 placeholder="Эталонный ответ — ученику не показывается"
-                placeholderTextColor={c.ink3}
-                multiline
+                    multiline
                 maxLength={4000}
-                style={{ ...inputStyle(c), minHeight: 64, textAlignVertical: 'top', paddingTop: 12 }}
+
               />
-              <TextInput
+              <FormulaField profile={profile} editable={editable}
                 value={question.gradingCriteria}
                 onChangeText={(gradingCriteria) => onChange({ ...question, gradingCriteria })}
                 placeholder="Критерии оценки — их использует подсказка ИИ"
-                placeholderTextColor={c.ink3}
-                multiline
+                    multiline
                 maxLength={4000}
-                style={{ ...inputStyle(c), minHeight: 64, textAlignVertical: 'top', paddingTop: 12 }}
+
               />
               {/*
                 Решение задачи по физике — это выкладки и чертёж: набирать их текстом на
