@@ -16,10 +16,48 @@ const FORBIDDEN_COMMANDS = [
   'catcode', 'write', 'openout', 'read', 'special', 'usepackage', 'documentclass',
 ];
 
-const FORBIDDEN_PATTERN = new RegExp(`\\\\(${FORBIDDEN_COMMANDS.join('|')})(?![a-zA-Z])`);
+export const MAX_FORMULA_LENGTH = 4096;
 
 export function hasForbiddenCommand(formula) {
-  return FORBIDDEN_PATTERN.test(formula);
+  for (let i = 0; i < formula.length; i += 1) {
+    if (formula[i] !== '\\') continue;
+    const from = ++i;
+    while (i < formula.length && /[a-zA-Z]/.test(formula[i])) i += 1;
+    if (i > from) {
+      if (FORBIDDEN_COMMANDS.includes(formula.slice(from, i))) return true;
+      i -= 1;
+    }
+  }
+  return false;
+}
+
+export function chemicalEndAt(text, start) {
+  if (!(text.startsWith('\\ce', start) || text.startsWith('\\pu', start))) return -1;
+  let open = start + 3;
+  if (/[a-zA-Z]/.test(text[open] ?? '')) return -1;
+  while (open < text.length && /\s/.test(text[open])) open += 1;
+  if (text[open] !== '{') return -1;
+  let depth = 1;
+  for (let i = open + 1; i < text.length; i += 1) {
+    if (text[i] === '\\') { i += 1; continue; }
+    if (text[i] === '{') depth += 1;
+    if (text[i] === '}' && --depth === 0) return i + 1;
+  }
+  return -1;
+}
+
+export function hasNestedChemicalMath(latex) {
+  for (let i = 0; i < latex.length; i += 1) {
+    if (latex[i] !== '\\') continue;
+    const end = chemicalEndAt(latex, i);
+    if (end < 0) { i += 1; continue; }
+    for (let j = i; j < end; j += 1) {
+      if (latex[j] === '\\') { j += 1; continue; }
+      if (latex[j] === '$') return true;
+    }
+    i = end - 1;
+  }
+  return false;
 }
 
 /** Делит текст на куски: `{ kind: 'text' | 'math', value, display }`. */
@@ -70,6 +108,8 @@ export function splitMath(text) {
 function findClosing(text, from) {
   for (let j = from; j < text.length; j += 1) {
     if (text[j] === '\\') {
+      const end = chemicalEndAt(text, j);
+      if (end > j) { j = end - 1; continue; }
       j += 1;
       continue;
     }

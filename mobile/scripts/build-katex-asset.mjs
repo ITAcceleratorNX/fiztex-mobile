@@ -15,6 +15,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { chemicalEndAt, hasNestedChemicalMath, MAX_FORMULA_LENGTH } from '../src/shared/math/mathMarkup.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const katexDist = join(here, '..', 'node_modules', 'katex', 'dist');
@@ -34,6 +35,7 @@ const FONTS = [
 
 const css = readFileSync(join(katexDist, 'katex.min.css'), 'utf8');
 const js = readFileSync(join(katexDist, 'katex.min.js'), 'utf8');
+const mhchem = readFileSync(join(katexDist, 'contrib', 'mhchem.min.js'), 'utf8');
 const { version } = JSON.parse(
   readFileSync(join(here, '..', 'node_modules', 'katex', 'package.json'), 'utf8'),
 );
@@ -70,13 +72,14 @@ html,body{margin:0;padding:0;background:transparent;-webkit-text-size-adjust:100
 #root{padding:0;white-space:pre-wrap;word-wrap:break-word}
 /* Формула шире экрана уменьшается по ширине (см. fitWide): прокрутка внутри WebView
    отобрала бы у списка вопросов вертикальный свайп, а обрезать формулу нельзя. */
-.fx-math{display:inline-block;max-width:100%;vertical-align:middle}
-.fx-math-block{display:block;max-width:100%;margin:8px 0;overflow:hidden}
+.fx-math{display:inline-block;max-width:100%;vertical-align:middle;overflow-x:auto;overflow-y:hidden}
+.fx-math-block{display:block;max-width:100%;margin:8px 0;overflow-x:auto;overflow-y:hidden}
 .fx-math-block .katex-display{margin:0}
 .fx-error{display:inline-block;padding:1px 4px;border-radius:4px;background:#fee2e2;color:#b91c1c;
   font-family:ui-monospace,Menlo,monospace;font-size:.9em;white-space:pre}
 </style>
 <script>${js}</script>
+<script>${mhchem}</script>
 </head><body><div id="root"></div>
 <script>${renderScript()}</script>
 </body></html>`;
@@ -87,6 +90,8 @@ function renderScript() {
   return `
 (function () {
   var root = document.getElementById('root');
+  ${chemicalEndAt.toString()}
+  ${hasNestedChemicalMath.toString()}
 
   /**
    * Формула шире экрана уменьшается кеглем, пока не влезет. Прокрутка внутри WebView не
@@ -150,12 +155,14 @@ function renderScript() {
         var holder = document.createElement('span');
         holder.className = segment.display ? 'fx-math-block' : 'fx-math';
         try {
-          if (segment.forbidden) throw new Error('forbidden');
+          if (segment.forbidden || hasNestedChemicalMath(segment.value) || segment.value.length > ${MAX_FORMULA_LENGTH}) throw new Error('unsupported');
           katex.render(segment.value, holder, {
             displayMode: segment.display,
             throwOnError: true,
             strict: 'ignore',
             trust: false,
+            maxExpand: 1000,
+            maxSize: 20,
           });
         } catch (error) {
           // Сырая разметка вместо пустоты: подмена формулы не должна быть незаметной.
@@ -189,7 +196,7 @@ const banner = `/* eslint-disable */
 /**
  * СГЕНЕРИРОВАНО scripts/build-katex-asset.mjs — руками не править.
  *
- * Автономная страница KaTeX ${version} для WebView: библиотека, стили и подмножество шрифтов
+ * Автономная страница KaTeX ${version} + mhchem для WebView: библиотека, стили и подмножество шрифтов
  * внутри одной строки. Пересобрать после обновления katex:
  *
  *   node scripts/build-katex-asset.mjs
