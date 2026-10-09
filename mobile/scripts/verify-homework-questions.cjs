@@ -53,6 +53,8 @@ function open(overrides = {}) {
 }
 
 console.log('\nПравила сохранения');
+check('рисунок сохраняется после правки с телефона',
+  toRequest([toDraft({ type: 'OPEN_TEXT', text: 'Схема', maxScore: 1, imageId: 'asset', imageUrl: 'url' })]).questions[0].imageId === 'asset');
 
 check('пустой текст не пропускается',
   validate([{ ...emptyQuestion(), text: '  ' }])[0].includes('Текст вопроса пустой'));

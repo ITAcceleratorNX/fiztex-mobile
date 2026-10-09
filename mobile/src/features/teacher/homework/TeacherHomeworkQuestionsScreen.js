@@ -16,6 +16,7 @@ import {
 } from '@shared/components/ui';
 import { HomeworkCardSkeleton } from '@features/homework/HomeworkStates';
 import { FormulaField } from '@shared/components/FormulaField';
+import { QuestionFigure } from '@shared/components/QuestionFigure';
 import { MathText } from '@shared/math/MathText';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { useHomeworkQuestions } from '@shared/hooks/useTeacherHomework';
@@ -353,6 +354,8 @@ function QuestionCard({ question, profile, editable, index, problems, expanded, 
               ) : null}
             </View>
           )}
+
+          <QuestionFigure imageUrl={question.imageUrl} />
 
           <Pressable
             accessibilityRole="button"
