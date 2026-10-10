@@ -4,6 +4,44 @@ import { homeworkApi } from '@shared/api/homeworkApi';
 
 const PAGE_SIZE = 50;
 
+// Карточка и списки остаются смонтированными под экраном теста. После успешной
+// отправки сразу обновляем их состояние, затем сверяем его с сервером.
+const testSubmissionListeners = new Set();
+
+function publishTestSubmitted(token, homeworkId, result) {
+  for (const listener of testSubmissionListeners) listener({ token, homeworkId, result });
+}
+
+function submittedRows(rows, homeworkId, result) {
+  return rows.map((row) => row.id === homeworkId
+    ? { ...row, submissionStatus: 'SUBMITTED', lastSubmittedAt: result.submittedAt }
+    : row);
+}
+
+function submittedHomework(data, result) {
+  if (!data) return data;
+  const attempt = {
+    id: result.attemptId,
+    attemptNumber: result.attemptNumber,
+    submittedAt: result.submittedAt,
+    photos: [], files: [], reviews: [],
+  };
+  return {
+    ...data,
+    submission: {
+      ...data.submission,
+      status: 'SUBMITTED',
+      canSubmit: false,
+      blockedReason: 'Работа отправлена и ждёт проверки — изменить её можно только после возврата учителем',
+      attemptCount: result.attemptNumber,
+      lastSubmittedAt: result.submittedAt,
+      resubmitted: result.attemptNumber > 1,
+      currentAttempt: attempt,
+      history: [...(data.submission?.history ?? []).filter((item) => item.id !== attempt.id), attempt],
+    },
+  };
+}
+
 /**
  * Ошибка экрана одним словом. 403 — не сбой сети, а «раздел не для этой роли»,
  * и предлагать «Повторить» на нём бессмысленно: повторится то же самое.
@@ -28,11 +66,13 @@ export function useHomeworkList({ childId } = {}) {
   const [scope, setScope] = useState('ACTUAL');
   const [state, setState] = useState({ loading: true, error: null, rows: [] });
   const [refreshing, setRefreshing] = useState(false);
+  const requestVersion = useRef(0);
 
   const parentMode = childId !== undefined;
   const idle = !token || (parentMode && !childId);
 
   const load = useCallback(async (silent = false) => {
+    const version = ++requestVersion.current;
     if (idle) {
       setState({ loading: false, error: null, rows: [] });
       return;
@@ -42,15 +82,33 @@ export function useHomeworkList({ childId } = {}) {
       const page = parentMode
         ? await homeworkApi.children(token, childId, { scope, size: PAGE_SIZE })
         : await homeworkApi.my(token, { scope, size: PAGE_SIZE });
-      setState({ loading: false, error: null, rows: page?.content ?? [] });
+      if (version === requestVersion.current) {
+        setState({ loading: false, error: null, rows: page?.content ?? [] });
+      }
     } catch (e) {
-      setState({ loading: false, error: errorKind(e), rows: [] });
+      if (version === requestVersion.current) {
+        setState((prev) => silent && prev.rows.length > 0 && errorKind(e) === 'load'
+          ? { ...prev, loading: false }
+          : { loading: false, error: errorKind(e), rows: [] });
+      }
     }
   }, [idle, parentMode, token, childId, scope]);
 
   useEffect(() => {
     load();
+    return () => { requestVersion.current += 1; };
   }, [load]);
+
+  useEffect(() => {
+    if (parentMode) return;
+    const listener = (event) => {
+      if (event.token !== token) return;
+      setState((prev) => ({ ...prev, rows: submittedRows(prev.rows, event.homeworkId, event.result) }));
+      load(true);
+    };
+    testSubmissionListeners.add(listener);
+    return () => testSubmissionListeners.delete(listener);
+  }, [token, parentMode, load]);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -77,10 +135,12 @@ export function useHomeworkList({ childId } = {}) {
 export function useLessonAssignments(lessonId, { childId } = {}) {
   const { token } = useAuth();
   const [state, setState] = useState({ loading: Boolean(lessonId), error: null, rows: [] });
+  const requestVersion = useRef(0);
 
   const parentMode = childId !== undefined && childId !== null;
 
   const load = useCallback(async (silent = false) => {
+    const version = ++requestVersion.current;
     if (!token || !lessonId) {
       setState({ loading: false, error: null, rows: [] });
       return;
@@ -99,15 +159,31 @@ export function useLessonAssignments(lessonId, { childId } = {}) {
       // задание с его `lessonId`, но и задание без привязки, срок которого приходится на
       // этот урок, — у такой строки `lessonId` пустой (правило см. LessonHomeworkScope).
       const rows = [...(actual?.content ?? []), ...(history?.content ?? [])];
-      setState({ loading: false, error: null, rows });
+      if (version === requestVersion.current) setState({ loading: false, error: null, rows });
     } catch (e) {
-      setState({ loading: false, error: errorKind(e), rows: [] });
+      if (version === requestVersion.current) {
+        setState((prev) => silent && prev.rows.length > 0 && errorKind(e) === 'load'
+          ? { ...prev, loading: false }
+          : { loading: false, error: errorKind(e), rows: [] });
+      }
     }
   }, [token, lessonId, parentMode, childId]);
 
   useEffect(() => {
     load();
+    return () => { requestVersion.current += 1; };
   }, [load]);
+
+  useEffect(() => {
+    if (parentMode) return;
+    const listener = (event) => {
+      if (event.token !== token) return;
+      setState((prev) => ({ ...prev, rows: submittedRows(prev.rows, event.homeworkId, event.result) }));
+      load(true);
+    };
+    testSubmissionListeners.add(listener);
+    return () => testSubmissionListeners.delete(listener);
+  }, [token, parentMode, load]);
 
   return { ...state, reload: load };
 }
@@ -116,23 +192,43 @@ export function useLessonAssignments(lessonId, { childId } = {}) {
 export function useMyHomework(homeworkId) {
   const { token } = useAuth();
   const [state, setState] = useState({ loading: true, error: null, data: null });
+  const requestVersion = useRef(0);
 
   const load = useCallback(async (silent = false) => {
+    const version = ++requestVersion.current;
     if (!token || !homeworkId) {
       setState({ loading: false, error: null, data: null });
       return;
     }
     if (!silent) setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      setState({ loading: false, error: null, data: await homeworkApi.myOne(token, homeworkId) });
+      const data = await homeworkApi.myOne(token, homeworkId);
+      if (version === requestVersion.current) setState({ loading: false, error: null, data });
     } catch (e) {
-      setState({ loading: false, error: errorKind(e), data: null });
+      if (version === requestVersion.current) {
+        setState((prev) => silent && prev.data && errorKind(e) === 'load'
+          ? { ...prev, loading: false }
+          : { loading: false, error: errorKind(e), data: null });
+      }
     }
   }, [token, homeworkId]);
 
   useEffect(() => {
     load();
+    return () => { requestVersion.current += 1; };
   }, [load]);
+
+  useEffect(() => {
+    const listener = (event) => {
+      if (event.token !== token || event.homeworkId !== homeworkId) return;
+      setState((prev) => prev.data
+        ? { loading: false, error: null, data: submittedHomework(prev.data, event.result) }
+        : prev);
+      load(true);
+    };
+    testSubmissionListeners.add(listener);
+    return () => testSubmissionListeners.delete(listener);
+  }, [token, homeworkId, load]);
 
   return { ...state, reload: load };
 }
@@ -221,6 +317,7 @@ export function useHomeworkTest(homeworkId) {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState(null);
   const clientToken = useRef(null);
+  const sendingRef = useRef(false);
 
   const load = useCallback(async () => {
     if (!token || !homeworkId) {
@@ -241,25 +338,28 @@ export function useHomeworkTest(homeworkId) {
   }, [load]);
 
   const submit = useCallback(async (answers) => {
-    if (!token || !homeworkId || sending) return false;
+    if (!token || !homeworkId || sendingRef.current) return false;
+    sendingRef.current = true;
     if (!clientToken.current) clientToken.current = newClientToken();
 
     setSending(true);
     setSendError(null);
     try {
-      await homeworkApi.submitAnswers(token, homeworkId, {
+      const result = await homeworkApi.submitAnswers(token, homeworkId, {
         answers,
         clientToken: clientToken.current,
       });
       clientToken.current = null;
+      publishTestSubmitted(token, homeworkId, result);
       return true;
     } catch (e) {
       setSendError(e?.message || 'Не удалось отправить ответы');
       return false;
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
-  }, [token, homeworkId, sending]);
+  }, [token, homeworkId]);
 
   return {
     ...state,
