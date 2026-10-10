@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { AppState, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from '@features/auth/AuthContext';
@@ -13,29 +13,65 @@ import { currentPermissionGranted, registerThisDevice } from './registration';
  */
 export function usePushRegistration() {
   const { isAuthenticated, token } = useAuth();
-  const lastPermission = useRef(null);
-
   useEffect(() => {
     if (Platform.OS === 'web' || !isAuthenticated || !token) return undefined;
     let active = true;
+    let lastPermission = null;
+    let lastDeviceToken = null;
+    let pending = null;
+    let running = false;
+    let foreground = AppState.currentState === 'active';
+    const sameToken = (deviceToken) => deviceToken && lastDeviceToken
+      && deviceToken.type === lastDeviceToken.type && deviceToken.data === lastDeviceToken.data;
 
-    const register = async (askPermission) => {
-      await registerThisDevice(token, { askPermission });
-      if (active) lastPermission.current = await currentPermissionGranted();
+    // Один запрос за раз, последний новый токен не теряется. Стартовый native-запрос
+    // тоже вызывает listener; после успешной регистрации его повтор пропускается.
+    const drain = async () => {
+      if (running) return;
+      running = true;
+      try {
+        while (active && pending) {
+          const next = pending;
+          pending = null;
+          if (!next.force && sameToken(next.devicePushToken)) continue;
+          const result = await registerThisDevice(token, {
+            ...next, isCurrent: () => active,
+          });
+          if (!active) return;
+          if (result.action === 'register') lastDeviceToken = result.devicePushToken;
+          lastPermission = await currentPermissionGranted();
+        }
+      } finally {
+        running = false;
+      }
     };
-    register(true);
+    const register = (askPermission, devicePushToken, force = false) => {
+      // Пока другая регистрация идёт, даже прежний токен может быть последним
+      // событием. Сначала сохранить его, затем сравнить после завершения запроса.
+      if (!active || (!force && !running && !pending && sameToken(devicePushToken))) return;
+      pending = {
+        askPermission: askPermission || pending?.askPermission || false,
+        devicePushToken: devicePushToken ?? pending?.devicePushToken,
+        force: force || pending?.force || false,
+      };
+      void drain();
+    };
 
-    const tokenSubscription = Notifications.addPushTokenListener(() => {
-      if (active) register(false);
+    const tokenSubscription = Notifications.addPushTokenListener((devicePushToken) => {
+      register(false, devicePushToken);
     });
     const appStateSubscription = AppState.addEventListener('change', async (state) => {
-      if (!active || state !== 'active') return;
+      const wasForeground = foreground;
+      foreground = state === 'active';
+      if (!active || !foreground || wasForeground) return;
       const granted = await currentPermissionGranted();
-      if (active && lastPermission.current !== null && granted !== lastPermission.current) register(false);
+      if (active && lastPermission !== null && granted !== lastPermission) register(false, undefined, true);
     });
+    register(true);
 
     return () => {
       active = false;
+      pending = null;
       tokenSubscription.remove();
       appStateSubscription.remove();
     };
