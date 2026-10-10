@@ -30,6 +30,12 @@ const hooks = {
     if (!equalDeps(host.slots[i]?.deps, deps)) host.slots[i] = { callback, deps };
     return host.slots[i].callback;
   },
+  useMemo(compute, deps) {
+    const host = currentHost;
+    const i = host.index++;
+    if (!equalDeps(host.slots[i]?.deps, deps)) host.slots[i] = { value: compute(), deps };
+    return host.slots[i].value;
+  },
   useEffect(effect, deps) {
     const host = currentHost;
     const i = host.index++;
@@ -73,6 +79,7 @@ class Host {
   }
   dispose() { this.slots.forEach((slot) => slot?.cleanup?.()); }
 }
+module.exports = { hooks, Host, authToken: () => currentHost?.token };
 function deferred() {
   let resolve, reject;
   const promise = new Promise((ok, fail) => { resolve = ok; reject = fail; });
@@ -104,7 +111,7 @@ async function test(name, run) {
   finally { hosts.forEach((host) => host.dispose()); hosts = []; }
 }
 
-(async () => {
+if (require.main === module) (async () => {
   await test('card, list and lesson update before background GET requests finish', async () => {
     const detail = mount(() => useMyHomework(27));
     const list = mount(() => useHomeworkList());

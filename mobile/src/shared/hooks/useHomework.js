@@ -38,6 +38,7 @@ function submittedHomework(data, result) {
       resubmitted: result.attemptNumber > 1,
       currentAttempt: attempt,
       history: [...(data.submission?.history ?? []).filter((item) => item.id !== attempt.id), attempt],
+      testResult: null,
     },
   };
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@features/auth/AuthContext';
 import { finalGradesApi, gradebookApi, gradesApi } from '@shared/api/gradesApi';
 import { diaryGradesByLesson } from '@shared/api/gradesMap';
@@ -479,26 +479,43 @@ export function useMyBreakdown({ enabled, subjectId, academicPeriodId, childStud
  * За задание ставят одну оценку (уникальный индекс на бэке), но приходит список: правило
  * может измениться, а форма ответа — нет.
  */
-export function useMyHomeworkGrade(homeworkId, { childStudentProfileId = null } = {}) {
+export function useMyHomeworkGrade(homeworkId, { childStudentProfileId = null, enabled = true } = {}) {
   const { token } = useAuth();
-  const [grade, setGrade] = useState(null);
+  const context = useMemo(() => ({ token, homeworkId, childStudentProfileId, enabled }),
+    [token, homeworkId, childStudentProfileId, enabled]);
+  const [state, setState] = useState(null);
+  const sequence = useRef(0);
 
-  const reload = useCallback(async () => {
-    if (!token || !homeworkId) {
-      setGrade(null);
+  const reload = useCallback(async (silent = false) => {
+    const requestId = ++sequence.current;
+    if (!context.token || !context.homeworkId || !context.enabled) {
+      setState({ context, grade: null, loading: false, error: null });
       return;
     }
+    setState((old) => ({ context, grade: old?.context === context ? old.grade : null,
+      loading: !silent || old?.context !== context || !old?.grade, error: null }));
     try {
-      const list = await gradesApi.myHomeworkGrades(token, homeworkId, { childStudentProfileId });
-      setGrade((Array.isArray(list) ? list : [])[0] || null);
-    } catch {
-      setGrade(null);
+      const list = await gradesApi.myHomeworkGrades(context.token, context.homeworkId,
+        { childStudentProfileId: context.childStudentProfileId });
+      if (requestId === sequence.current) {
+        setState({ context, grade: (Array.isArray(list) ? list : [])[0] || null, loading: false, error: null });
+      }
+    } catch (error) {
+      if (requestId === sequence.current) {
+        setState((old) => ({ context,
+          grade: old?.context === context && error?.status !== 403 && error?.status !== 404 ? old.grade : null,
+          loading: false, error: 'Не удалось загрузить оценку' }));
+      }
     }
-  }, [token, homeworkId, childStudentProfileId]);
+  }, [context]);
 
   useEffect(() => {
     reload();
+    return () => { sequence.current += 1; };
   }, [reload]);
 
-  return { grade, reload };
+  const visible = state?.context === context ? state : {
+    grade: null, loading: Boolean(token && homeworkId && enabled), error: null,
+  };
+  return { grade: visible.grade, loading: visible.loading, error: visible.error, reload };
 }
