@@ -4,6 +4,7 @@ import { InkCtx } from './Txt';
 
 // Line icon set (24px grid) — direct port of the SVG paths from web `ds.jsx`.
 const ICONS = {
+  message: (p) => <Path {...p} d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
   home: (p) => <Path {...p} d="M3 11l9-7 9 7v9a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2z" />,
   calendar: (p) => (
     <>

@@ -32,6 +32,14 @@ export const DOCUMENT = {
 
 export const FORMULA = { gap: 8, size: 20 };
 
+// Parent comments: one typography and spacing scale for editor, feed and detail.
+export const COMMENT = {
+  gutter: 16, inset: 12, gap: 8, radius: 12, buttonSize: 32, editorHeight: 220,
+  bodySize: 14, bodyLine: 23, labelSize: 13, captionSize: 12, titleSize: 18,
+  avatarSize: 20, dotSize: 6, limit: 1000,
+  avatarTextSize: 10, modalMaxWidth: 560, modalInset: 24, actionGap: 12,
+};
+
 // Map a brand colour name ("green" | "blue" | "red" | "gold") to its hex.
 export function brand(name) {
   return PHYSTECH[name] || PHYSTECH.green;

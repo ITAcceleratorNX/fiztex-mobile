@@ -1,4 +1,5 @@
 import React from 'react';
+import { ParentTeacherCommentsScreen } from '@features/home/ParentTeacherCommentsScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { CustomTabBar } from './CustomTabBar';
@@ -232,6 +233,7 @@ export function ParentApp() {
           { name: 'club', comp: StudentClub },
           { name: 'events', comp: StudentEvents },
           { name: 'feedback', comp: ParentFeedback },
+          { name: 'teacher-comments', comp: ParentTeacherCommentsScreen },
           { name: 'notifications', comp: NotificationsScreen },
         ])}
       </PStack.Navigator>
