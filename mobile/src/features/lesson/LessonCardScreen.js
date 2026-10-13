@@ -383,7 +383,7 @@ export function LessonCardScreen({ nav, payload }) {
             <LessonActionTile
               icon="award"
               tint="red"
-              label="Оценки"
+              label="Оценки и комментарии"
               value={gradesTileValue(lesson, gradesSheet, gradesLoading)}
               onPress={lesson.can.viewGrades
                 ? () => nav?.('lesson-grades', { lessonInstanceId: lessonId })

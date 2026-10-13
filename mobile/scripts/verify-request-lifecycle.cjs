@@ -207,6 +207,36 @@ test('current lesson: one initial request, bounded polling, no render loop or ba
   assert.equal(h.listeners.size, 0);
 });
 
+test('parent comments: reads settle, refresh coalesces, switching child/filter and unmount ignore late replies', async () => {
+  const h = host();
+  const { useChildParentComments } = h.load('src/shared/hooks/useParentComments.js');
+  let childId = 1, subjectId = null;
+  h.respond(() => ({ comments: [], subjects: [], unreadCount: 0 }));
+  h.render(() => useChildParentComments(childId, subjectId));
+  await h.flush();
+  h.render(); await h.flush();
+  assert.equal(h.requests.length, 1);
+  const current = h.render();
+  await Promise.all([current.reload(), current.reload()]); await h.flush();
+  assert.equal(h.requests.length, 2);
+  let finishOld;
+  h.respond(() => new Promise(resolve => { finishOld = resolve; }));
+  const pending = h.render().reload(); await tick();
+  childId = 2;
+  h.respond(() => ({ comments: [{ id: 2, text: 'child two' }], subjects: [] }));
+  assert.equal(h.render().data, null);
+  await h.flush();
+  finishOld({ comments: [{ id: 1, text: 'old child' }] });
+  await pending; const next = await h.flush();
+  assert.equal(next.data.comments[0].id, 2);
+  subjectId = 7;
+  h.render(); await h.flush();
+  assert.ok(h.requests.at(-1).url.endsWith('&subjectId=7'));
+  h.respond(() => new Promise(resolve => { finishOld = resolve; }));
+  const last = h.render().reload(); await tick();
+  h.unmount(); finishOld({ comments: [] }); await last;
+});
+
 test('slow requests: timer, taps and resume share one request; failures keep the refresh interval', async () => {
   const h = host();
   let finish;
