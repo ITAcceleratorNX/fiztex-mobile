@@ -34,6 +34,7 @@ export const FORMULA = { gap: 8, size: 20 };
 
 // Parent comments: one typography and spacing scale for editor, feed and detail.
 export const COMMENT = {
+  iconSize: 14, iconStrokeWidth: 4,
   gutter: 16, inset: 12, gap: 8, radius: 12, buttonSize: 32, editorHeight: 220,
   bodySize: 14, bodyLine: 23, labelSize: 13, captionSize: 12, titleSize: 18,
   avatarSize: 20, dotSize: 6, limit: 1000,

@@ -6,6 +6,7 @@ import { COMMENT, FONT } from '@shared/theme/tokens';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { Card } from '@shared/components/ui';
+import { ParentCommentIcon } from './ParentCommentIcon';
 
 export function CommentButton({ published, studentName, onPress, disabled }) {
   const { c } = useTheme();
@@ -14,9 +15,9 @@ export function CommentButton({ published, studentName, onPress, disabled }) {
     accessibilityState={{ disabled }} hitSlop={4}
     style={{ width: COMMENT.buttonSize, height: COMMENT.buttonSize, borderRadius: COMMENT.gap,
       alignItems: 'center', justifyContent: 'center', borderWidth: 1,
-      borderColor: published ? c.blue : c.border, backgroundColor: published ? c.blue : c.surface,
+      borderColor: published ? c.blue : c.borderStrong, backgroundColor: published ? c.blue : 'transparent',
       opacity: disabled ? 0.4 : 1 }}>
-    <Icon name="message" size={16} color={published ? c.heroInk : c.ink3} />
+    <ParentCommentIcon color={published ? c.heroInk : c.ink3} />
   </Pressable>;
 }
 
