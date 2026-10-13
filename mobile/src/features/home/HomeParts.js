@@ -6,6 +6,7 @@ import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { shadowSm } from '@shared/components/Screen';
 import { isPsychTest } from '@shared/api/surveyStatus';
+import { badgeLabel } from '@shared/api/notificationCenterMap';
 import { initialsOf, childPillLabel, homeLessonWindow } from './homeDate';
 
 /**
@@ -17,20 +18,58 @@ import { initialsOf, childPillLabel, homeLessonWindow } from './homeDate';
  * при первой же правке одного из них.
  */
 
-/** Шапка: имя и школьная дата. */
-export function HomeHeader({ title, subtitle, topGap = 8 }) {
+/** Шапка: имя и школьная дата; справа — колокольчик центра уведомлений, если он есть у роли. */
+export function HomeHeader({ title, subtitle, topGap = 8, right = null }) {
   const { c } = useTheme();
   // Отступ сверху — только этот: сам безопасный отступ под чёлку добавляет `Screen`,
   // и дублировать его в contentStyle нельзя — там он затирает системный.
   return (
-    <View style={{ gap: 4, paddingLeft: 4, marginTop: topGap }}>
-      <Txt style={{ fontSize: 24, fontWeight: '800', color: c.blue, letterSpacing: -0.4 }}>
-        {title}
-      </Txt>
-      {subtitle ? (
-        <Txt style={{ fontSize: 14, fontWeight: '500', color: c.inkMuted }}>{subtitle}</Txt>
-      ) : null}
+    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginTop: topGap }}>
+      <View style={{ flex: 1, gap: 4, paddingLeft: 4 }}>
+        <Txt style={{ fontSize: 24, fontWeight: '800', color: c.blue, letterSpacing: -0.4 }}>
+          {title}
+        </Txt>
+        {subtitle ? (
+          <Txt style={{ fontSize: 14, fontWeight: '500', color: c.inkMuted }}>{subtitle}</Txt>
+        ) : null}
+      </View>
+      {right}
     </View>
+  );
+}
+
+/**
+ * Колокольчик центра уведомлений (Figma «Учитель непрочитанные уведы», `notification-bell`): белый круг 40 с
+ * обводкой и оранжевый бейдж с числом непрочитанных. Нет непрочитанных — нет бейджа.
+ */
+export function NotificationBell({ count, onPress }) {
+  const { c } = useTheme();
+  const label = badgeLabel(count);
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label ? `Уведомления, непрочитанных: ${label}` : 'Уведомления'}
+      onPress={onPress}
+      hitSlop={6}
+      style={{ width: 44, height: 44, marginTop: 3, justifyContent: 'flex-end', alignItems: 'flex-start' }}
+    >
+      <View style={{
+        width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: c.border,
+        backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center',
+      }}
+      >
+        <Icon name="bell" size={18} color={c.ntToneBlue} />
+      </View>
+      {label ? (
+        <View style={{
+          position: 'absolute', top: 0, right: 0, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4,
+          backgroundColor: c.ntUnreadDot, alignItems: 'center', justifyContent: 'center',
+        }}
+        >
+          <Txt style={{ fontSize: 10, fontWeight: '700', color: '#fff' }}>{label}</Txt>
+        </View>
+      ) : null}
+    </Pressable>
   );
 }
 
