@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BOTTOM_CHROME_HEIGHT, Screen } from '@shared/components/Screen';
 import { StateView } from '@shared/components/ui';
 import { useMySchedule } from '@shared/hooks/useSchedule';
+import { useUnreadNotifications } from '@shared/hooks/useNotificationCenter';
 import { useMyProfile } from '@shared/hooks/useProfile';
 import { useMyDiaryGrades, useMySubjectGrades } from '@shared/hooks/useGrades';
 import { useMySurveys } from '@shared/hooks/useSurveys';
@@ -13,7 +14,7 @@ import { useMyGradeCorrections } from '@shared/hooks/useGradeCorrections';
 import { homeCorrectionLine } from '@shared/api/gradeCorrectionMap';
 import { summaryTileLine } from '@shared/api/learnerAttendanceMap';
 import {
-  ActivePsychTestsBlock, ActiveSurveysBlock, HomeHeader, HomeSectionTitle, LearnerLessonsCard, LearnerHomeTile,
+  ActivePsychTestsBlock, ActiveSurveysBlock, HomeHeader, HomeSectionTitle, NotificationBell, LearnerLessonsCard, LearnerHomeTile,
   ScanQrTile,
 } from './HomeParts';
 import { formatHomeDate, greetingName, todayKey } from './homeDate';
@@ -30,6 +31,7 @@ export function StudentHomeScreen({ nav }) {
   const insets = useSafeAreaInsets();
   const { data, loading, error, reload, emptyMessage } = useMySchedule();
   const { profile, displayName } = useMyProfile();
+  const unreadNotifications = useUnreadNotifications();
   const today = todayKey();
   // Чипы оценок — отдельный запрос: его ошибка не должна ронять расписание,
   // поэтому хук гасит её молча и отдаёт пустую карту.
@@ -121,6 +123,7 @@ export function StudentHomeScreen({ nav }) {
       <HomeHeader
         title={`Привет, ${greetingName(profile, displayName)}!`}
         subtitle={formatHomeDate(data?.date)}
+        right={<NotificationBell count={unreadNotifications} onPress={() => nav?.('notifications')} />}
       />
 
       <ScanQrTile onPress={() => nav?.('attendance-scan')} />

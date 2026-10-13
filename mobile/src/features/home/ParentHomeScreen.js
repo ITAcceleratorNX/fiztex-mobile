@@ -5,6 +5,7 @@ import { BOTTOM_CHROME_HEIGHT, Screen } from '@shared/components/Screen';
 import { PickerSheet, StateView } from '@shared/components/ui';
 import { useChildSchedule, useParentChildren } from '@shared/hooks/useSchedule';
 import { useSelectedChild } from '@shared/state/SelectedChild';
+import { useUnreadNotifications } from '@shared/hooks/useNotificationCenter';
 import { useMyProfile } from '@shared/hooks/useProfile';
 import { useMyDiaryGrades, useMySubjectGrades } from '@shared/hooks/useGrades';
 import { useMySurveys } from '@shared/hooks/useSurveys';
@@ -13,7 +14,7 @@ import { useChildParentComments } from '@shared/hooks/useParentComments';
 import { useAttendanceSummary } from '@shared/hooks/useAttendance';
 import { summaryTileLine } from '@shared/api/learnerAttendanceMap';
 import {
-  ActiveSurveysBlock, ChildSwitcherPill, HomeHeader, HomeSectionTitle, LearnerHomeTile,
+  ActiveSurveysBlock, ChildSwitcherPill, HomeHeader, HomeSectionTitle, NotificationBell, LearnerHomeTile,
   LearnerLessonsCard,
 } from './HomeParts';
 import { childPillLabel, formatHomeDate, parentName, todayKey } from './homeDate';
@@ -31,6 +32,7 @@ export function ParentHomeScreen({ nav }) {
   const insets = useSafeAreaInsets();
   const { children, loading: childrenLoading, error: childrenError } = useParentChildren();
   const { profile, displayName } = useMyProfile();
+  const unreadNotifications = useUnreadNotifications();
   // Выбор ребёнка общий на всё приложение родителя (`SelectedChildProvider`): его
   // читают и расписание, и оценки, и кнопка «Текущий урок» в нижней панели.
   const { childId, setChildId } = useSelectedChild(children);
@@ -122,6 +124,7 @@ export function ParentHomeScreen({ nav }) {
       <HomeHeader
         title={parentName(profile, displayName)}
         subtitle={formatHomeDate(data?.date)}
+        right={<NotificationBell count={unreadNotifications} onPress={() => nav?.('notifications')} />}
       />
 
       {/* Сразу под приветствием — как в макете: у родителя нет плитки сканера, и опрос

@@ -180,6 +180,32 @@ const service = {
   srUrgentTint: 'rgba(234,179,8,0.16)',
 };
 
+// Центр уведомлений (Figma phyztex «Уведомления», 1791:39738): непрочитанная строка — голубая подложка с
+// обводкой, прочитанная — обычная белая карточка. Иконки — в круге тона события.
+const notification = {
+  ntUnreadBg: '#F0F4FF',
+  ntUnreadBorder: '#DCE4F5',
+  ntUnreadDot: '#FB923C',
+  ntIconUnread: 'rgba(39,65,133,0.07)',
+  ntTagBg: 'rgba(39,65,133,0.08)',
+  ntToneBlue: '#274185',
+  ntToneOrange: '#EA580C',
+  ntToneGreen: '#16A34A',
+  ntToneRed: '#EF4444',
+};
+
+const notificationDark = {
+  ntUnreadBg: '#1B2745',
+  ntUnreadBorder: '#2B3B63',
+  ntUnreadDot: '#FB923C',
+  ntIconUnread: 'rgba(147,170,230,0.14)',
+  ntTagBg: 'rgba(147,170,230,0.16)',
+  ntToneBlue: '#93AAE6',
+  ntToneOrange: '#FB923C',
+  ntToneGreen: '#4ADE80',
+  ntToneRed: '#F87171',
+};
+
 const serviceInk = {
   srNewInk: '#2563EB',
   srProgressInk: '#EA580C',
@@ -258,6 +284,7 @@ const light = {
   ...homeworkInk,
   ...service,
   ...serviceInk,
+  ...notification,
   ...hero,
   ...overlays,
   ...scheduleWatermark,
@@ -294,6 +321,7 @@ const dark = {
   ...homeworkInkDark,
   ...service,
   ...serviceInkDark,
+  ...notificationDark,
   ...hero,
   ...overlaysDark,
   ...scheduleWatermarkDark,
