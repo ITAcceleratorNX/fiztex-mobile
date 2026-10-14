@@ -259,11 +259,13 @@ const rowModule = load('src/features/grades/LessonGradeRow.js', {
   'theme/ThemeContext': { useTheme: () => theme },
   'components/Txt': { Txt: 'Txt' },
   'ui/grades': chips,
+  'api/gradesMap': m,
+  'theme/tokens': load('src/shared/theme/tokens.js'),
 });
 
-function renderRow(row, { canManage = true, maxGrades = 3 } = {}) {
+function renderRow(row, { canManage = true, maxGrades = 3, onShowHistory } = {}) {
   return renderTree(createElement(rowModule.LessonGradeRow, {
-    row, canManage, maxGrades, onOpen: () => {},
+    row, canManage, maxGrades, onShowHistory, onOpen: () => {},
   }));
 }
 
@@ -300,7 +302,7 @@ check('четвёртого места не бывает',
 const readOnly = renderRow(oneGradeRow, { canManage: false });
 check('в режиме чтения нажать нечего', pressables(readOnly).length === 0);
 check('в режиме чтения ряд сохраняет геометрию',
-  flatten(readOnly).filter((n) => n.type === 'View' && styleOf(n).width === 32).length === 3,
+  flatten(readOnly).filter((n) => n.type === 'View' && styleOf(n).minWidth === 32).length === 3,
   'три клетки: одна с оценкой, две пустые рамки');
 check('в режиме чтения «+» не рисуется',
   !textOf(readOnly).includes('+'));
@@ -372,6 +374,8 @@ const rowsModule = load('src/shared/ui/rows.js', {
   'data/mock': { SUBJECT_COLORS: {} },
   'components/Screen': { shadowSm: {} },
   'ui/grades': chips,
+  'api/gradesMap': m,
+  'theme/tokens': load('src/shared/theme/tokens.js'),
 });
 
 function renderLesson(props) {
@@ -432,6 +436,24 @@ check('с несколькими детьми переключатель наж�
   flatten(renderTree(createElement(switcher.ChildSwitcherPill, {
     child, index: 0, canSwitch: true, onPress: () => {},
   }))).filter((n) => n.type === 'Pressable').length === 1);
+
+const historyMap = load('src/shared/api/gradeHistoryMap.js', { 'gradesMap': m });
+section('История оценок');
+const updates = [
+  { id: 1, action: 'UPDATE', before: { score: 8, maxScore: 10 }, after: { score: 10, maxScore: 10 }, actorId: 7, actorName: 'Учитель А', actorCapacity: 'SUBSTITUTE_TEACHER' },
+  { id: 2, action: 'UPDATE', before: { score: 10, maxScore: 10 }, after: { score: 8, maxScore: 10 }, actorId: 8, actorName: 'Учитель Б', actorCapacity: 'MAIN_TEACHER' },
+];
+check('обе правки показаны в серверном порядке', updates.map(historyMap.gradeHistoryDescription).join('; ') === '8 → 10; 10 → 8');
+check('автор каждой правки берётся из её события', historyMap.gradeHistoryActor(updates[0]) === 'Учитель А · Замещающий учитель' && historyMap.gradeHistoryActor(updates[1]) === 'Учитель Б · Основной учитель');
+check('создание и удаление различимы', historyMap.gradeHistoryDescription({ action: 'CREATE', after: { score: 0, maxScore: 20 } }) === 'Выставлена оценка 0/20' && historyMap.gradeHistoryDescription({ action: 'DELETE', before: { scaleCode: '4+' } }) === 'Снята оценка 4+');
+check('системные и старые события поддержаны', historyMap.gradeHistoryActor({}) === 'Система' && historyMap.gradeHistoryActor({ actorId: 1 }) === 'Пользователь #1');
+check('тип работы не теряется при прежнем значении', historyMap.gradeHistoryDescription({ action: 'UPDATE', before: { score: 8, gradeType: 'FORMATIVE' }, after: { score: 8, gradeType: 'ORAL_ANSWER' } }).includes('Вид работы:'));
+check('невалидная дата не ломает историю', historyMap.gradeHistoryTime('invalid') === 'Время не указано');
+let selectedHistory = null;
+const readOnlyHistory = pressables(renderRow(oneGradeRow, { canManage: false, onShowHistory: grade => { selectedHistory = grade; } }));
+check('история доступна без права редактирования', readOnlyHistory.length === 1);
+readOnlyHistory[0]?.props.onPress();
+check('кнопка выбирает существующую оценку', selectedHistory?.id === oneGradeRow.grades[0].id);
 
 console.log(`\n${failed === 0 ? '✓' : '✗'} ${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

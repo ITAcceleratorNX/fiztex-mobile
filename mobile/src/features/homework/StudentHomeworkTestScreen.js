@@ -12,6 +12,7 @@ import {
   StateView,
   Banner,
 } from '@shared/components/ui';
+import { QuestionFigure } from '@shared/components/QuestionFigure';
 import { QuestionBody } from '@shared/components/QuestionBody';
 import { MathText } from '@shared/math/MathText';
 import { useTheme } from '@shared/theme/ThemeContext';
@@ -229,6 +230,8 @@ export function StudentHomeworkTestScreen({ nav, payload }) {
               marginBottom: 14,
             }}
           />
+
+          <QuestionFigure imageUrl={question.imageUrl} />
 
           <QuestionBody
             question={question}

@@ -8,6 +8,10 @@ import Icon from '@shared/components/Icon';
 import { StateView } from '@shared/components/ui';
 import { useLesson } from '@shared/hooks/useLesson';
 import { useGradeScale, useLessonGrades } from '@shared/hooks/useGrades';
+import { GradeHistorySheet } from './GradeHistorySheet';
+import { useLessonParentComments } from '@shared/hooks/useParentComments';
+import { CommentButton } from '@shared/ui/comments';
+import { ParentCommentEditor } from './ParentCommentEditor';
 import { gradeValueBody, sheetBadge, writeStateBanner } from '@shared/api/gradesMap';
 import { LessonGradeRow } from './LessonGradeRow';
 import { LessonGradeSheet } from './LessonGradeSheet';
@@ -100,6 +104,10 @@ export function LessonGradesScreen({ nav, payload }) {
   const insets = useSafeAreaInsets();
 
   const lessonId = payload?.lessonInstanceId ?? null;
+  const comments = useLessonParentComments(lessonId);
+  const [commentStudentId, setCommentStudentId] = useState(null);
+  const [gradeHistory, setGradeHistory] = useState(null);
+  const commentRow = comments.data?.students?.find(row => row.studentProfileId === commentStudentId);
   const { lesson } = useLesson(lessonId, { history: false });
   const scale = useGradeScale();
   const {
@@ -131,11 +139,11 @@ export function LessonGradesScreen({ nav, payload }) {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await reload({ silent: true });
+      await Promise.all([reload({ silent: true }), comments.reload(true)]);
     } finally {
       setRefreshing(false);
     }
-  }, [reload]);
+  }, [reload, comments.reload]);
 
   const onBack = useCallback(() => nav?.back?.(), [nav]);
 
@@ -296,6 +304,7 @@ export function LessonGradesScreen({ nav, payload }) {
         </View>
 
         {banner ? <AccessBanner banner={banner} /> : null}
+        {comments.error ? <StateView icon="alert" title={comments.error} actionLabel="Повторить" onAction={() => comments.reload()} /> : null}
       </View>
 
       {cancelled ? (
@@ -318,9 +327,18 @@ export function LessonGradesScreen({ nav, payload }) {
               <LessonGradeRow
                 key={row.studentProfileId}
                 row={row}
+                trailingAction={(() => {
+                  const item = comments.data?.students?.find(student => student.studentProfileId === row.studentProfileId);
+                  return <CommentButton published={Boolean(item?.comment)} studentName={row.fullName}
+                    disabled={!item || (!item.canEdit && !item.comment)} onPress={() => { closePicker(); setCommentStudentId(row.studentProfileId); }} />;
+                })()}
                 maxGrades={maxGrades}
                 canManage={canManage}
                 openSlot={picker?.studentProfileId === row.studentProfileId ? picker.slot : null}
+                onShowHistory={(grade) => {
+                  closePicker();
+                  setGradeHistory({ gradeId: grade.id, studentName: row.fullName });
+                }}
                 onOpen={(slot, grade) => {
                   setSheetError(null);
                   setPicker({
@@ -334,6 +352,11 @@ export function LessonGradesScreen({ nav, payload }) {
           </View>
         </View>
       )}
+
+      {gradeHistory ? <GradeHistorySheet key={gradeHistory.gradeId} {...gradeHistory} onClose={() => setGradeHistory(null)} /> : null}
+
+      {commentRow ? <ParentCommentEditor key={`${lessonId}:${commentStudentId}`} lessonId={lessonId} row={commentRow}
+        lesson={lesson} onClose={() => setCommentStudentId(null)} onSaved={() => comments.reload(true)} /> : null}
 
       <LessonGradeSheet
         visible={Boolean(picker)}

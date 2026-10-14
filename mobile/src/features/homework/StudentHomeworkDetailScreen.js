@@ -1,7 +1,9 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   ScrollView,
+  RefreshControl,
   Pressable,
   TextInput,
   KeyboardAvoidingView,
@@ -14,6 +16,8 @@ import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import { MathText } from '@shared/math/MathText';
+import { HomeworkResultCard } from '@shared/components/HomeworkResultCard';
+import { DOCUMENT } from '@shared/theme/tokens';
 import Icon from '@shared/components/Icon';
 import { ConfirmDialog } from '@shared/components/ui';
 import { useAuth } from '@features/auth/AuthContext';
@@ -27,6 +31,7 @@ import {
   subjectLine,
 } from '@shared/api/homeworkMap';
 import { useMyHomework, useHomeworkSubmit } from '@shared/hooks/useHomework';
+import { useMyHomeworkGrade } from '@shared/hooks/useGrades';
 import {
   ChipRow,
   Divider,
@@ -58,6 +63,23 @@ export function StudentHomeworkDetailScreen({ nav, payload }) {
   const { token } = useAuth();
   const insets = useSafeAreaInsets();
   const { loading, error, data, reload } = useMyHomework(homeworkId);
+  const { grade, loading: gradeLoading, error: gradeError, reload: reloadGrade } =
+    useMyHomeworkGrade(homeworkId, { enabled: data?.submission?.status === 'DONE' });
+  const [refreshing, setRefreshing] = useState(false);
+  const gradeReload = useRef(reloadGrade);
+  gradeReload.current = reloadGrade;
+  const focusedBefore = useRef(false);
+  useFocusEffect(useCallback(() => {
+    if (focusedBefore.current) {
+      reload(true);
+      gradeReload.current(true);
+    } else focusedBefore.current = true;
+  }, [reload]));
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await Promise.all([reload(true), reloadGrade(true)]); }
+    finally { setRefreshing(false); }
+  }, [reload, reloadGrade]);
 
   /*
     Античит обычного задания — только защита содержимого от скриншотов (ТЗ §4): смена
@@ -155,6 +177,7 @@ export function StudentHomeworkDetailScreen({ nav, payload }) {
           contentContainerStyle={{ paddingBottom: showForm ? 24 : 130 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.blue} />}
         >
           <CardHeader homework={data} submission={submission} />
 
@@ -186,6 +209,14 @@ export function StudentHomeworkDetailScreen({ nav, payload }) {
           <Assignment homework={data} />
 
           <Divider style={{ marginHorizontal: 16 }} />
+
+          {submission?.status === 'DONE' ? (
+            <View style={{ paddingHorizontal: DOCUMENT.gutter, paddingTop: DOCUMENT.gap }}>
+              <HomeworkResultCard status={submission.status} isTest={data.answerFormat === 'TEST'}
+                result={submission.testResult} grade={grade} gradeLoading={gradeLoading}
+                gradeError={gradeError} onRetry={() => reloadGrade()} />
+            </View>
+          ) : null}
 
           <Work
             homework={data}

@@ -10,6 +10,7 @@ import { useMyProfile } from '@shared/hooks/useProfile';
 import { useMyDiaryGrades, useMySubjectGrades } from '@shared/hooks/useGrades';
 import { useMySurveys } from '@shared/hooks/useSurveys';
 import { useChildMonthlyFeedback } from '@shared/hooks/useMonthlyFeedback';
+import { useChildParentComments } from '@shared/hooks/useParentComments';
 import { useAttendanceSummary } from '@shared/hooks/useAttendance';
 import { summaryTileLine } from '@shared/api/learnerAttendanceMap';
 import {
@@ -19,6 +20,7 @@ import {
 import { childPillLabel, formatHomeDate, parentName, todayKey } from './homeDate';
 import { latestGradeLine } from './latestGrade';
 import { MonthlyFeedbackBlock } from './MonthlyFeedbackBlock';
+import { GradeDynamicsHomeTile } from '@features/dynamics/ParentDynamicsScreens';
 
 /**
  * Главная родителя (Figma `glavnaya-Родитель-home`).
@@ -57,6 +59,8 @@ export function ParentHomeScreen({ nav }) {
   // Отзывы учителей за месяц — по выбранному ребёнку, как расписание и оценки выше.
   const feedback = useChildMonthlyFeedback(childId);
   const reloadFeedback = feedback.reload;
+  const teacherComments = useChildParentComments(childId);
+  const reloadTeacherComments = teacherComments.reload;
   // Посещаемость выбранного ребёнка за текущий месяц — подпись плитки.
   const attendance = useAttendanceSummary({ childId, enabled: childId != null });
   const reloadAttendance = attendance.reload;
@@ -71,12 +75,13 @@ export function ParentHomeScreen({ nav }) {
         reloadSubjects({ silent: true }),
         reloadSurveys(true),
         reloadFeedback(),
+        reloadTeacherComments(true),
         reloadAttendance(true),
       ]);
     } finally {
       setRefreshing(false);
     }
-  }, [reload, reloadGrades, reloadSubjects, reloadSurveys, reloadFeedback, reloadAttendance]);
+  }, [reload, reloadGrades, reloadSubjects, reloadSurveys, reloadFeedback, reloadAttendance, reloadTeacherComments]);
 
   const openSurvey = useCallback(
     (survey) => nav?.('survey-take', { surveyId: survey.surveyId, title: survey.title }),
@@ -156,6 +161,8 @@ export function ParentHomeScreen({ nav }) {
         subtitle={gradeLine || 'Оценок за четверть пока нет'}
         onPress={() => nav?.('grades')}
       />
+      {/* Под «Оценками по предметам», как в макете (Figma 2201:52702). */}
+      {child ? <GradeDynamicsHomeTile childId={childId} onPress={() => nav?.('grade-dynamics')} /> : null}
       <LearnerHomeTile
         icon="calendarCheck"
         tone="markPresent"
@@ -164,6 +171,11 @@ export function ParentHomeScreen({ nav }) {
         subtitle={summaryTileLine(attendance.summary) || 'Календарь за месяц'}
         onPress={() => nav?.('attendance')}
       />
+
+      {child ? <LearnerHomeTile icon="message" title="Комментарии учителей"
+        subtitle={teacherComments.loading ? 'Загрузка…' : teacherComments.error || teacherComments.data?.comments?.[0]?.subjectName || 'Комментариев пока нет'}
+        alert={teacherComments.data?.unreadCount > 0 ? `Непрочитанные: ${teacherComments.data.unreadCount}` : null}
+        onPress={() => nav?.('teacher-comments')} /> : null}
 
       {child ? <MonthlyFeedbackBlock feedback={feedback} /> : null}
 

@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './config';
+import { apiFileUrl } from './config';
 import { request, requestMultipart } from './client';
 import { asUpload } from './upload';
 
@@ -194,5 +194,5 @@ function toForm(fields, photos) {
 
 export const serviceRequestFiles = {
   photo: (requestId, photoId) =>
-    `${API_BASE_URL}/api/service-requests/${requestId}/photos/${photoId}/content`,
+    apiFileUrl(`/api/service-requests/${requestId}/photos/${photoId}/content`),
 };

@@ -7,7 +7,7 @@ import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { StateView } from '@shared/components/ui';
 import { GradeChip } from '@shared/ui/grades';
-import { useMyBreakdown, useMySubjectDetail } from '@shared/hooks/useGrades';
+import { useMySubjectDetail } from '@shared/hooks/useGrades';
 import {
   COMPONENT_SHORT,
   formatAverage,
@@ -84,7 +84,7 @@ export function StudentSubjectGradesScreen({ nav, payload }) {
   const subjectName = payload?.subjectName || 'Предмет';
   const periodId = payload?.academicPeriodId ?? null;
 
-  const { loading, error, history, finals, reload } = useMySubjectDetail({
+  const { loading, error, history, finals, breakdown, reload } = useMySubjectDetail({
     studentProfileId: payload?.studentProfileId,
     subjectId,
     academicPeriodId: periodId,
@@ -93,12 +93,7 @@ export function StudentSubjectGradesScreen({ nav, payload }) {
   });
 
   const result = history?.result ?? null;
-  const breakdown = useMyBreakdown({
-    enabled: Boolean(result),
-    subjectId,
-    academicPeriodId: periodId,
-    childStudentProfileId: payload?.childStudentProfileId ?? null,
-  });
+
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {

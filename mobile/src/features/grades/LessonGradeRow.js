@@ -1,5 +1,7 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import Icon from '@shared/components/Icon';
+import { HISTORY } from '@shared/theme/tokens';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Txt } from '@shared/components/Txt';
 import { GradeChip } from '@shared/ui/grades';
@@ -18,7 +20,7 @@ import { gradeValueLabel } from '@shared/api/gradesMap';
  * <b>Чужая оценка не нажимается.</b> Право на конкретную оценку приходит в ней самой
  * (`canEdit`, GRADES-002 §5): замещающему принадлежат только те, что он поставил сам.
  */
-export function LessonGradeRow({ row, maxGrades = 1, canManage = false, openSlot = null, onOpen }) {
+export function LessonGradeRow({ row, maxGrades = 1, canManage = false, openSlot = null, onOpen, trailingAction, onShowHistory }) {
   const { c } = useTheme();
   const grades = row.grades || [];
   const free = canManage ? Math.max(0, maxGrades - grades.length) : 0;
@@ -47,17 +49,25 @@ export function LessonGradeRow({ row, maxGrades = 1, canManage = false, openSlot
           // можно ли писать в этот урок вообще, оценка — можно ли трогать именно её.
           const editable = canManage && (!grade || grade.canEdit);
           return (
+            <View key={grade?.id ?? `free-${index}`} style={{ alignItems: 'center' }}>
             <GradeChip
-              key={grade?.id ?? `free-${index}`}
               value={gradeValueLabel(grade)}
               active={openSlot === index}
               onPress={editable ? () => onOpen?.(index, grade) : undefined}
             />
+            {grade?.id && onShowHistory ? <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`История оценки ${gradeValueLabel(grade)} — ${row.fullName}`}
+              onPress={() => onShowHistory(grade)}
+              style={{ width: HISTORY.buttonSize, minHeight: HISTORY.buttonSize, alignItems: 'center', justifyContent: 'center' }}
+            ><Icon name="clock" size={HISTORY.titleSize} color={c.ink2} /></Pressable> : null}
+            </View>
           );
         })}
         {Array.from({ length: placeholders }).map((_, index) => (
           <GradeChip key={`ph-${index}`} />
         ))}
+        {trailingAction}
       </View>
     </View>
   );

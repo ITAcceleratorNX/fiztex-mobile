@@ -3,6 +3,7 @@ import * as SecureStore from '@shared/storage/secureStore';
 import { authApi } from '@shared/api/authApi';
 import { onSessionExpired } from '@shared/api/client';
 import { unregisterThisDevice } from '@shared/push/registration';
+import { beginDemo, endDemo, demoIsActive } from '@shared/demo/session';
 import {
   getBiometricsEnabled,
   setBiometricsEnabled,
@@ -114,6 +115,7 @@ async function readProfile() {
 }
 
 export function AuthProvider({ children }) {
+  const [demoSession, setDemoSession] = useState(null);
   const [bootstrapping, setBootstrapping] = useState(true);
   const [token, setTokenState] = useState(null);
   const [profile, setProfileState] = useState(null);
@@ -191,7 +193,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     return onSessionExpired(() => {
-      clearLocal();
+      if (!demoIsActive()) clearLocal();
     });
   }, [clearLocal]);
 
@@ -201,6 +203,11 @@ export function AuthProvider({ children }) {
   );
 
   const signOut = useCallback(async () => {
+    if (demoSession) {
+      endDemo();
+      setDemoSession(null);
+      return;
+    }
     const current = token;
     // Телефон отвязывается от push до выхода: выход на бэке отзывает токен, и после него отвязать уже
     // нечем. Не дольше трёх секунд и без ошибок — выход от сети не зависит, а бэк при выходе и сам
@@ -208,7 +215,13 @@ export function AuthProvider({ children }) {
     if (current) await unregisterThisDevice(current);
     await clearLocal();
     if (current) authApi.logout(current);
-  }, [clearLocal, token]);
+  }, [clearLocal, token, demoSession]);
+
+  const startDemo = useCallback((role, options) => {
+    const session = beginDemo(role, options);
+    setDemoSession(session);
+    return session;
+  }, []);
 
   const unlockWithBiometrics = useCallback(async () => {
     if (!token || !profile) {
@@ -225,6 +238,7 @@ export function AuthProvider({ children }) {
   }, [token, profile, biometricMeta.label]);
 
   const enableBiometrics = useCallback(async () => {
+    if (demoSession) return { success: false, error: 'demo' };
     const availability = await getBiometricAvailability();
     setBiometricMeta({
       available: availability.available,
@@ -241,13 +255,14 @@ export function AuthProvider({ children }) {
     await setBiometricsEnabled(true);
     setBiometricsEnabledState(true);
     return { success: true };
-  }, []);
+  }, [demoSession]);
 
   const disableBiometrics = useCallback(async () => {
+    if (demoSession) return { success: true };
     await setBiometricsEnabled(false);
     setBiometricsEnabledState(false);
     return { success: true };
-  }, []);
+  }, [demoSession]);
 
   const refreshBiometricMeta = useCallback(async () => {
     const availability = await getBiometricAvailability();
@@ -262,15 +277,17 @@ export function AuthProvider({ children }) {
   const value = useMemo(
     () => ({
       bootstrapping,
-      token,
-      accountId: tokenAccountId(token),
-      profile,
-      role: profile?.role || null,
-      fullName: profile?.fullName || '',
-      isAuthenticated: Boolean(token && profile && unlocked),
-      needsBiometricUnlock: Boolean(token && profile && biometricsEnabled && !unlocked),
-      biometricsEnabled,
-      biometricMeta,
+      token: demoSession?.token || token,
+      accountId: demoSession?.accountId || tokenAccountId(token),
+      profile: demoSession || profile,
+      role: demoSession?.role || profile?.role || null,
+      fullName: demoSession?.fullName || profile?.fullName || '',
+      isAuthenticated: Boolean(demoSession || (token && profile && unlocked)),
+      needsBiometricUnlock: Boolean(!demoSession && token && profile && biometricsEnabled && !unlocked),
+      biometricsEnabled: demoSession ? false : biometricsEnabled,
+      isDemo: Boolean(demoSession),
+      startDemo,
+      biometricMeta: demoSession ? { ...biometricMeta, available: false } : biometricMeta,
       signInWithResponse,
       signOut,
       unlockWithBiometrics,
@@ -279,6 +296,8 @@ export function AuthProvider({ children }) {
       refreshBiometricMeta,
     }),
     [
+      demoSession,
+      startDemo,
       bootstrapping,
       token,
       profile,

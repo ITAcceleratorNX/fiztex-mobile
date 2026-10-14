@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
+import { TextButton } from '@shared/components/TextButton';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { HexBadge, PhysTechMark } from '@shared/components/Hex';
@@ -76,7 +77,7 @@ function Field({ label, value, onChangeText, secureTextEntry, keyboardType, auto
   );
 }
 
-export function AuthWelcome({ onContinue, onEntrance }) {
+export function AuthWelcome({ onContinue, onEntrance, onDemo }) {
   const { c } = useTheme();
   return (
     <Screen scroll={false}>
@@ -110,13 +111,14 @@ export function AuthWelcome({ onContinue, onEntrance }) {
           <Txt style={{ marginTop: 12, fontSize: 13, color: c.ink3, textAlign: 'center' }}>
             Нет аккаунта? <Txt style={{ color: c.green, fontWeight: '600' }}>Спросите у школы</Txt>
           </Txt>
+          {onDemo ? <TextButton onPress={onDemo}>Попробовать демо</TextButton> : null}
         </View>
       </View>
     </Screen>
   );
 }
 
-export function AuthSignIn({ onBack, onStudent, onParentTeacher, onFaceId, canUseFaceId, biometricLabel }) {
+export function AuthSignIn({ onBack, onStudent, onParentTeacher, onFaceId, canUseFaceId, biometricLabel, onDemo }) {
   const { c } = useTheme();
   return (
     <Screen>
@@ -171,6 +173,7 @@ export function AuthSignIn({ onBack, onStudent, onParentTeacher, onFaceId, canUs
           </View>
           <Icon name="chevronRight" size={20} color={c.ink3} />
         </Card>
+        {onDemo ? <TextButton onPress={onDemo}>Попробовать демо</TextButton> : null}
       </View>
     </Screen>
   );

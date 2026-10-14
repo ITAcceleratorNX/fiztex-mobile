@@ -1,0 +1,14 @@
+body { margin:0; color:var(--ink,CanvasText); background:var(--surface,Canvas); font:var(--body-size,16px)/1.4 system-ui; }
+body > #root { display:none; }
+#editor { padding:var(--gutter,16px); padding-bottom:var(--keyboard-height,24px); overflow-wrap:anywhere; }
+math-field { display:block; width:100%; min-height:64px; font-size:var(--formula-size,20px); color:var(--ink); background:var(--surface); border:1px solid var(--border); border-radius:10px; }
+label { display:block; margin-block:10px; font-size:var(--caption-size,14px); }
+input:not([type=checkbox]),select,textarea { box-sizing:border-box; display:block; width:100%; margin-top:6px; padding:10px; min-height:44px; color:var(--ink); background:var(--surface); border:1px solid var(--border); border-radius:10px; font:inherit; }
+button { margin:4px; min-height:44px; padding:8px 12px; border:1px solid var(--border); border-radius:10px; background:var(--surface); color:var(--ink); font:inherit; }
+button:disabled { opacity:.45; } button:focus-visible,input:focus-visible,textarea:focus-visible { outline:2px solid var(--accent); }
+.grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; }
+.inline { display:flex; gap:8px; align-items:center; }
+.preview { max-width:100%; overflow-x:auto; overflow-y:hidden; padding:8px 0; }
+#problem { color:var(--error); } #save { background:var(--accent); color:var(--on-accent); }
+#chemistry { border-block:1px solid var(--border); margin-block:16px; padding-block:12px; }
+h3 { font-size:var(--body-size); } p { font-size:var(--caption-size); }

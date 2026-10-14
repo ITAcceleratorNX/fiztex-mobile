@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@features/auth/AuthContext';
 import { finalGradesApi, gradebookApi, gradesApi } from '@shared/api/gradesApi';
 import { diaryGradesByLesson } from '@shared/api/gradesMap';
+import { useGradeResource } from './useGradeResource';
 
 /**
  * Шкала оценок — справочник, а не константы клиента (grades-read-contract §2).
@@ -306,48 +307,18 @@ export function useClassFinals({ classId, subjectId, academicPeriodId, subgroupI
  * `childStudentProfileId` — контекст родителя; ученику он ничего не даёт.
  */
 export function useMySubjectGrades({ academicPeriodId = null, childStudentProfileId = null } = {}) {
-  const { token } = useAuth();
-  const [loading, setLoading] = useState(Boolean(token));
-  const [error, setError] = useState(null);
-  const [forbidden, setForbidden] = useState(false);
-  const [view, setView] = useState(null);
-
-  const reload = useCallback(async ({ silent = false } = {}) => {
-    if (!token) {
-      setView(null);
-      setLoading(false);
-      return;
-    }
-    if (!silent) setLoading(true);
-    setError(null);
-    setForbidden(false);
-    try {
-      setView(await gradesApi.mySubjects(token, { academicPeriodId, childStudentProfileId }));
-    } catch (e) {
-      if (e?.status === 403) {
-        setForbidden(true);
-        setView(null);
-        return;
-      }
-      setError(e?.message || 'Не удалось загрузить оценки');
-    } finally {
-      setLoading(false);
-    }
-  }, [token, academicPeriodId, childStudentProfileId]);
-
-  useEffect(() => {
-    reload();
-  }, [reload]);
-
+  const { token, role } = useAuth();
+  const load = useCallback(
+    () => gradesApi.mySubjects(token, { academicPeriodId, childStudentProfileId }),
+    [token, academicPeriodId, childStudentProfileId],
+  );
+  const resource = useGradeResource(load, Boolean(token && (role !== 'PARENT' || childStudentProfileId != null)));
+  const view = resource.data;
   return {
-    loading,
-    error,
-    forbidden,
-    view,
+    ...resource, view,
     subjects: view?.subjects || [],
     periods: view?.periods || [],
     period: view?.period || null,
-    reload,
   };
 }
 
@@ -363,27 +334,15 @@ export function useMySubjectGrades({ academicPeriodId = null, childStudentProfil
 export function useMyDiaryGrades({
   dateFrom, dateTo, childStudentProfileId = null, enabled = true,
 } = {}) {
-  const { token } = useAuth();
-  const [grades, setGrades] = useState({});
-
-  const reload = useCallback(async () => {
-    if (!token || !enabled || !dateFrom || !dateTo) {
-      setGrades({});
-      return;
-    }
-    try {
-      const view = await gradebookApi.myDiary(token, { dateFrom, dateTo, childStudentProfileId });
-      setGrades(diaryGradesByLesson(view?.entries));
-    } catch {
-      setGrades({});
-    }
-  }, [token, enabled, dateFrom, dateTo, childStudentProfileId]);
-
-  useEffect(() => {
-    reload();
-  }, [reload]);
-
-  return { grades, reload };
+  const { token, role } = useAuth();
+  const load = useCallback(async () => {
+    const view = await gradebookApi.myDiary(token, { dateFrom, dateTo, childStudentProfileId });
+    return diaryGradesByLesson(view?.entries);
+  }, [token, dateFrom, dateTo, childStudentProfileId]);
+  const resource = useGradeResource(load, Boolean(
+    token && enabled && dateFrom && dateTo && (role !== 'PARENT' || childStudentProfileId != null),
+  ));
+  return { grades: resource.data || {}, reload: resource.reload };
 }
 
 /**
@@ -398,75 +357,26 @@ export function useMySubjectDetail({
   studentProfileId, subjectId, academicPeriodId, academicYearId = null,
   childStudentProfileId = null,
 } = {}) {
-  const { token } = useAuth();
-  const ready = Boolean(token && studentProfileId && subjectId && academicPeriodId);
-
-  const [loading, setLoading] = useState(ready);
-  const [error, setError] = useState(null);
-  const [history, setHistory] = useState(null);
-  const [finals, setFinals] = useState(null);
-
-  const reload = useCallback(async () => {
-    if (!ready) {
-      setHistory(null);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      setHistory(await gradebookApi.studentSubject(token, studentProfileId, {
-        subjectId, academicPeriodId,
-      }));
-      try {
-        setFinals(await finalGradesApi.my(token, { academicYearId, childStudentProfileId }));
-      } catch {
-        // Итоги — дополнение к ленте: без них экран остаётся рабочим, а падать целиком
-        // из-за блока «итог четверти» незачем.
-        setFinals(null);
-      }
-    } catch (e) {
-      setError(e?.message || 'Не удалось загрузить оценки');
-      setHistory(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [ready, token, studentProfileId, subjectId, academicPeriodId, academicYearId, childStudentProfileId]);
-
-  useEffect(() => {
-    reload();
-  }, [reload]);
-
-  return { loading, error, history, finals, reload };
-}
-
-/**
- * Расшифровка процента предмета за период (GRADES-003) — для ученика и родителя.
- *
- * Спрашивается, только если лента пришла с `result`: у четверти по старой шкале
- * расшифровки нет, и бэк ответил бы 409. Некритичный запрос, как и итоги: сбой гасится, и
- * экран остаётся лентой оценок.
- */
-export function useMyBreakdown({ enabled, subjectId, academicPeriodId, childStudentProfileId = null }) {
-  const { token } = useAuth();
-  const [breakdown, setBreakdown] = useState(null);
-
-  useEffect(() => {
-    let alive = true;
-    if (!enabled || !token || !subjectId || !academicPeriodId) {
-      setBreakdown(null);
-      return undefined;
-    }
-    gradesApi
-      .myBreakdown(token, { subjectId, academicPeriodId, childStudentProfileId })
-      .then((data) => alive && setBreakdown(data))
-      .catch(() => alive && setBreakdown(null));
-    return () => {
-      alive = false;
-    };
-  }, [enabled, token, subjectId, academicPeriodId, childStudentProfileId]);
-
-  return breakdown;
+  const { token, role } = useAuth();
+  const load = useCallback(async () => {
+    const [history, finals] = await Promise.all([
+      gradebookApi.studentSubject(token, studentProfileId, { subjectId, academicPeriodId }),
+      finalGradesApi.my(token, { academicYearId, childStudentProfileId }).catch(() => null),
+    ]);
+    const breakdown = history?.result
+      ? await gradesApi.myBreakdown(token, { subjectId, academicPeriodId, childStudentProfileId }).catch(() => null)
+      : null;
+    return { history, finals, breakdown };
+  }, [token, studentProfileId, subjectId, academicPeriodId, academicYearId, childStudentProfileId]);
+  const resource = useGradeResource(load, Boolean(
+    token && studentProfileId && subjectId && academicPeriodId && (role !== 'PARENT' || childStudentProfileId != null),
+  ));
+  return {
+    ...resource,
+    history: resource.data?.history ?? null,
+    finals: resource.data?.finals ?? null,
+    breakdown: resource.data?.breakdown ?? null,
+  };
 }
 
 /**
@@ -479,26 +389,50 @@ export function useMyBreakdown({ enabled, subjectId, academicPeriodId, childStud
  * За задание ставят одну оценку (уникальный индекс на бэке), но приходит список: правило
  * может измениться, а форма ответа — нет.
  */
-export function useMyHomeworkGrade(homeworkId, { childStudentProfileId = null } = {}) {
+export function useMyHomeworkGrade(homeworkId, { childStudentProfileId = null, enabled = true } = {}) {
   const { token } = useAuth();
-  const [grade, setGrade] = useState(null);
+  const context = useMemo(() => ({ token, homeworkId, childStudentProfileId, enabled }),
+    [token, homeworkId, childStudentProfileId, enabled]);
+  const [state, setState] = useState(null);
+  const sequence = useRef(0);
 
-  const reload = useCallback(async () => {
-    if (!token || !homeworkId) {
-      setGrade(null);
+  const reload = useCallback(async (silent = false) => {
+    const requestId = ++sequence.current;
+    if (!context.token || !context.homeworkId || !context.enabled) {
+      setState({ context, grade: null, loading: false, error: null });
       return;
     }
+    setState((old) => ({ context, grade: old?.context === context ? old.grade : null,
+      loading: !silent || old?.context !== context || !old?.grade, error: null }));
     try {
-      const list = await gradesApi.myHomeworkGrades(token, homeworkId, { childStudentProfileId });
-      setGrade((Array.isArray(list) ? list : [])[0] || null);
-    } catch {
-      setGrade(null);
+      const list = await gradesApi.myHomeworkGrades(context.token, context.homeworkId,
+        { childStudentProfileId: context.childStudentProfileId });
+      if (requestId === sequence.current) {
+        setState({ context, grade: (Array.isArray(list) ? list : [])[0] || null, loading: false, error: null });
+      }
+    } catch (error) {
+      if (requestId === sequence.current) {
+        setState((old) => ({ context,
+          grade: old?.context === context && error?.status !== 403 && error?.status !== 404 ? old.grade : null,
+          loading: false, error: 'Не удалось загрузить оценку' }));
+      }
     }
-  }, [token, homeworkId, childStudentProfileId]);
+  }, [context]);
 
   useEffect(() => {
     reload();
+    return () => { sequence.current += 1; };
   }, [reload]);
 
-  return { grade, reload };
+  const visible = state?.context === context ? state : {
+    grade: null, loading: Boolean(token && homeworkId && enabled), error: null,
+  };
+  return { grade: visible.grade, loading: visible.loading, error: visible.error, reload };
+}
+
+export function useGradeHistory(gradeId) {
+  const { token } = useAuth();
+  const load = useCallback(() => gradesApi.history(token, gradeId), [token, gradeId]);
+  const resource = useGradeResource(load, Boolean(token && gradeId));
+  return { ...resource, events: Array.isArray(resource.data) ? resource.data : [] };
 }

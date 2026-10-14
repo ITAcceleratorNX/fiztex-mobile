@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo } from 'react';
-import { useNavigation } from '@react-navigation/native';
+import React, { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { useAuth } from '@features/auth/AuthContext';
 import { useParentChildren } from '@shared/hooks/useSchedule';
 import { useCurrentLesson } from '@shared/hooks/useCurrentLesson';
@@ -22,7 +22,8 @@ import { childPillLabel } from '@features/home/homeDate';
  */
 export function CurrentLessonBar({ style }) {
   const navigation = useNavigation();
-  const { role, isAuthenticated } = useAuth();
+  const focused = useIsFocused();
+  const { role, isAuthenticated, token } = useAuth();
   const isParent = role === 'PARENT';
 
   const { children } = useParentChildren(isParent);
@@ -34,8 +35,14 @@ export function CurrentLessonBar({ style }) {
 
   // Родителю до выбора ребёнка спрашивать нечего: запрос без `childId` бэкенд отклоняет
   // (403), и «ошибка» на кнопке появлялась бы на каждом старте приложения.
-  const enabled = isAuthenticated && (!isParent || Boolean(childId));
+  const enabled = isAuthenticated && focused && (!isParent || Boolean(childId));
   const state = useCurrentLesson({ childId: isParent ? childId : null, enabled });
+  const context = useMemo(() => ({ enabled, childId, role, token }), [enabled, childId, role, token]);
+  const currentContext = useRef(context);
+  useLayoutEffect(() => {
+    currentContext.current = context;
+    return () => { if (currentContext.current === context) currentContext.current = null; };
+  }, [context]);
 
   /**
    * ТЗ §4: при каждом нажатии урок определяется заново. Поэтому сначала перезапрос, и
@@ -45,13 +52,14 @@ export function CurrentLessonBar({ style }) {
    */
   const open = useCallback(async () => {
     const fresh = await state.reload({ silent: true });
+    if (currentContext.current !== context || !enabled) return;
     const target = fresh?.lessonId ? fresh : state.data;
     const payload = currentLessonPayload(target, {
       childId: isParent ? childId : null,
       childName: child ? childPillLabel(child) : null,
     });
     if (payload) navigation.navigate('lesson', { payload });
-  }, [state, isParent, childId, child, navigation]);
+  }, [state, isParent, childId, child, navigation, context, enabled]);
 
   if (!enabled) return null;
   return <CurrentLessonBanner state={state} onOpen={open} style={style} />;

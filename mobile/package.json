@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "test": "node scripts/verify-request-lifecycle.cjs && node scripts/verify-demo.cjs && node scripts/verify-undefined-names.cjs && node scripts/verify-grade-points.cjs && node scripts/verify-grades-logic.cjs",
+    "test:demo": "node scripts/verify-demo.cjs",
+    "test:requests": "node scripts/verify-request-lifecycle.cjs",
     "start": "expo start",
     "start:local": "EXPO_PUBLIC_API_LOCAL=1 expo start",
     "android": "expo run:android",

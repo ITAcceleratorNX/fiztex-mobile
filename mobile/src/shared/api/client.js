@@ -1,4 +1,6 @@
 import { API_BASE_URL } from './config';
+import { demoIsActive, isDemoToken } from '../demo/session';
+import { demoRequest } from '../demo/api';
 
 const REQUEST_TIMEOUT_MS = 15_000;
 
@@ -131,6 +133,9 @@ export async function request(
     timeoutMs = REQUEST_TIMEOUT_MS,
   } = {},
 ) {
+  if (demoIsActive() || isDemoToken(token)) {
+    return demoRequest(path, { method, body, token });
+  }
   const headers = { Accept: 'application/json', ...(extraHeaders || {}) };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -177,6 +182,9 @@ export async function requestMultipart(
   formData,
   { token, skipSessionExpiry = false, timeoutMs = UPLOAD_TIMEOUT_MS } = {},
 ) {
+  if (demoIsActive() || isDemoToken(token)) {
+    return demoRequest(path, { method: 'POST', body: formData, token, multipart: true });
+  }
   const headers = { Accept: 'application/json' };
   if (token) headers.Authorization = `Bearer ${token}`;
 

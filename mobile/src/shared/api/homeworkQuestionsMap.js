@@ -50,6 +50,8 @@ export function toDraft(question) {
   return {
     key: localId(),
     id: question.id,
+    imageId: question.imageId,
+    imageUrl: question.imageUrl,
     type: question.type ?? 'SINGLE_CHOICE',
     text: question.text ?? '',
     maxScore: Number(question.maxScore ?? 1),
@@ -76,6 +78,7 @@ export function toRequest(questions) {
       return {
         type: question.type,
         text: (question.text ?? '').trim(),
+        ...(question.imageId ? { imageId: question.imageId } : {}),
         maxScore: question.maxScore,
         referenceAnswer: trimmed(question.referenceAnswer),
         gradingCriteria: trimmed(question.gradingCriteria),

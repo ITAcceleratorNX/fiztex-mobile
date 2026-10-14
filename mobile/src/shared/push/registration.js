@@ -93,11 +93,17 @@ function deviceLocale() {
  *
  * Никогда не бросает: уведомления — не то, из-за чего можно не пустить в приложение.
  *
- * @param {{ askPermission?: boolean }} options спрашивать ли разрешение, если его ещё не давали
- * @returns {Promise<{ action: string, reason?: string, error?: unknown }>}
+ * @param {{ askPermission?: boolean, devicePushToken?: object, isCurrent?: () => boolean }} options
+ *   Токен из addPushTokenListener нужно передать сюда: повторный запрос native-токена
+ *   из этого listener вызывает его снова и создаёт бесконечную регистрацию.
+ * @returns {Promise<{ action: string, reason?: string, error?: unknown, devicePushToken?: object }>}
  */
-export async function registerThisDevice(authToken, { askPermission = true } = {}) {
+export async function registerThisDevice(authToken, {
+  askPermission = true, devicePushToken, isCurrent = () => true,
+} = {}) {
+  const cancelled = () => ({ action: 'skip', reason: 'session-changed' });
   try {
+    if (!isCurrent()) return cancelled();
     if (Platform.OS === 'web') return { action: 'skip', reason: 'unsupported-platform' };
     await ensureAndroidChannels();
     const projectId = resolveProjectId(Constants);
@@ -106,6 +112,7 @@ export async function registerThisDevice(authToken, { askPermission = true } = {
     // и план стал бы `unregister` вместо `register`.
     const eligible = (Device.isDevice || allowEmulator) && Boolean(projectId);
     const permissionGranted = eligible ? await readPermission(askPermission) : null;
+    if (!isCurrent()) return cancelled();
     const plan = registrationPlan({
       platform: Platform.OS,
       isDevice: Device.isDevice,
@@ -127,17 +134,24 @@ export async function registerThisDevice(authToken, { askPermission = true } = {
     }
 
     const installationId = await getInstallationId();
+    if (!isCurrent()) return cancelled();
+    const nativeToken = devicePushToken ?? await Notifications.getDevicePushTokenAsync();
+    if (!isCurrent()) return cancelled();
     // deviceId по умолчанию — IDFV телефона; своя установка надёжнее: у Expo за IDFV могла остаться
     // запись прежней сборки с development: true, и она переживает переустановку приложения.
-    const pushToken = await Notifications.getExpoPushTokenAsync({ projectId, deviceId: installationId });
+    const pushToken = await Notifications.getExpoPushTokenAsync({
+      projectId, deviceId: installationId, devicePushToken: nativeToken,
+    });
+    if (!isCurrent()) return cancelled();
     await notificationDevicesApi.register(authToken, installationId, {
       token: pushToken.data,
       platform: Platform.OS === 'ios' ? 'IOS' : 'ANDROID',
       appVersion: (Application.nativeApplicationVersion || Constants.expoConfig?.version || '').slice(0, 32) || null,
       locale: deviceLocale(),
     });
+    if (!isCurrent()) return cancelled();
     await SecureStore.setItemAsync(REGISTERED_KEY, '1');
-    return plan;
+    return { ...plan, devicePushToken: nativeToken };
   } catch (error) {
     if (__DEV__) {
       // eslint-disable-next-line no-console

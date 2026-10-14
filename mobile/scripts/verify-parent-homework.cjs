@@ -152,6 +152,7 @@ function allText(element) {
 // Настоящий `format`, а не заглушка: иначе `plural` вернул бы null, и «5 вопросов»
 // превратилось бы в «5 null» — проверка прошла бы вхолостую мимо самой подписи.
 const format = load('src/shared/format.js');
+const gradesMap = load('src/shared/api/gradesMap.js');
 
 function renderParent({ data, grade = null }) {
   const screen = load('src/features/homework/ParentHomeworkDetailScreen.js', {
@@ -164,7 +165,7 @@ function renderParent({ data, grade = null }) {
       stamp: (iso) => (iso ? '18 сен, 10:15' : null),
       subjectLine: (hw) => `${hw?.subjectName ?? ''} · ${hw?.className ?? ''}`,
     },
-    'api/gradesMap': { gradeTypeLabel: () => 'Оценка за задание' },
+    'api/gradesMap': gradesMap,
     'react-native': rnStub,
     'theme/ThemeContext': { useTheme: () => theme },
     'components/Screen': { Screen: 'Screen' },

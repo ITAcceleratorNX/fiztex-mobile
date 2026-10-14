@@ -30,7 +30,29 @@ export const DOCUMENT = {
   bodySize: 16, bodyLine: 26, captionSize: 14, captionLine: 22,
 };
 
+export const FORMULA = { gap: 8, size: 20 };
+
+export const DEMO = {
+  gutter: 20, inset: 16, gap: 12, compactGap: 8, touchSize: 44,
+  titleSize: 24, bodySize: 14, bodyLine: 22, roleSize: 18, borderWidth: 1,
+};
+
+// Parent comments: one typography and spacing scale for editor, feed and detail.
+export const COMMENT = {
+  iconSize: 14, iconStrokeWidth: 4,
+  gutter: 16, inset: 12, gap: 8, radius: 12, buttonSize: 32, editorHeight: 220,
+  bodySize: 14, bodyLine: 23, labelSize: 13, captionSize: 12, titleSize: 18,
+  avatarSize: 20, dotSize: 6, limit: 1000,
+  avatarTextSize: 10, modalMaxWidth: 560, modalInset: 24, actionGap: 12,
+};
+
 // Map a brand colour name ("green" | "blue" | "red" | "gold") to its hex.
 export function brand(name) {
   return PHYSTECH[name] || PHYSTECH.green;
 }
+
+export const HISTORY = {
+  gutter: 16, inset: 16, gap: 12, radius: 16, sheetRadius: 24,
+  bodySize: 14, captionSize: 12, titleSize: 18, buttonSize: 44,
+  maxWidth: 560, maxHeight: '85%', borderWidth: 1,
+};
