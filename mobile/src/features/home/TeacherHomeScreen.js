@@ -9,7 +9,10 @@ import { useMyKeys } from '@shared/hooks/useKeys';
 import { MyKeysCard } from '@features/keys/MyKeysCard';
 import { useMyEquipment } from '@shared/hooks/useEquipment';
 import { MyEquipmentCard } from '@features/equipment/MyEquipmentCard';
-import { HomeHeader, HomeSectionTitle, TeacherAgendaCard, TeacherHomeTile } from './HomeParts';
+import { useUnreadNotifications } from '@shared/hooks/useNotificationCenter';
+import {
+  HomeHeader, HomeSectionTitle, NotificationBell, TeacherAgendaCard, TeacherHomeTile,
+} from './HomeParts';
 import { formatHomeDate, teacherName } from './homeDate';
 
 /**
@@ -27,6 +30,8 @@ export function TeacherHomeScreen({ nav }) {
   const { profile, displayName } = useMyProfile();
   const myKeys = useMyKeys();
   const myEquipment = useMyEquipment();
+  // Лента учителя (ТЗ «Внутренние уведомления — Teacher»): события по урокам и незавершённые действия.
+  const unreadNotifications = useUnreadNotifications();
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -69,6 +74,7 @@ export function TeacherHomeScreen({ nav }) {
         title={teacherName(profile, displayName)}
         subtitle={formatHomeDate(data?.date)}
         topGap={16}
+        right={<NotificationBell count={unreadNotifications} onPress={() => nav?.('notifications')} />}
       />
 
       <MyKeysCard keys={myKeys.rows} />
