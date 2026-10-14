@@ -45,3 +45,9 @@ export const COMMENT = {
 export function brand(name) {
   return PHYSTECH[name] || PHYSTECH.green;
 }
+
+export const HISTORY = {
+  gutter: 16, inset: 16, gap: 12, radius: 16, sheetRadius: 24,
+  bodySize: 14, captionSize: 12, titleSize: 18, buttonSize: 44,
+  maxWidth: 560, maxHeight: '85%', borderWidth: 1,
+};

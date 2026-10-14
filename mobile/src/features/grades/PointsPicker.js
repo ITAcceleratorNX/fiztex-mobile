@@ -3,6 +3,7 @@ import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Txt } from '@shared/components/Txt';
 import { COMPONENT_SHORT, GRADE_TYPE_LABELS } from '@shared/api/gradesMap';
+import { validateGradePoints } from '@shared/api/gradePoints';
 
 const TEN_POINTS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
@@ -42,6 +43,7 @@ export function PointsPicker({ grade, workTypes, defaultType, suggestedMax, busy
 
   function changeType(next) {
     setType(next);
+    setTouched({ score: false, maxScore: false });
     const nextRule = (workTypes || []).find((item) => item.type === next);
     if (nextRule?.scoring === 'RAW_POINTS') {
       const suggested = suggestedMax?.(next);
@@ -50,11 +52,8 @@ export function PointsPicker({ grade, workTypes, defaultType, suggestedMax, busy
     }
   }
 
-  const rawScore = Number(score);
-  const rawMax = Number(maxScore);
-  // Подсказка, а не проверка: пределы всё равно проверяет сервер.
-  const rawValid =
-    score !== '' && maxScore !== '' && rawMax > 0 && rawScore >= 0 && rawScore <= rawMax;
+  const validation = validateGradePoints(score, maxScore);
+  const [touched, setTouched] = useState({ score: false, maxScore: false });
 
   const inputStyle = {
     width: 72,
@@ -114,7 +113,7 @@ export function PointsPicker({ grade, workTypes, defaultType, suggestedMax, busy
                 accessibilityLabel={`Балл ${point}`}
                 accessibilityState={{ selected }}
                 disabled={busy}
-                onPress={() => onSubmit({ score: point, maxScore: 10 }, type)}
+                onPress={() => { if (!busy) onSubmit({ score: point, maxScore: 10 }, type); }}
                 style={({ pressed }) => ({
                   width: 60,
                   height: 44,
@@ -142,7 +141,9 @@ export function PointsPicker({ grade, workTypes, defaultType, suggestedMax, busy
             placeholder="Балл"
             placeholderTextColor={c.ink3}
             value={score}
-            onChangeText={(text) => setScore(text.replace(/[^\d]/g, ''))}
+            onChangeText={setScore}
+            onBlur={() => setTouched((old) => ({ ...old, score: true }))}
+            editable={!busy}
             style={inputStyle}
           />
           <Txt style={{ fontSize: 15, color: c.ink3 }}>из</Txt>
@@ -152,29 +153,40 @@ export function PointsPicker({ grade, workTypes, defaultType, suggestedMax, busy
             placeholder="Макс."
             placeholderTextColor={c.ink3}
             value={maxScore}
-            onChangeText={(text) => setMaxScore(text.replace(/[^\d]/g, ''))}
+            onChangeText={setMaxScore}
+            onBlur={() => setTouched((old) => ({ ...old, maxScore: true }))}
+            editable={!busy}
             style={inputStyle}
           />
           <Pressable
             accessibilityRole="button"
-            disabled={busy || !rawValid}
-            onPress={() => onSubmit({ score: rawScore, maxScore: rawMax }, type)}
+            disabled={busy || !validation.valid}
+            onPress={() => {
+              setTouched({ score: true, maxScore: true });
+              if (!busy && validation.valid) onSubmit({ score: validation.value, maxScore: validation.maximum }, type);
+            }}
             style={({ pressed }) => ({
               flex: 1,
               height: 44,
               borderRadius: 12,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: rawValid ? c.blue : c.bg2,
+              backgroundColor: validation.valid ? c.blue : c.bg2,
               opacity: pressed ? 0.7 : 1,
             })}
           >
-            <Txt style={{ fontSize: 15, fontWeight: '700', color: rawValid ? '#fff' : c.ink3 }}>
+            <Txt style={{ fontSize: 15, fontWeight: '700', color: validation.valid ? '#fff' : c.ink3 }}>
               Сохранить
             </Txt>
           </Pressable>
         </View>
       )}
+      {!tenPoint && touched.score && validation.scoreError ? (
+        <Txt accessibilityRole="alert" style={{ paddingHorizontal: 16, color: c.red }}>{validation.scoreError}</Txt>
+      ) : null}
+      {!tenPoint && touched.maxScore && validation.maxError ? (
+        <Txt accessibilityRole="alert" style={{ paddingHorizontal: 16, color: c.red }}>{validation.maxError}</Txt>
+      ) : null}
     </View>
   );
 }
