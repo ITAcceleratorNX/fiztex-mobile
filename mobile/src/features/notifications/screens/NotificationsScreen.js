@@ -10,7 +10,7 @@ import { useNotificationFeed } from '@shared/hooks/useNotificationCenter';
 import { requestChildSelection } from '@shared/state/SelectedChild';
 import { resolvePushTarget } from '@shared/push/routes';
 import {
-  contextTag, groupByDay, iconFor, pushDataFor, timeLabel,
+  PENDING_ACTIONS_KIND, contextTag, groupByDay, iconFor, pendingActionsOf, pendingTotalOf, pushDataFor, timeLabel,
 } from '@shared/api/notificationCenterMap';
 
 /**
@@ -36,15 +36,17 @@ export function NotificationsScreen({ nav }) {
     setRefreshing(false);
   }, [feed]);
 
-  const open = useCallback((item) => {
+  const go = useCallback((item, data) => {
     feed.markRead(item);
     // `rootRoute` — любой непустой: экран уже внутри раздела роли, и навигация идёт по его стеку.
-    const target = resolvePushTarget(pushDataFor(item, accountId), { role, accountId, rootRoute: 'self' });
+    const target = resolvePushTarget(data, { role, accountId, rootRoute: 'self' });
     if (target.type !== 'open') return;
     if (target.childId != null) requestChildSelection(target.childId);
     if (target.screen) nav(target.screen, target.payload);
     else if (target.tab) nav.tabs(target.tab);
   }, [feed, role, accountId, nav]);
+
+  const open = useCallback((item) => go(item, pushDataFor(item, accountId)), [go, accountId]);
 
   const canReadAll = feed.unreadCount > 0 && feed.items.length > 0;
 
@@ -72,9 +74,16 @@ export function NotificationsScreen({ nav }) {
               <Txt style={{ fontSize: 12, fontWeight: '700', color: c.ink2, paddingTop: 8, paddingBottom: 4, paddingLeft: 4 }}>
                 {section.title}
               </Txt>
-              {section.items.map((item) => (
+              {section.items.map((item) => (item.kind === PENDING_ACTIONS_KIND ? (
+                <PendingActionsCard
+                  key={item.id}
+                  item={item}
+                  actions={pendingActionsOf(item, accountId)}
+                  onAction={(data) => go(item, data)}
+                />
+              ) : (
                 <NotificationCard key={item.id} item={item} onPress={() => open(item)} />
-              ))}
+              )))}
             </View>
           ))}
           {feed.hasMore ? (
@@ -184,6 +193,62 @@ function NotificationCard({ item, onPress }) {
 
       <Icon name="chevronRight" size={16} color={c.ink3} />
     </Pressable>
+  );
+}
+
+/**
+ * «Незавершённые действия» учителя (ТЗ Teacher §5, §10) — одна карточка на всё, что за ним осталось. Сама она не
+ * ведёт никуда: дел несколько, и выбирает учитель — каждое действие ведёт к своему уроку или заданию. Прочтение дело
+ * не закрывает: карточка исчезнет, когда закроется последнее.
+ */
+function PendingActionsCard({ item, actions, onAction }) {
+  const { c } = useTheme();
+  const unread = !item.read;
+  const hidden = Math.max(0, pendingTotalOf(item) - actions.length);
+  return (
+    <View style={{
+      gap: 10, padding: 14, borderRadius: 16, borderWidth: 1,
+      borderColor: unread ? c.ntUnreadBorder : c.border,
+      backgroundColor: unread ? c.ntUnreadBg : c.surface,
+    }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{
+          width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
+          backgroundColor: unread ? c.ntIconUnread : c.bg2,
+        }}
+        >
+          <Icon name="alertTriangle" size={20} color={c.ntToneOrange} />
+        </View>
+        <View style={{ flex: 1, gap: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {unread ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c.ntUnreadDot }} /> : null}
+            <Txt style={{ flex: 1, fontSize: 14, fontWeight: unread ? '700' : '600', color: c.ink }}>{item.title}</Txt>
+          </View>
+          {item.body ? <Txt style={{ fontSize: 13, lineHeight: 18, color: c.ink2 }}>{item.body}</Txt> : null}
+          <Txt style={{ fontSize: 11, fontWeight: '500', color: c.ink3 }}>{`Обновлено ${timeLabel(item.createdAt)}`}</Txt>
+        </View>
+      </View>
+      {actions.map((action) => (
+        <Pressable
+          key={action.key}
+          accessibilityRole="button"
+          accessibilityLabel={action.label}
+          onPress={() => onAction(action.data)}
+          style={({ pressed }) => ({
+            flexDirection: 'row', alignItems: 'center', gap: 8,
+            paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10,
+            backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <Txt style={{ flex: 1, fontSize: 13, color: c.ink }} numberOfLines={2}>{action.label}</Txt>
+          <Icon name="chevronRight" size={14} color={c.ink3} />
+        </Pressable>
+      ))}
+      {hidden > 0 ? (
+        <Txt style={{ fontSize: 12, color: c.ink3 }}>{`И ещё ${hidden} — в разделах приложения и панели.`}</Txt>
+      ) : null}
+    </View>
   );
 }
 

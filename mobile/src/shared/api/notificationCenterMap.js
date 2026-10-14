@@ -91,7 +91,19 @@ const ICONS = {
   GRADE_POSTED: { icon: 'award', tone: 'green' },
   ATTENDANCE_ABSENCE: { icon: 'alertTriangle', tone: 'red' },
   MONTHLY_FEEDBACK: { icon: 'chat', tone: 'blue' },
+  // Лента учителя (ТЗ «Внутренние уведомления — Teacher»).
+  LESSON_CANCELLED: { icon: 'alertTriangle', tone: 'red' },
+  LESSON_RESTORED: { icon: 'calendar', tone: 'green' },
+  TEACHER_LESSON_SOON: { icon: 'clock', tone: 'orange' },
+  TEACHER_LESSON_CHANGED: { icon: 'calendar', tone: 'blue' },
+  TEACHER_SUBSTITUTION: { icon: 'calendar', tone: 'orange' },
+  TEACHER_SUBSTITUTION_CANCELLED: { icon: 'calendar', tone: 'blue' },
+  TEACHER_REVIEW_PENDING: { icon: 'clipboardCheck', tone: 'orange' },
+  TEACHER_PENDING_ACTIONS: { icon: 'alertTriangle', tone: 'orange' },
 };
+
+/** «Незавершённые действия» учителя: карточка не ведёт сама, а разворачивается списком действий. */
+export const PENDING_ACTIONS_KIND = 'TEACHER_PENDING_ACTIONS';
 
 export function iconFor(kind) {
   return ICONS[kind] ?? { icon: 'bell', tone: 'blue' };
@@ -137,4 +149,35 @@ export function markAllReadUpTo(items, upTo) {
     const created = parse(item.createdAt);
     return !item.read && (!limit || (created && created <= limit)) ? { ...item, read: true } : item;
   });
+}
+
+/**
+ * Действия карточки «Незавершённые действия» (`params.actions`): подпись и данные для перехода в форме пуша —
+ * тот же словарь маршрутов, что у строк ленты. Битые строки пропускаются.
+ */
+export function pendingActionsOf(item, accountId) {
+  const actions = item?.params?.actions;
+  if (!Array.isArray(actions)) return [];
+  return actions
+    .filter((action) => action && typeof action.label === 'string')
+    .map((action, index) => ({
+      key: `${action.type ?? 'action'}-${index}`,
+      label: action.label,
+      data: {
+        v: PUSH_DATA_VERSION,
+        nid: item.id,
+        kind: item.kind,
+        accountId,
+        route: typeof action.route === 'string' ? action.route : null,
+        params: action.params && typeof action.params === 'object' ? action.params : {},
+        childProfileId: null,
+      },
+    }));
+}
+
+/** Сколько действий всего (по группам) — перечислены не все. */
+export function pendingTotalOf(item) {
+  const groups = item?.params?.groups;
+  if (!Array.isArray(groups)) return 0;
+  return groups.reduce((sum, group) => sum + (typeof group?.count === 'number' ? group.count : 0), 0);
 }

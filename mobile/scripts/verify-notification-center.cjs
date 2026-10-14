@@ -149,5 +149,30 @@ section('Переход — тем же словарём, что и пуш');
   check('незнакомый маршрут — «Главная», а не тупик', unknown.tab === 'home');
 }
 
+section('Лента учителя — «Незавершённые действия»');
+{
+  const card = {
+    id: 'p', kind: 'TEACHER_PENDING_ACTIONS', title: 'Незавершённые действия: 3', read: false,
+    params: {
+      groups: [{ type: 'ATTENDANCE', count: 2 }, { type: 'CORRECTION_PENDING', count: 1 }],
+      actions: [
+        { type: 'ATTENDANCE', label: 'Посещаемость: Физика, 7А · 14.10', route: 'attendance', params: { lessonId: 77 } },
+        { type: 'CORRECTION_PENDING', label: 'Исправление', route: 'lesson-grades', params: { lessonId: 78, correctionId: 3 } },
+        { type: 'BROKEN' },
+      ],
+    },
+  };
+  const actions = map.pendingActionsOf(card, 5001);
+  check('битые действия пропускаются', actions.length === 2);
+  check('всего действий — по группам', map.pendingTotalOf(card) === 3);
+  const session = { role: 'TEACHER', accountId: 5001, rootRoute: 'self' };
+  const attendance = routes.resolvePushTarget(actions[0].data, session);
+  check('действие «посещаемость» → лист посещаемости урока',
+    attendance.screen === 'attendance' && attendance.payload.lessonInstanceId === 77);
+  const correction = routes.resolvePushTarget(actions[1].data, session);
+  check('исправление → карточка урока', correction.screen === 'lesson' && correction.payload.lessonInstanceId === 78);
+  check('у видов учителя своя иконка', map.iconFor('TEACHER_LESSON_SOON').icon === 'clock');
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
