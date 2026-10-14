@@ -14,7 +14,7 @@ import { Onest_800ExtraBold } from '@expo-google-fonts/onest/800ExtraBold';
 import { ThemeProvider, useTheme } from '@shared/theme/ThemeContext';
 import { PhysTechAppStateProvider } from '@shared/state/AppState';
 import { EntranceProvider } from '@features/entrance';
-import { AuthProvider } from '@features/auth';
+import { AuthProvider, useAuth } from '@features/auth';
 import { RootNavigator, rootRouteForRole } from '@app/navigation/RootNavigator';
 import { PushNotifications, configurePushPresentation } from '@shared/push';
 
@@ -40,16 +40,23 @@ function Inner() {
   };
   return (
     <AuthProvider>
-      <PhysTechAppStateProvider>
-        <EntranceProvider>
-          <NavigationContainer ref={navigationRef} theme={navTheme}>
-            <StatusBar style={dark ? 'light' : 'dark'} />
-            <RootNavigator />
-            <PushNotifications navigationRef={navigationRef} rootRouteFor={rootRouteForRole} />
-          </NavigationContainer>
-        </EntranceProvider>
-      </PhysTechAppStateProvider>
+      <SessionContent navTheme={navTheme} dark={dark} />
     </AuthProvider>
+  );
+}
+
+function SessionContent({ navTheme, dark }) {
+  const { isDemo, token } = useAuth();
+  return (
+    <PhysTechAppStateProvider key={isDemo ? token : 'real'}>
+      <EntranceProvider>
+        <NavigationContainer ref={navigationRef} theme={navTheme}>
+          <StatusBar style={dark ? 'light' : 'dark'} />
+          <RootNavigator />
+          <PushNotifications navigationRef={navigationRef} rootRouteFor={rootRouteForRole} />
+        </NavigationContainer>
+      </EntranceProvider>
+    </PhysTechAppStateProvider>
   );
 }
 

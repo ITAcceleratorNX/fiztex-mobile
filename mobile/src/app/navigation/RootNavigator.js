@@ -12,6 +12,8 @@ import {
 } from '@features/auth';
 import { EntranceFlow } from '@features/entrance';
 import { useTheme } from '@shared/theme/ThemeContext';
+import { ScreenTopInsetContext } from '@shared/components/Screen';
+import { DemoRolesScreen, DemoToolbar } from '@features/demo/DemoScreens';
 import {
   StudentApp, ParentApp, TeacherApp, StaffApp, SecurityApp, SuperAdminApp, PsychologistApp,
 } from './RoleNavigators';
@@ -61,6 +63,7 @@ function WelcomeScreen() {
     <AuthWelcome
       onContinue={() => navigation.navigate('SignIn')}
       onEntrance={() => navigation.navigate('EntranceFlow')}
+      onDemo={() => navigation.navigate('DemoRoles')}
     />
   );
 }
@@ -73,6 +76,7 @@ function SignInScreen() {
       onBack={() => navigation.goBack()}
       onStudent={() => navigation.navigate('StudentLogin')}
       onParentTeacher={() => navigation.navigate('ParentTeacherLogin')}
+      onDemo={() => navigation.navigate('DemoRoles')}
       canUseFaceId={biometricsEnabled || needsBiometricUnlock}
       biometricLabel={biometricMeta?.label}
       onFaceId={() => navigation.navigate('FaceID')}
@@ -124,7 +128,7 @@ function EntranceFlowRoute() {
 }
 
 export function RootNavigator() {
-  const { bootstrapping, isAuthenticated, needsBiometricUnlock, role } = useAuth();
+  const { bootstrapping, isAuthenticated, needsBiometricUnlock, role, isDemo, token } = useAuth();
 
   if (bootstrapping) return <BootSplash />;
 
@@ -135,24 +139,30 @@ export function RootNavigator() {
       : 'Welcome';
 
   return (
-    <Root.Navigator
-      key={initialRouteName}
-      initialRouteName={initialRouteName}
-      screenOptions={{ headerShown: false }}
-    >
-      <Root.Screen name="Welcome" component={WelcomeScreen} />
-      <Root.Screen name="SignIn" component={SignInScreen} />
-      <Root.Screen name="StudentLogin" component={StudentLoginScreen} />
-      <Root.Screen name="ParentTeacherLogin" component={ParentTeacherLoginScreen} />
-      <Root.Screen name="FaceID" component={FaceIDScreen} />
-      <Root.Screen name="StudentApp" component={StudentApp} />
-      <Root.Screen name="ParentApp" component={ParentApp} />
-      <Root.Screen name="TeacherApp" component={TeacherApp} />
-      <Root.Screen name="StaffApp" component={StaffApp} />
-      <Root.Screen name="SecurityApp" component={SecurityApp} />
-      <Root.Screen name="SuperAdminApp" component={SuperAdminApp} />
-      <Root.Screen name="PsychologistApp" component={PsychologistApp} />
-      <Root.Screen name="EntranceFlow" component={EntranceFlowRoute} />
-    </Root.Navigator>
+    <View style={{ flex: 1 }}>
+      {isDemo ? <DemoToolbar /> : null}
+      <ScreenTopInsetContext.Provider value={isDemo ? 0 : null}>
+        <Root.Navigator
+          key={`${initialRouteName}:${isDemo ? token : 'real'}`}
+          initialRouteName={initialRouteName}
+          screenOptions={{ headerShown: false }}
+        >
+          <Root.Screen name="Welcome" component={WelcomeScreen} />
+          <Root.Screen name="DemoRoles" component={DemoRolesScreen} />
+          <Root.Screen name="SignIn" component={SignInScreen} />
+          <Root.Screen name="StudentLogin" component={StudentLoginScreen} />
+          <Root.Screen name="ParentTeacherLogin" component={ParentTeacherLoginScreen} />
+          <Root.Screen name="FaceID" component={FaceIDScreen} />
+          <Root.Screen name="StudentApp" component={StudentApp} />
+          <Root.Screen name="ParentApp" component={ParentApp} />
+          <Root.Screen name="TeacherApp" component={TeacherApp} />
+          <Root.Screen name="StaffApp" component={StaffApp} />
+          <Root.Screen name="SecurityApp" component={SecurityApp} />
+          <Root.Screen name="SuperAdminApp" component={SuperAdminApp} />
+          <Root.Screen name="PsychologistApp" component={PsychologistApp} />
+          <Root.Screen name="EntranceFlow" component={EntranceFlowRoute} />
+        </Root.Navigator>
+      </ScreenTopInsetContext.Provider>
+    </View>
   );
 }

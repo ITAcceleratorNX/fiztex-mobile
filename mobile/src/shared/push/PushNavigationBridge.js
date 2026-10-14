@@ -21,7 +21,7 @@ function currentRootRoute(navigationRef) {
  * @param {{ navigationRef: object, rootRouteFor: (role: string|null) => string|null }} props
  */
 export function PushNavigationBridge({ navigationRef, rootRouteFor }) {
-  const { isAuthenticated, role, accountId } = useAuth();
+  const { isAuthenticated, role, accountId, isDemo } = useAuth();
   const [pending, setPending] = useState(null);
   const [rootRoute, setRootRoute] = useState(() => currentRootRoute(navigationRef));
   const handled = useRef(new Set());
@@ -62,7 +62,7 @@ export function PushNavigationBridge({ navigationRef, rootRouteFor }) {
   }, [navigationRef]);
 
   useEffect(() => {
-    if (!pending) return;
+    if (!pending || isDemo) return;
     const expected = rootRouteFor(role);
     const ready = readyToNavigate({
       isAuthenticated,
@@ -78,7 +78,7 @@ export function PushNavigationBridge({ navigationRef, rootRouteFor }) {
     if (target.type !== 'open') return;
     if (target.childId != null) requestChildSelection(target.childId);
     navigationRef.navigate(...navigationArgs(target));
-  }, [pending, isAuthenticated, role, accountId, rootRoute, rootRouteFor, navigationRef]);
+  }, [pending, isAuthenticated, role, accountId, isDemo, rootRoute, rootRouteFor, navigationRef]);
 
   return null;
 }

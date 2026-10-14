@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './config';
+import { apiFileUrl } from './config';
 import { request, requestMultipart } from './client';
 import { asUpload, authHeaders } from './upload';
 
@@ -303,20 +303,20 @@ export const homeworkApi = {
  */
 export const homeworkFiles = {
   material: (homeworkId, materialId) =>
-    `${API_BASE_URL}/api/homework/${homeworkId}/materials/${materialId}/content`,
+    apiFileUrl(`/api/homework/${homeworkId}/materials/${materialId}/content`),
   myAttachment: (homeworkId, attachmentId) =>
-    `${API_BASE_URL}/api/homework/${homeworkId}/my-submission/attachments/${attachmentId}/content`,
+    apiFileUrl(`/api/homework/${homeworkId}/my-submission/attachments/${attachmentId}/content`),
   myAnswerPhoto: (homeworkId, photoId) =>
-    `${API_BASE_URL}/api/homework/${homeworkId}/my-submission/answer-photos/${photoId}/content`,
+    apiFileUrl(`/api/homework/${homeworkId}/my-submission/answer-photos/${photoId}/content`),
   myReviewPhoto: (homeworkId, photoId) =>
-    `${API_BASE_URL}/api/homework/${homeworkId}/my-submission/review-photos/${photoId}/content`,
+    apiFileUrl(`/api/homework/${homeworkId}/my-submission/review-photos/${photoId}/content`),
   childReviewPhoto: (homeworkId, childId, photoId) =>
-    `${API_BASE_URL}/api/homework/${homeworkId}/children/${childId}/review-photos/${photoId}/content`,
+    apiFileUrl(`/api/homework/${homeworkId}/children/${childId}/review-photos/${photoId}/content`),
   /** Вложение работы ученика глазами учителя (004 §5). */
   submissionAttachment: (homeworkId, studentProfileId, attachmentId) =>
-    `${API_BASE_URL}/api/homework/${homeworkId}/submissions/${studentProfileId}/attachments/${attachmentId}/content`,
+    apiFileUrl(`/api/homework/${homeworkId}/submissions/${studentProfileId}/attachments/${attachmentId}/content`),
   reviewPhoto: (homeworkId, studentProfileId, photoId) =>
-    `${API_BASE_URL}/api/homework/${homeworkId}/submissions/${studentProfileId}/review-photos/${photoId}/content`,
+    apiFileUrl(`/api/homework/${homeworkId}/submissions/${studentProfileId}/review-photos/${photoId}/content`),
 };
 
 // Реэкспорт: экраны ДЗ импортируют `authHeaders` отсюда с самого начала, и менять

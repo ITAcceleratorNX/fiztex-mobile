@@ -5,6 +5,7 @@
  * правило «как отдать файл из React Native» одно на приложение, и вторая его копия
  * разъехалась бы с первой ровно тогда, когда правило поменяется.
  */
+import { isDemoToken } from '../demo/session';
 
 /**
  * Вложение в форме multipart. React Native ждёт `{uri, name, type}` — не Blob: файл
@@ -30,5 +31,5 @@ function fallbackName(picked) {
  * мимо нашего `request`.
  */
 export function authHeaders(token) {
-  return token ? { Authorization: `Bearer ${token}` } : undefined;
+  return token && !isDemoToken(token) ? { Authorization: `Bearer ${token}` } : undefined;
 }

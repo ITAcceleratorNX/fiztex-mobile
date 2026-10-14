@@ -32,6 +32,11 @@ export const DOCUMENT = {
 
 export const FORMULA = { gap: 8, size: 20 };
 
+export const DEMO = {
+  gutter: 20, inset: 16, gap: 12, compactGap: 8, touchSize: 44,
+  titleSize: 24, bodySize: 14, bodyLine: 22, roleSize: 18, borderWidth: 1,
+};
+
 // Parent comments: one typography and spacing scale for editor, feed and detail.
 export const COMMENT = {
   iconSize: 14, iconStrokeWidth: 4,

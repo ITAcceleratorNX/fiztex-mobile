@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { createContext, useContext } from 'react';
 import { View, ScrollView, RefreshControl, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
+
+// The demo toolbar consumes the top safe area once for the entire navigator.
+export const ScreenTopInsetContext = createContext(null);
 
 /**
  * Высота плавающего таб-бара без нижнего инсета: 6 сверху + пилюля (14 + 28 + 14) + 8 снизу
@@ -69,14 +72,15 @@ export const shadowLg = {
 export function Screen({ children, scroll = true, contentStyle, style, refreshing = false, onRefresh }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
+  const topInset = useContext(ScreenTopInsetContext) ?? insets.top;
   // `paddingTop` у конкретного экрана — это дополнительный визуальный отступ.
   // Не даём ему затереть safe area: иначе кнопки в шапке оказываются под вырезом
   // или статус-баром на устройствах с Dynamic Island.
   const content = StyleSheet.flatten(contentStyle) || {};
-  const contentTop = insets.top + 4 + (Number(content.paddingTop) || 0);
+  const contentTop = topInset + 4 + (Number(content.paddingTop) || 0);
   const safeContentStyle = { ...content, paddingTop: contentTop };
   const screen = StyleSheet.flatten(style) || {};
-  const screenTop = insets.top + 4 + (Number(screen.paddingTop) || 0);
+  const screenTop = topInset + 4 + (Number(screen.paddingTop) || 0);
   const safeScreenStyle = { ...screen, paddingTop: screenTop };
 
   if (!scroll) {

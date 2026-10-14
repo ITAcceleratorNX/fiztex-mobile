@@ -12,9 +12,9 @@ import { currentPermissionGranted, registerThisDevice } from './registration';
  *   отвязка. Без изменения разрешения возвращение в приложение запросов не шлёт.
  */
 export function usePushRegistration() {
-  const { isAuthenticated, token } = useAuth();
+  const { isAuthenticated, token, isDemo } = useAuth();
   useEffect(() => {
-    if (Platform.OS === 'web' || !isAuthenticated || !token) return undefined;
+    if (Platform.OS === 'web' || isDemo || !isAuthenticated || !token) return undefined;
     let active = true;
     let lastPermission = null;
     let lastDeviceToken = null;
@@ -75,5 +75,5 @@ export function usePushRegistration() {
       tokenSubscription.remove();
       appStateSubscription.remove();
     };
-  }, [isAuthenticated, token]);
+  }, [isAuthenticated, token, isDemo]);
 }

@@ -484,6 +484,21 @@ test('push registration on web and iOS simulator never acquires a native token o
   }
 });
 
+test('local demo on a physical phone never requests push permission, tokens or device registration', async () => {
+  for (const platform of ['ios', 'android']) {
+    const h = host(); h.platform.OS = platform; h.auth.isDemo = true;
+    const { usePushRegistration } = h.load('src/shared/push/usePushRegistration.js');
+    h.render(() => usePushRegistration()); await h.flush();
+    h.notifications.emit({ type: platform, data: 'rotated-demo-token' });
+    await h.change('background'); await h.change('active');
+    assert.equal(h.notifications.nativeCalls, 0);
+    assert.equal(h.notifications.expoCalls.length, 0);
+    assert.equal(h.pushListeners.size, 0);
+    assert.equal(h.requests.length, 0);
+    h.unmount();
+  }
+});
+
 test('Android uses the event token too; push failures do not start a timer or a recursive retry loop', async () => {
   for (const fail of [false, true]) {
     const h = host(); h.platform.OS = 'android'; h.notifications.native.type = 'android';

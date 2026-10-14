@@ -1,5 +1,5 @@
 import { request } from './client';
-import { API_BASE_URL } from './config';
+import { apiFileUrl } from './config';
 
 /**
  * Рабочее пространство урока — одно на все роли (LessonController).
@@ -117,9 +117,9 @@ export const lessonApi = {
  */
 export const lessonFiles = {
   material: (lessonId, materialId) =>
-    `${API_BASE_URL}/api/lessons/${lessonId}/materials/${materialId}/content`,
+    apiFileUrl(`/api/lessons/${lessonId}/materials/${materialId}/content`),
 
   /** Файл учебника через урок: другого основания доступа у ученика и родителя нет. */
   textbook: (lessonId, textbookId, childId) =>
-    `${API_BASE_URL}/api/lessons/${lessonId}/textbooks/${textbookId}/content${childQuery(childId)}`,
+    apiFileUrl(`/api/lessons/${lessonId}/textbooks/${textbookId}/content${childQuery(childId)}`),
 };

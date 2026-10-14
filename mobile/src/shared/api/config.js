@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import { demoIsActive, demoFileUri } from '../demo/session';
 
 const PORT = 8080;
 
@@ -37,6 +38,11 @@ function localBaseUrl() {
 }
 
 export const API_BASE_URL = resolveBaseUrl();
+
+/** Native media loaders bypass request(): keep their demo URIs local too. */
+export function apiFileUrl(path) {
+  return demoIsActive() ? demoFileUri(path) : `${API_BASE_URL}${path}`;
+}
 
 if (__DEV__) {
   // eslint-disable-next-line no-console
