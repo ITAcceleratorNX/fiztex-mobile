@@ -629,3 +629,45 @@ test('subject details refresh breakdown and finals together; late period data ca
   pending.slice(-2).forEach(p => p.resolve({ events: [] }));
   await late;
 });
+
+test('grade history reloads server events and isolates grade/account contexts', async () => {
+  const h = host();
+  h.auth.role = 'TEACHER';
+  const { useGradeHistory } = h.load('src/shared/hooks/useGrades.js');
+  const events = [
+    { id: 1, action: 'UPDATE', before: { score: 8 }, after: { score: 10 } },
+    { id: 2, action: 'UPDATE', before: { score: 10 }, after: { score: 8 } },
+  ];
+  let gradeId = 10;
+  h.respond(() => events);
+  h.render(() => useGradeHistory(gradeId));
+  let view = await h.flush();
+  assert.deepEqual(view.events, events);
+  await view.reload();
+  view = await h.flush();
+  assert.equal(view.events.length, 2);
+  let finish;
+  h.respond(() => new Promise(resolve => { finish = resolve; }));
+  const old = view.reload();
+  await h.flush();
+  gradeId = 20;
+  h.respond(() => []);
+  assert.deepEqual(h.render().events, []);
+  view = await h.flush();
+  finish(events);
+  await old;
+  view = await h.flush();
+  assert.deepEqual(view.events, []);
+  assert.equal(h.requests.at(-1).url, '/api/grades/20/history');
+  h.respond(() => new Promise(resolve => { finish = resolve; }));
+  const pending = view.reload();
+  await h.flush();
+  h.auth.token = null;
+  assert.deepEqual(h.render().events, []);
+  await h.flush();
+  finish(events);
+  await pending;
+  view = await h.flush();
+  assert.deepEqual(view.events, []);
+  h.unmount();
+});

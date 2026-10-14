@@ -8,6 +8,7 @@ import Icon from '@shared/components/Icon';
 import { StateView } from '@shared/components/ui';
 import { useLesson } from '@shared/hooks/useLesson';
 import { useGradeScale, useLessonGrades } from '@shared/hooks/useGrades';
+import { GradeHistorySheet } from './GradeHistorySheet';
 import { useLessonParentComments } from '@shared/hooks/useParentComments';
 import { CommentButton } from '@shared/ui/comments';
 import { ParentCommentEditor } from './ParentCommentEditor';
@@ -105,6 +106,7 @@ export function LessonGradesScreen({ nav, payload }) {
   const lessonId = payload?.lessonInstanceId ?? null;
   const comments = useLessonParentComments(lessonId);
   const [commentStudentId, setCommentStudentId] = useState(null);
+  const [gradeHistory, setGradeHistory] = useState(null);
   const commentRow = comments.data?.students?.find(row => row.studentProfileId === commentStudentId);
   const { lesson } = useLesson(lessonId, { history: false });
   const scale = useGradeScale();
@@ -333,6 +335,10 @@ export function LessonGradesScreen({ nav, payload }) {
                 maxGrades={maxGrades}
                 canManage={canManage}
                 openSlot={picker?.studentProfileId === row.studentProfileId ? picker.slot : null}
+                onShowHistory={(grade) => {
+                  closePicker();
+                  setGradeHistory({ gradeId: grade.id, studentName: row.fullName });
+                }}
                 onOpen={(slot, grade) => {
                   setSheetError(null);
                   setPicker({
@@ -346,6 +352,8 @@ export function LessonGradesScreen({ nav, payload }) {
           </View>
         </View>
       )}
+
+      {gradeHistory ? <GradeHistorySheet key={gradeHistory.gradeId} {...gradeHistory} onClose={() => setGradeHistory(null)} /> : null}
 
       {commentRow ? <ParentCommentEditor key={`${lessonId}:${commentStudentId}`} lessonId={lessonId} row={commentRow}
         lesson={lesson} onClose={() => setCommentStudentId(null)} onSaved={() => comments.reload(true)} /> : null}

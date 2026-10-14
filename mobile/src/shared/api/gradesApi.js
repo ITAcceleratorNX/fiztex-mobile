@@ -22,6 +22,8 @@ function query(params) {
  * (`gradeValueBody` в `gradesMap.js`).
  */
 export const gradesApi = {
+  history: (token, gradeId) => request(`/api/grades/${gradeId}/history`, { token }),
+
   scale: (token) => request('/api/grades/scale', { token }),
 
   lessonSheet: (token, lessonId) => request(`/api/lessons/${lessonId}/grades/sheet`, { token }),

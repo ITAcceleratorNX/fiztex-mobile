@@ -429,3 +429,10 @@ export function useMyHomeworkGrade(homeworkId, { childStudentProfileId = null, e
   };
   return { grade: visible.grade, loading: visible.loading, error: visible.error, reload };
 }
+
+export function useGradeHistory(gradeId) {
+  const { token } = useAuth();
+  const load = useCallback(() => gradesApi.history(token, gradeId), [token, gradeId]);
+  const resource = useGradeResource(load, Boolean(token && gradeId));
+  return { ...resource, events: Array.isArray(resource.data) ? resource.data : [] };
+}
