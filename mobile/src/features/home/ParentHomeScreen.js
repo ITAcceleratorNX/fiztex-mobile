@@ -20,6 +20,7 @@ import {
 import { childPillLabel, formatHomeDate, parentName, todayKey } from './homeDate';
 import { latestGradeLine } from './latestGrade';
 import { MonthlyFeedbackBlock } from './MonthlyFeedbackBlock';
+import { GradeDynamicsHomeTile } from '@features/dynamics/ParentDynamicsScreens';
 
 /**
  * Главная родителя (Figma `glavnaya-Родитель-home`).
@@ -160,6 +161,8 @@ export function ParentHomeScreen({ nav }) {
         subtitle={gradeLine || 'Оценок за четверть пока нет'}
         onPress={() => nav?.('grades')}
       />
+      {/* Под «Оценками по предметам», как в макете (Figma 2201:52702). */}
+      {child ? <GradeDynamicsHomeTile childId={childId} onPress={() => nav?.('grade-dynamics')} /> : null}
       <LearnerHomeTile
         icon="calendarCheck"
         tone="markPresent"

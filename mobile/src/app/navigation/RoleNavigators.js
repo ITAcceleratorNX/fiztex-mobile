@@ -1,5 +1,6 @@
 import React from 'react';
 import { ParentTeacherCommentsScreen } from '@features/home/ParentTeacherCommentsScreen';
+import { ParentGradeDynamicsScreen, ParentSubjectDynamicsScreen } from '@features/dynamics/ParentDynamicsScreens';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { CustomTabBar } from './CustomTabBar';
@@ -234,6 +235,9 @@ export function ParentApp() {
           { name: 'events', comp: StudentEvents },
           { name: 'feedback', comp: ParentFeedback },
           { name: 'teacher-comments', comp: ParentTeacherCommentsScreen },
+          // Динамика успеваемости ребёнка (FRONTEND Student Grade Dynamics §5): общий экран и предмет.
+          { name: 'grade-dynamics', comp: ParentGradeDynamicsScreen },
+          { name: 'grade-dynamics-subject', comp: ParentSubjectDynamicsScreen },
           { name: 'notifications', comp: NotificationsScreen },
         ])}
       </PStack.Navigator>
