@@ -3,7 +3,7 @@ import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BOTTOM_CHROME_HEIGHT, Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
-import { Icon } from '@shared/components/Icon';
+import Icon from '@shared/components/Icon';
 import { Card, SegmentedSwitch, StateView } from '@shared/components/ui';
 import { DynamicsChart, Sparkline } from '@shared/components/DynamicsChart';
 import { ChildPickerSheet, ChildSwitcherPill } from '@shared/ui/childSwitcher';
