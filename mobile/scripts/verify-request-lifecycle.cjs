@@ -500,3 +500,132 @@ test('Android uses the event token too; push failures do not start a timer or a 
     h.unmount();
   }
 });
+
+test('learner grades refresh on focus and foreground without render loops or duplicate requests', async () => {
+  for (const role of ['STUDENT', 'PARENT']) {
+    const h = host();
+    h.auth.role = role;
+    let score = 8;
+    const childStudentProfileId = role === 'PARENT' ? 10 : null;
+    h.respond(url => url.startsWith('/api/grades/my/subjects')
+      ? { subjects: [{ subjectId: 1, score, result: { roundedPercent: score * 10 } }] }
+      : { entries: [{ lessonId: 1, grade: { score, maxScore: 10 } }] });
+    const { useMySubjectGrades, useMyDiaryGrades } = h.load('src/shared/hooks/useGrades.js');
+    h.render(() => ({
+      subjects: useMySubjectGrades({ childStudentProfileId }),
+      diary: useMyDiaryGrades({ dateFrom: '2026-10-14', dateTo: '2026-10-14', childStudentProfileId }),
+    }));
+    let view = await h.flush();
+    assert.equal(h.requests.length, 2);
+    assert.equal(view.subjects.subjects[0].result.roundedPercent, 80);
+    h.navigation.focused = false;
+    h.render();
+    score = 10;
+    await h.change('background');
+    await h.change('active');
+    assert.equal(h.requests.length, 2);
+    h.navigation.focused = true;
+    h.render();
+    view = await h.flush();
+    assert.equal(h.requests.length, 4);
+    assert.equal(view.subjects.subjects[0].score, 10);
+    assert.equal(view.subjects.subjects[0].result.roundedPercent, 100);
+    for (let i = 0; i < 20; i++) h.render();
+    await h.flush();
+    assert.equal(h.requests.length, 4);
+    score = 9;
+    await h.change('background');
+    view = await h.change('active');
+    assert.equal(h.requests.length, 6);
+    assert.equal(view.subjects.subjects[0].score, 9);
+    assert.ok(Object.values(view.diary.grades)[0][0].includes('9'));
+    let finish;
+    h.respond(() => new Promise(resolve => { finish = resolve; }));
+    const first = view.subjects.reload();
+    const second = view.subjects.reload({ silent: true });
+    await h.flush();
+    assert.equal(first, second);
+    assert.equal(h.requests.length, 7);
+    finish({ subjects: [{ score: 7 }] });
+    await first;
+    await h.flush();
+    h.unmount();
+    assert.equal(h.listeners.size, 0);
+  }
+});
+
+test('learner grade resources hide old children immediately and ignore responses after context changes', async () => {
+  const h = host();
+  h.auth.role = 'PARENT';
+  let child = null;
+  const { useMySubjectGrades, useMyDiaryGrades } = h.load('src/shared/hooks/useGrades.js');
+  h.render(() => ({
+    subjects: useMySubjectGrades({ childStudentProfileId: child }),
+    diary: useMyDiaryGrades({ dateFrom: '2026-10-14', dateTo: '2026-10-14', childStudentProfileId: child }),
+  }));
+  await h.flush();
+  assert.equal(h.requests.length, 0);
+  const pending = [];
+  h.respond(url => new Promise(resolve => pending.push({ url, resolve })));
+  child = 10;
+  h.render();
+  await h.flush();
+  assert.equal(pending.length, 2);
+  child = 20;
+  let view = h.render();
+  assert.deepEqual(view.subjects.subjects, []);
+  assert.deepEqual(view.diary.grades, {});
+  await h.flush();
+  for (const p of pending.filter(p => p.url.includes('=20'))) p.resolve({ subjects: [{ score: 10 }], entries: [] });
+  view = await h.flush();
+  assert.equal(view.subjects.subjects[0].score, 10);
+  for (const p of pending.filter(p => p.url.includes('=10'))) p.resolve({ subjects: [{ score: 1 }], entries: [{ lessonId: 1, grade: { score: 1, maxScore: 10 } }] });
+  view = await h.flush();
+  assert.equal(view.subjects.subjects[0].score, 10);
+  assert.deepEqual(view.diary.grades, {});
+  h.auth.token = null;
+  view = h.render();
+  assert.deepEqual(view.subjects.subjects, []);
+  assert.deepEqual(view.diary.grades, {});
+  await h.flush();
+  h.unmount();
+});
+
+test('subject details refresh breakdown and finals together; late period data cannot overwrite a new period', async () => {
+  const h = host();
+  const { useMySubjectDetail } = h.load('src/shared/hooks/useGrades.js');
+  let period = 1, score = 8;
+  h.respond(url => url.includes('/breakdown') ? { roundedPercent: score * 10 }
+    : url.startsWith('/api/final-grades/my') ? { subjects: [{ yearValue: 5 }] }
+    : { events: [{ score }], result: { roundedPercent: score * 10 } });
+  h.render(() => useMySubjectDetail({ studentProfileId: 1, subjectId: 2, academicPeriodId: period }));
+  let view = await h.flush();
+  assert.equal(view.breakdown.roundedPercent, 80);
+  score = 10;
+  await view.reload();
+  view = await h.flush();
+  assert.equal(view.history.result.roundedPercent, 100);
+  assert.equal(view.breakdown.roundedPercent, 100);
+  assert.equal(view.finals.subjects[0].yearValue, 5);
+  const pending = [];
+  h.respond(url => new Promise(resolve => pending.push({ url, resolve })));
+  const old = view.reload();
+  await h.flush();
+  period = 2;
+  view = h.render();
+  assert.equal(view.history, null);
+  assert.equal(view.finals, null);
+  assert.equal(view.breakdown, null);
+  await h.flush();
+  pending.slice(2).forEach(p => p.resolve({ events: [], subjects: [] }));
+  await h.flush();
+  pending.slice(0, 2).forEach(p => p.resolve({ events: [{ score: 1 }], subjects: [] }));
+  await old;
+  view = await h.flush();
+  assert.deepEqual(view.history.events, []);
+  const late = view.reload();
+  await h.flush();
+  h.unmount();
+  pending.slice(-2).forEach(p => p.resolve({ events: [] }));
+  await late;
+});
