@@ -58,6 +58,23 @@ export const homeworkAiApi = {
       method: 'POST',
       token,
     }),
+
+  /** AI-проверка одной отправленной работы; не выставляет оценку сама. */
+  suggestGrades: (token, homeworkId, studentProfileId, key) =>
+    request(`/api/homework/${homeworkId}/submissions/${studentProfileId}/ai-grade-suggestions`, {
+      method: 'POST', token, extraHeaders: { 'Idempotency-Key': key },
+    }),
+
+  lastGradeSuggestion: (token, homeworkId, studentProfileId) =>
+    request(`/api/homework/${homeworkId}/submissions/${studentProfileId}/ai-grade-suggestions`, { token }),
+
+  recommendation: (token, homeworkId, studentProfileId) =>
+    request(`/api/homework/${homeworkId}/submissions/${studentProfileId}/ai-recommendation`, { token }),
+
+  confirmPhotoReview: (token, homeworkId, studentProfileId, body) =>
+    request(`/api/homework/${homeworkId}/submissions/${studentProfileId}/ai-recommendation/confirm`, {
+      method: 'POST', token, body,
+    }),
 };
 
 /** Ключ идемпотентности на одно открытие шита. */
