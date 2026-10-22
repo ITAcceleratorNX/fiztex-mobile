@@ -26,6 +26,24 @@ export const gradesApi = {
 
   scale: (token) => request('/api/grades/scale', { token }),
 
+  homeworkGrades: (token, homeworkId) =>
+    request(`/api/homework/${homeworkId}/grades`, { token }),
+
+  homeworkValueMode: (token, homeworkId) =>
+    request(`/api/homework/${homeworkId}/grades/value-mode`, { token }),
+
+  setHomeworkGrade: (token, homeworkId, studentProfileId, gradeId, value) =>
+    gradeId
+      ? request(`/api/grades/${gradeId}`, {
+          token, method: 'PATCH', body: { ...value, gradeType: 'HOMEWORK' },
+        })
+      : request('/api/grades', {
+          token, method: 'POST', body: {
+            studentProfileId, sourceType: 'HOMEWORK', sourceId: homeworkId,
+            ...value, gradeType: 'HOMEWORK',
+          },
+        }),
+
   lessonSheet: (token, lessonId) => request(`/api/lessons/${lessonId}/grades/sheet`, { token }),
 
   create: (token, { studentProfileId, lessonId, value, gradeType }) =>

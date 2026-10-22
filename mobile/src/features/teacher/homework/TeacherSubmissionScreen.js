@@ -12,6 +12,7 @@ import { useSubmissionReview, useTeacherSubmission } from '@shared/hooks/useTeac
 import { ChipRow, Divider, FeedbackBox, FileChip, PhotoStrip, SectionLabel } from '@features/homework/components';
 import { HomeworkCardSkeleton } from '@features/homework/HomeworkStates';
 import { AntiCheatLog } from './AntiCheatLog';
+import { TeacherPhotoAiReview } from './TeacherPhotoAiReview';
 import { pickPhotos, sizeLabel } from '@features/homework/attachments';
 
 const DECISION_LABELS = {
@@ -38,6 +39,7 @@ export function TeacherSubmissionScreen({ nav, payload }) {
   const { loading, error, data, reload } = useTeacherSubmission(homeworkId, studentProfileId);
   const [comment, setComment] = useState('');
   const [photos, setPhotos] = useState([]);
+  const acceptAiComment = useCallback((value) => setComment(value), []);
 
   const onSuccess = useCallback(async () => {
     setComment('');
@@ -150,6 +152,18 @@ export function TeacherSubmissionScreen({ nav, payload }) {
                 </Txt>
               ) : null}
             </Card>
+          ) : null}
+
+          {attempt?.photos?.length ? (
+            <TeacherPhotoAiReview
+              key={attempt.id}
+              token={token}
+              homeworkId={homeworkId}
+              studentProfileId={studentProfileId}
+              attemptId={attempt.id}
+              canTransfer={data.status === 'SUBMITTED'}
+              onDraft={acceptAiComment}
+            />
           ) : null}
 
           {/* Журнал античита сразу под ответом (§6): решение по оценке учитель принимает,
