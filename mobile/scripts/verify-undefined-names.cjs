@@ -20,7 +20,7 @@ const GLOBALS = new Set([
   'RegExp','parseInt','parseFloat','isNaN','encodeURIComponent','decodeURIComponent','URL',
   'URLSearchParams','FormData','AbortController','Blob','TextEncoder','undefined','NaN',
   'Infinity','arguments','FileReader','crypto','navigator','window','document','alert',
-  'Intl','BigInt','Proxy','Reflect','queueMicrotask','structuredClone','performance','Uint8Array',
+  'Intl','BigInt','Proxy','Reflect','queueMicrotask','structuredClone','performance','Uint8Array','XMLHttpRequest',
   // Есть и в Hermes, и в браузере. `Buffer` сюда НЕ добавлять: в Hermes его нет, и
   // обращение к нему — настоящая находка, а не шум.
   'atob','btoa',

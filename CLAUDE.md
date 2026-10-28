@@ -65,6 +65,12 @@ mobile/src/
 текста и молча потерянные снимки с ним. В вебе уходит `File` из пикера (`asset.file`
 сохраняется при нормализации вложения). Проверка — `node scripts/verify-uploads.cjs`.
 
+**Отправляет такую форму только `requestMultipart`, и на телефоне — через `XMLHttpRequest`.**
+С Expo SDK 57 глобальный `fetch` — это `expo/fetch`: часть `{uri}` он не понимает и бросает
+`Unsupported FormDataPart implementation` ещё до сети, а ученик видел «Нет связи с сервером»
+на любой работе с фото или файлом. XHR остался сетевым стеком React Native и читает файл с
+диска сам. Свой `fetch` с `FormData` в обход клиента не писать.
+
 **Дизайн-система.** Экран собирается из `shared/components/ui.js`
 (`Card`, `Pill`, `PrimaryButton`, `CircleButton`, `ScreenHeader`, `SectionTitle`,
 `Avatar`, `AppHeader`) и `shared/ui/rows.js`. Нет нужного компонента — сначала

@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { API_BASE_URL } from './config';
 import { demoIsActive, isDemoToken } from '../demo/session';
 import { demoRequest } from '../demo/api';
@@ -172,6 +173,41 @@ export async function request(
 }
 
 /**
+ * Отправка multipart: на телефоне — `XMLHttpRequest`, в браузере — `fetch`.
+ *
+ * С Expo SDK 57 глобальный `fetch` на телефоне — это `expo/fetch`. Тело он собирает в памяти
+ * сам и части `{uri, name, type}` не понимает: на файле-ссылке бросает «Unsupported
+ * FormDataPart implementation» ещё до сети, и любая работа с фото или файлом заканчивалась
+ * «Нет связи с сервером». `XMLHttpRequest` остался сетевым стеком React Native: файл по ссылке
+ * он читает с диска сам и в память JS не тянет. В браузере `fetch` настоящий, а файлы в форме
+ * — `File` (см. `appendUpload`).
+ */
+function sendMultipart(url, headers, body, timeoutMs) {
+  if (Platform.OS === 'web' || typeof XMLHttpRequest === 'undefined') {
+    return fetchWithTimeout(url, { method: 'POST', headers, body }, timeoutMs);
+  }
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    for (const [name, value] of Object.entries(headers)) xhr.setRequestHeader(name, value);
+    xhr.timeout = timeoutMs;
+    xhr.onload = () => {
+      const text = xhr.responseText || '';
+      resolve({
+        status: xhr.status,
+        ok: xhr.status >= 200 && xhr.status < 300,
+        text: async () => text,
+        json: async () => JSON.parse(text),
+      });
+    };
+    xhr.onerror = () => reject(networkError());
+    xhr.onabort = () => reject(networkError());
+    xhr.ontimeout = () => reject(networkError(TIMEOUT_MESSAGE));
+    xhr.send(body);
+  });
+}
+
+/**
  * Multipart POST (e.g. photo upload).
  * @param {string} path
  * @param {FormData} formData
@@ -190,15 +226,7 @@ export async function requestMultipart(
 
   let res;
   try {
-    res = await fetchWithTimeout(
-      `${API_BASE_URL}${path}`,
-      {
-        method: 'POST',
-        headers,
-        body: formData,
-      },
-      timeoutMs,
-    );
+    res = await sendMultipart(`${API_BASE_URL}${path}`, headers, formData, timeoutMs);
   } catch (e) {
     if (e instanceof ApiError) throw e;
     throw networkError();
