@@ -69,6 +69,8 @@ export function StudentHomeworkDetailScreen({ nav, payload }) {
   const gradeReload = useRef(reloadGrade);
   gradeReload.current = reloadGrade;
   const focusedBefore = useRef(false);
+  // Возврат на карточку перечитывает и задание, и оценку. `useMyHomeworkGrade` перечитывает её
+  // и сам — при фокусе и возврате в приложение; одновременные вызовы сливаются в один запрос.
   useFocusEffect(useCallback(() => {
     if (focusedBefore.current) {
       reload(true);

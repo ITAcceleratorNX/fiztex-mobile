@@ -1,4 +1,5 @@
 import { request as sharedRequest, requestMultipart as sharedMultipart } from '@shared/api/client';
+import { appendUpload } from '@shared/api/upload';
 import {
   clearEntranceSession,
   getEntranceToken,
@@ -90,7 +91,7 @@ export const admissionsApi = {
     const formData = new FormData();
     const name = asset.fileName || `photo-${Date.now()}.jpg`;
     const type = asset.mimeType || asset.type || 'image/jpeg';
-    formData.append('file', { uri: asset.uri, name, type });
+    appendUpload(formData, 'file', { uri: asset.uri, name, type, file: asset.file });
     return requestMultipart(
       `/api/admissions/attempts/${attemptId}/answers/${questionId}/photos`,
       formData,

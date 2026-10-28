@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { View, Pressable, ScrollView } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen, useBottomChromePadding } from '@shared/components/Screen';
@@ -11,6 +11,8 @@ import { useAppState } from '@shared/state/AppState';
 import { PARENT, FEEDBACK, TODAY_SCHEDULE } from '@shared/data/mock';
 import { LessonRow, ProfileRow, QuickAction, brandColor } from '@shared/ui/rows';
 import { useMyProfile } from '@shared/hooks/useProfile';
+import { useParentChildren } from '@shared/hooks/useSchedule';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@features/auth/AuthContext';
 
 const chunk = (arr, n) => arr.reduce((rows, item, i) => {
@@ -354,8 +356,16 @@ export function ParentProfile({ onSignOut }) {
   const bottomPad = useBottomChromePadding();
   const { c, dark, toggle } = useTheme();
   const { biometricsEnabled, biometricMeta, enableBiometrics, disableBiometrics } = useAuth();
-  // Дети приходят те же, что и в расписании: связь родитель↔ребёнок в системе одна.
-  const { displayName, children } = useMyProfile();
+  const { displayName } = useMyProfile();
+  // Дети — тот же источник, что у главной и переключателя ребёнка (`useParentChildren`), а не
+  // поле профиля: два клиентских источника одной связи и дали «Детей пока не привязали» рядом
+  // с главной, где те же дети были (QA-07). Возврат на вкладку перечитывает список.
+  const { children, loading: childrenLoading, error: childrenError, reload: reloadChildren } = useParentChildren();
+  const focusedBefore = useRef(false);
+  useFocusEffect(useCallback(() => {
+    if (focusedBefore.current) reloadChildren({ silent: true });
+    else focusedBefore.current = true;
+  }, [reloadChildren]));
 
   const toggleBio = async () => {
     if (biometricsEnabled) await disableBiometrics();
@@ -373,15 +383,24 @@ export function ParentProfile({ onSignOut }) {
       <SectionTitle title="Мои дети" />
       <Card style={{ marginHorizontal: 16, marginBottom: 12, padding: 0 }}>
         {children.length === 0 ? (
-          <View style={{ paddingVertical: 18, paddingHorizontal: 16 }}>
+          <View style={{ paddingVertical: 18, paddingHorizontal: 16, gap: 8 }}>
             <Txt style={{ fontSize: 13, color: c.ink3 }}>
-              Детей пока не привязали. Обратитесь к администратору школы.
+              {childrenLoading
+                ? 'Загружаем список детей…'
+                : childrenError
+                  ? 'Не удалось загрузить список детей.'
+                  : 'Детей пока не привязали. Обратитесь к администратору школы.'}
             </Txt>
+            {childrenError && !childrenLoading ? (
+              <Pressable accessibilityRole="button" onPress={() => reloadChildren()}>
+                <Txt style={{ fontSize: 13, fontWeight: '600', color: c.blue }}>Повторить</Txt>
+              </Pressable>
+            ) : null}
           </View>
         ) : (
           children.map((ch, i) => (
             <View
-              key={ch.studentProfileId}
+              key={ch.id}
               style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: i < children.length - 1 ? 1 : 0, borderBottomColor: c.border, gap: 12 }}
             >
               <Avatar name={ch.fullName} size={38} color={CHILD_AVATAR_COLORS[i % CHILD_AVATAR_COLORS.length]} />

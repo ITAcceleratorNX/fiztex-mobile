@@ -44,6 +44,8 @@ function fromImage(asset) {
     type: asset.mimeType || 'image/jpeg',
     kind: 'photo',
     sizeBytes: asset.fileSize ?? null,
+    // Только в вебе: браузер отправляет сам файл, а не ссылку (см. `appendUpload`).
+    file: asset.file,
   };
 }
 
@@ -54,6 +56,7 @@ function fromDocument(asset) {
     type: asset.mimeType || 'application/octet-stream',
     kind: 'file',
     sizeBytes: asset.size ?? null,
+    file: asset.file,
   };
 }
 

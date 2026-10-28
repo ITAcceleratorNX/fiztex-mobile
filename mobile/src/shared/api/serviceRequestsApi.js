@@ -1,6 +1,6 @@
 import { apiFileUrl } from './config';
 import { request, requestMultipart } from './client';
-import { asUpload } from './upload';
+import { appendUpload } from './upload';
 
 /**
  * Сервисные заявки — сценарий автора (ТЗ SERVICE-FE-002, бэкенд SERVICE-BE-002…006).
@@ -148,7 +148,7 @@ export const serviceRequestsApi = {
     }
     const form = new FormData();
     if (comment) form.append('comment', comment);
-    for (const photo of photos) form.append('photos', asUpload(photo));
+    for (const photo of photos) appendUpload(form, 'photos', photo);
     return requestMultipart(`/api/service-requests/${id}/complete`, form, { token });
   },
 
@@ -188,7 +188,7 @@ function toForm(fields, photos) {
   for (const [key, value] of Object.entries(fields)) {
     if (value !== undefined && value !== null) form.append(key, String(value));
   }
-  for (const photo of photos) form.append('photos', asUpload(photo));
+  for (const photo of photos) appendUpload(form, 'photos', photo);
   return form;
 }
 

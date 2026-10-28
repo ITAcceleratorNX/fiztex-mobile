@@ -27,6 +27,8 @@ function fromAsset(asset) {
     name,
     type: asset.mimeType || 'image/jpeg',
     sizeBytes: asset.fileSize ?? null,
+    // Только в вебе: браузер отправляет сам файл, а не ссылку (см. `appendUpload`).
+    file: asset.file,
   };
 }
 

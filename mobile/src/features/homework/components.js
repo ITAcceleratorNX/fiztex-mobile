@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Pressable, ScrollView, Image, Modal } from 'react-native';
+import { View, Pressable, ScrollView, Modal, useWindowDimensions } from 'react-native';
+import { AuthImage } from '@shared/components/AuthImage';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
@@ -314,13 +315,17 @@ export function FeedbackBox({ title = 'Комментарий учителя', t
 }
 
 /**
- * Полоса фотографий обратной связи. Открываются наложением внутри экрана, а не новой
- * вкладкой: на пометках учителя весь смысл в мелких деталях, и рассмотреть их надо
- * не выходя из задания.
+ * Полоса фотографий — работы ученика или обратной связи учителя. Открываются наложением
+ * внутри экрана, а не новой вкладкой: на снимке решения весь смысл в мелких деталях, и
+ * рассмотреть их надо, не выходя из задания и не теряя ученика (QA B2-037).
+ *
+ * Просмотр — во весь экран, все снимки работы подряд: листаются пальцем и стрелками, номер
+ * «Фото 2 из 5» виден всегда, на телефоне снимок увеличивается щипком. Закрытие возвращает
+ * ровно на ту же карточку.
  */
 export function PhotoStrip({ photos = [], uriFor, headers, label }) {
   const { c } = useTheme();
-  const [zoomed, setZoomed] = React.useState(null);
+  const [openIndex, setOpenIndex] = React.useState(null);
   if (photos.length === 0) return null;
 
   return (
@@ -331,47 +336,159 @@ export function PhotoStrip({ photos = [], uriFor, headers, label }) {
         </Txt>
       ) : null}
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={{ flexDirection: 'row', gap: 6 }}>
-          {photos.map((photo) => (
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {photos.map((photo, index) => (
             <Pressable
               key={photo.id}
               accessibilityRole="button"
-              accessibilityLabel={`Открыть ${photo.fileName || 'фотографию'}`}
-              onPress={() => setZoomed(photo)}
+              accessibilityLabel={`Открыть фото ${index + 1} из ${photos.length}`}
+              onPress={() => setOpenIndex(index)}
             >
-              <Image
+              <AuthImage
                 source={{ uri: uriFor(photo), headers }}
-                style={{ width: 52, height: 52, borderRadius: 8, backgroundColor: c.bg2 }}
+                style={{ width: 76, height: 76, borderRadius: 10, backgroundColor: c.bg2 }}
               />
             </Pressable>
           ))}
         </View>
       </ScrollView>
 
-      <Modal visible={Boolean(zoomed)} transparent animationType="fade" onRequestClose={() => setZoomed(null)}>
-        <Pressable
-          onPress={() => setZoomed(null)}
+      <PhotoViewer
+        photos={photos}
+        uriFor={uriFor}
+        headers={headers}
+        index={openIndex}
+        onIndexChange={setOpenIndex}
+        onClose={() => setOpenIndex(null)}
+      />
+    </View>
+  );
+}
+
+/** Полноэкранный просмотр снимков; `index == null` — закрыт. */
+export function PhotoViewer({ photos, uriFor, headers, index, onIndexChange, onClose }) {
+  const { width, height } = useWindowDimensions();
+  const pager = React.useRef(null);
+  const open = index != null && photos.length > 0;
+  const current = open ? Math.min(Math.max(index, 0), photos.length - 1) : 0;
+
+  // Открыли на третьем снимке или нажали стрелку — лента встаёт на него без анимации листания.
+  React.useEffect(() => {
+    if (!open) return;
+    const timer = setTimeout(() => pager.current?.scrollTo?.({ x: current * width, animated: false }), 0);
+    return () => clearTimeout(timer);
+  }, [open, current, width]);
+
+  const go = (next) => {
+    if (next < 0 || next >= photos.length) return;
+    onIndexChange(next);
+  };
+
+  return (
+    <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.94)' }}>
+        <View
           style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.88)',
+            flexDirection: 'row',
             alignItems: 'center',
-            justifyContent: 'center',
-            padding: 16,
+            justifyContent: 'space-between',
+            paddingHorizontal: 16,
+            paddingTop: 48,
+            paddingBottom: 12,
           }}
         >
-          {zoomed ? (
-            <Image
-              source={{ uri: uriFor(zoomed), headers }}
-              resizeMode="contain"
-              style={{ width: '100%', height: '80%' }}
-            />
-          ) : null}
-          <Txt style={{ marginTop: 16, fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>
-            Нажмите, чтобы закрыть
+          <Txt style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>
+            Фото {current + 1} из {photos.length}
           </Txt>
-        </Pressable>
-      </Modal>
-    </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Закрыть просмотр"
+            onPress={onClose}
+            hitSlop={12}
+            style={{ padding: 6 }}
+          >
+            <Icon name="x" size={24} color="#fff" />
+          </Pressable>
+        </View>
+
+        <ScrollView
+          ref={pager}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={(event) => {
+            const page = Math.round(event.nativeEvent.contentOffset.x / Math.max(width, 1));
+            if (page !== current) go(page);
+          }}
+          style={{ flex: 1 }}
+        >
+          {photos.map((photo, photoIndex) => (
+            <ScrollView
+              key={photo.id}
+              style={{ width }}
+              contentContainerStyle={{ width, height: height - 170, alignItems: 'center', justifyContent: 'center' }}
+              maximumZoomScale={4}
+              minimumZoomScale={1}
+              centerContent
+              showsVerticalScrollIndicator={false}
+              showsHorizontalScrollIndicator={false}
+            >
+              {Math.abs(photoIndex - current) <= 1 ? (
+                <AuthImage
+                  source={{ uri: uriFor(photo), headers }}
+                  resizeMode="contain"
+                  accessibilityLabel={`Фото ${photoIndex + 1}`}
+                  style={{ width: width - 16, height: height - 170 }}
+                />
+              ) : null}
+            </ScrollView>
+          ))}
+        </ScrollView>
+
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: 24,
+            paddingVertical: 20,
+          }}
+        >
+          <ViewerArrow icon="chevronLeft" label="Предыдущее фото" disabled={current === 0} onPress={() => go(current - 1)} />
+          <Txt style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>Щипком — увеличить</Txt>
+          <ViewerArrow
+            icon="chevronRight"
+            label="Следующее фото"
+            disabled={current === photos.length - 1}
+            onPress={() => go(current + 1)}
+          />
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function ViewerArrow({ icon, label, disabled, onPress }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      hitSlop={12}
+      style={{
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.14)',
+        opacity: disabled ? 0.35 : 1,
+      }}
+    >
+      <Icon name={icon} size={22} color="#fff" />
+    </Pressable>
   );
 }
 

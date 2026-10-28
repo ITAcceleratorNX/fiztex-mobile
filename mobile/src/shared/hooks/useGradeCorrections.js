@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { useAuth } from '@features/auth/AuthContext';
 import { gradeCorrectionsApi } from '@shared/api/gradeCorrectionsApi';
+import { useGradeResource } from './useGradeResource';
 
 /**
  * Открытые исправления работы ученика (или выбранного ребёнка у родителя).
@@ -8,33 +9,20 @@ import { gradeCorrectionsApi } from '@shared/api/gradeCorrectionsApi';
  * Как и посещаемость в карточке урока, это свой запрос, и его сбой экран не ломает: ошибка
  * гасится в пустой список — блок исправления просто не появляется.
  *
+ * Перечитывается при возврате на экран и в приложение, как и остальные оценки ученика
+ * (`useGradeResource`): итоговая оценка учителя закрывает исправление, и блок «Требуется
+ * исправление» не должен висеть на открытой карточке после того, как оценку уже поставили.
+ *
  * @param {{ childId?: number|null, lessonId?: number|null, enabled?: boolean }} options
  */
 export function useMyGradeCorrections({ childId = null, lessonId = null, enabled = true } = {}) {
   const { token } = useAuth();
-  const [loading, setLoading] = useState(Boolean(token) && enabled);
-  const [corrections, setCorrections] = useState([]);
-
-  const reload = useCallback(async () => {
-    if (!token || !enabled) {
-      setCorrections([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const list = await gradeCorrectionsApi.my(token, { childStudentProfileId: childId, lessonId });
-      setCorrections(Array.isArray(list) ? list : []);
-    } catch {
-      setCorrections([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [token, childId, lessonId, enabled]);
-
-  useEffect(() => {
-    reload();
-  }, [reload]);
-
-  return { loading, corrections, reload };
+  const load = useCallback(
+    () => gradeCorrectionsApi.my(token, { childStudentProfileId: childId, lessonId })
+      .then((list) => (Array.isArray(list) ? list : []))
+      .catch(() => []),
+    [token, childId, lessonId],
+  );
+  const resource = useGradeResource(load, Boolean(token && enabled));
+  return { loading: resource.loading, corrections: resource.data || [], reload: resource.reload };
 }

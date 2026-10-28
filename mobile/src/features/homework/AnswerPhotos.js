@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Pressable, Image, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Pressable, ScrollView, ActivityIndicator } from 'react-native';
+import { AuthImage } from '@shared/components/AuthImage';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { useTheme } from '@shared/theme/ThemeContext';
@@ -118,7 +119,7 @@ export function AnswerPhotos({ homeworkId, question }) {
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {photos.map((photo) => (
             <View key={photo.id}>
-              <Image
+              <AuthImage
                 source={{
                   uri: homeworkFiles.myAnswerPhoto(homeworkId, photo.id),
                   headers: authHeaders(token),

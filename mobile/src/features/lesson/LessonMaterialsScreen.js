@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Image, Linking, Modal, Pressable, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Pressable, View } from 'react-native';
+import { AuthImage } from '@shared/components/AuthImage';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/theme/ThemeContext';
@@ -229,7 +230,7 @@ function MaterialViewer({ material, lessonId, headers, onClose }) {
         </View>
 
         {material.isImage ? (
-          <Image
+          <AuthImage
             source={{ uri, headers }}
             resizeMode="contain"
             style={{ flex: 1, width: '100%' }}
