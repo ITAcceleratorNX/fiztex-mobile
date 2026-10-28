@@ -55,9 +55,16 @@ const { HomeworkResultCard } = load('src/shared/components/HomeworkResultCard.js
   '../theme/ThemeContext': theme, '../theme/tokens': tokens, '../api/gradesMap': gradesMap,
 });
 const api = { myHomeworkGrades: async () => [] };
+// Оценка за задание живёт на общем `useGradeResource` (перечитывание при фокусе и возврате
+// в приложение); здесь экран всегда в фокусе, а приложение — на переднем плане.
+const gradeResource = load('src/shared/hooks/useGradeResource.js', {
+  'react-native': { AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } },
+  '@react-navigation/native': { useIsFocused: () => true },
+});
 const { useMyHomeworkGrade } = load('src/shared/hooks/useGrades.js', {
   '@features/auth/AuthContext': { useAuth: () => ({ token: authToken() }) },
   '@shared/api/gradesApi': { gradesApi: api }, '@shared/api/gradesMap': gradesMap,
+  './useGradeResource': gradeResource,
 });
 const defaults = { status: 'DONE', isTest: true, result: { score: 6, maxScore: 8 },
   grade: { scaleCode: '4+', numericValue: 4.5 } };

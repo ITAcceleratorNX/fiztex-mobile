@@ -104,7 +104,11 @@ function notify(title, body, roles = ['STUDENT', 'PARENT']) {
 function multipartBody(form) {
   const parts = form?._parts || (typeof form?.entries === 'function' ? [...form.entries()] : []);
   const body = {};
-  for (const [key, value] of parts) {
+  for (const [key, raw] of parts) {
+    // В вебе файл приходит браузерным `File` (см. `appendUpload`), а демо помнит ссылки.
+    const value = typeof Blob !== 'undefined' && raw instanceof Blob
+      ? { uri: URL.createObjectURL(raw), name: raw.name, type: raw.type }
+      : raw;
     if (key === 'photos' || key === 'files') (body[key] ||= []).push(value);
     else body[key] = value;
   }

@@ -3,6 +3,7 @@ import {
   View, Pressable, Image, Modal, TextInput, ActivityIndicator,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { AuthImage } from '@shared/components/AuthImage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Txt } from '@shared/components/Txt';
@@ -207,7 +208,7 @@ export function ServiceRequestCard({ request, headers, accountId, onPress }) {
         </Txt>
         {photo ? (
           <View>
-            <Image
+            <AuthImage
               source={{ uri: serviceRequestFiles.photo(request.id, photo.id), headers }}
               style={{ width: 48, height: 48, borderRadius: 8, backgroundColor: c.bg2 }}
             />

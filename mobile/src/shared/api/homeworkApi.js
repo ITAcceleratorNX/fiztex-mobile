@@ -1,6 +1,6 @@
 import { apiFileUrl } from './config';
 import { request, requestMultipart } from './client';
-import { asUpload, authHeaders } from './upload';
+import { appendUpload, authHeaders } from './upload';
 
 /**
  * Домашние задания (ТЗ HOMEWORK-003, 004, 005.1–005.3).
@@ -112,7 +112,7 @@ export const homeworkApi = {
 
   uploadAnswerPhoto(token, homeworkId, questionId, photo) {
     const form = new FormData();
-    form.append('file', asUpload(photo));
+    appendUpload(form, 'file', photo);
     return requestMultipart(
       `/api/homework/${homeworkId}/my-submission/questions/${questionId}/photos`,
       form,
@@ -165,8 +165,8 @@ export const homeworkApi = {
     const form = new FormData();
     if (body) form.append('body', body);
     if (clientToken) form.append('clientToken', clientToken);
-    for (const photo of photos) form.append('photos', asUpload(photo));
-    for (const file of files) form.append('files', asUpload(file));
+    for (const photo of photos) appendUpload(form, 'photos', photo);
+    for (const file of files) appendUpload(form, 'files', file);
     return requestMultipart(`/api/homework/${homeworkId}/my-submission`, form, { token });
   },
 
@@ -233,7 +233,7 @@ export const homeworkApi = {
 
   addMaterialFile(token, homeworkId, file) {
     const form = new FormData();
-    form.append('file', asUpload(file));
+    appendUpload(form, 'file', file);
     return requestMultipart(`/api/homework/${homeworkId}/materials/files`, form, { token });
   },
 
@@ -278,7 +278,7 @@ export const homeworkApi = {
     form.append('decision', decision);
     form.append('expectedAttemptId', String(expectedAttemptId));
     if (comment) form.append('comment', comment);
-    for (const photo of photos) form.append('photos', asUpload(photo));
+    for (const photo of photos) appendUpload(form, 'photos', photo);
     return requestMultipart(
       `/api/homework/${homeworkId}/submissions/${studentProfileId}/reviews`,
       form,

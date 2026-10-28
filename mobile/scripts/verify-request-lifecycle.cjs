@@ -686,3 +686,117 @@ test('grade history reloads server events and isolates grade/account contexts', 
   assert.deepEqual(view.events, []);
   h.unmount();
 });
+
+test('homework grade and open corrections refresh on focus and foreground, isolated per child', async () => {
+  for (const role of ['STUDENT', 'PARENT']) {
+    const h = host();
+    h.auth.role = role;
+    let score = 4;
+    let corrections = [{ id: 1, status: 'OPEN' }];
+    h.respond(url => url.startsWith('/api/grades/my/homework/')
+      ? [{ id: 5, scaleCode: String(score) }]
+      : corrections);
+    const childId = role === 'PARENT' ? 10 : null;
+    const { useMyHomeworkGrade } = h.load('src/shared/hooks/useGrades.js');
+    const { useMyGradeCorrections } = h.load('src/shared/hooks/useGradeCorrections.js');
+    h.render(() => ({
+      grade: useMyHomeworkGrade(7, { childStudentProfileId: childId }),
+      corrections: useMyGradeCorrections({ childId, lessonId: 3 }),
+    }));
+    let view = await h.flush();
+    assert.equal(h.requests.length, 2);
+    assert.equal(view.grade.grade.scaleCode, '4');
+    assert.equal(view.corrections.corrections.length, 1);
+
+    score = 5;
+    corrections = [];
+    await h.change('background');
+    view = await h.change('active');
+    assert.equal(h.requests.length, 4);
+    assert.equal(view.grade.grade.scaleCode, '5');
+    assert.deepEqual(view.corrections.corrections, []);
+    for (let i = 0; i < 20; i++) h.render();
+    await h.flush();
+    assert.equal(h.requests.length, 4);
+
+    h.navigation.focused = false;
+    h.render();
+    score = 3;
+    await h.flush();
+    h.navigation.focused = true;
+    h.render();
+    view = await h.flush();
+    assert.equal(h.requests.length, 6);
+    assert.equal(view.grade.grade.scaleCode, '3');
+
+    h.respond(() => Promise.reject(Object.assign(new Error('boom'), { status: 500 })));
+    await view.corrections.reload();
+    view = await h.flush();
+    assert.deepEqual(view.corrections.corrections, [], 'сбой исправлений гасится в пустой список');
+    await view.grade.reload(true);
+    view = await h.flush();
+    assert.equal(view.grade.grade.scaleCode, '3', 'сбой не стирает уже показанную оценку');
+    h.unmount();
+    assert.equal(h.listeners.size, 0);
+  }
+});
+
+test('grade dynamics re-read silently on foreground while focused, not in background', async () => {
+  const h = host();
+  h.auth.role = 'PARENT';
+  let value = 7;
+  h.respond(() => ({ indicator: { value } }));
+  const { useChildGradeDynamics } = h.load('src/shared/hooks/useGradeDynamics.js');
+  h.render(() => useChildGradeDynamics(10, 'QUARTER'));
+  let view = await h.flush();
+  assert.equal(h.requests.length, 1);
+  value = 9;
+  await h.change('background');
+  view = await h.change('active');
+  assert.equal(h.requests.length, 2);
+  assert.equal(view.data.indicator.value, 9);
+  assert.equal(view.loading, false);
+  h.navigation.focused = false;
+  h.render();
+  await h.change('background');
+  await h.change('active');
+  assert.equal(h.requests.length, 2);
+  h.unmount();
+  assert.equal(h.listeners.size, 0);
+});
+
+test('parent children list belongs to the account that asked for it; late answers are dropped', async () => {
+  const h = host();
+  h.auth.role = 'PARENT';
+  h.auth.token = 'parent-a';
+  const pending = [];
+  h.respond((url, options) => new Promise((resolve) => pending.push({ token: options?.token, resolve })));
+  const { useParentChildren } = h.load('src/shared/hooks/useSchedule.js');
+  h.render(() => useParentChildren());
+  await h.flush();
+  pending.shift().resolve([{ studentProfileId: 1, fullName: 'Ребёнок А' }]);
+  let view = await h.flush();
+  assert.deepEqual(view.children.map((child) => child.id), [1]);
+
+  view.reload();
+  await h.flush();
+  h.auth.token = 'parent-b';
+  view = h.render();
+  assert.deepEqual(view.children, [], 'дети прежнего аккаунта не показываются ни кадра');
+  assert.equal(view.loading, true);
+  await h.flush();
+  const late = pending.find((p) => p.token === 'parent-a');
+  const fresh = pending.find((p) => p.token === 'parent-b');
+  fresh.resolve([{ studentProfileId: 2, fullName: 'Ребёнок Б' }]);
+  view = await h.flush();
+  late.resolve([{ studentProfileId: 1, fullName: 'Ребёнок А' }]);
+  view = await h.flush();
+  assert.deepEqual(view.children.map((child) => child.id), [2]);
+
+  h.respond(() => Promise.reject(new Error('offline')));
+  await view.reload({ silent: true });
+  view = await h.flush();
+  assert.equal(view.error, 'offline');
+  assert.deepEqual(view.children, []);
+  h.unmount();
+});

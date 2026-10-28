@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@features/auth/AuthContext';
 import { scheduleApi } from '@shared/api/scheduleApi';
 import { parentApi } from '@shared/api/parentApi';
@@ -82,36 +82,56 @@ export function useChildSchedule(childId, { week = false, date = null } = {}) {
   return { loading, error, data, reload, emptyMessage: data ? scheduleStatusMessage(data.status, data.message) : null };
 }
 
+/**
+ * Дети родителя — единственный клиентский источник связей «родитель — ребёнок»: главная,
+ * расписание, оценки и «Профиль → Мои дети» читают его, а не каждый своё. Раньше профиль
+ * брал детей из `/api/me/profile` и любой сбой или устаревшую загрузку показывал как «Детей
+ * пока не привязали», хотя на главной те же дети были (QA-07).
+ *
+ * Список принадлежит аккаунту, который его запросил: после смены аккаунта прежние дети не
+ * показываются ни кадра, а опоздавший ответ прошлой сессии отбрасывается.
+ */
 export function useParentChildren(enabled = true) {
   const { token } = useAuth();
-  const [loading, setLoading] = useState(Boolean(enabled));
-  const [error, setError] = useState(null);
-  const [children, setChildren] = useState([]);
+  const [state, setState] = useState({ owner: null, loading: Boolean(enabled), error: null, children: [] });
+  const sequence = useRef(0);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async ({ silent = false } = {}) => {
+    const requestId = ++sequence.current;
     if (!token || !enabled) {
-      setChildren([]);
-      setLoading(false);
+      setState({ owner: token, loading: false, error: null, children: [] });
       return;
     }
-    setLoading(true);
-    setError(null);
+    setState((old) => ({
+      owner: token,
+      loading: !silent || old.owner !== token,
+      error: null,
+      children: old.owner === token ? old.children : [],
+    }));
     try {
       const list = await parentApi.myChildren(token);
-      setChildren(Array.isArray(list) ? list : []);
+      if (requestId === sequence.current) {
+        setState({ owner: token, loading: false, error: null, children: Array.isArray(list) ? list : [] });
+      }
     } catch (e) {
-      setError(e.message || 'Не удалось загрузить детей');
-      setChildren([]);
-    } finally {
-      setLoading(false);
+      if (requestId === sequence.current) {
+        setState({ owner: token, loading: false, error: e.message || 'Не удалось загрузить детей', children: [] });
+      }
     }
   }, [token, enabled]);
 
   useEffect(() => {
     reload();
+    return () => { sequence.current += 1; };
   }, [reload]);
 
-  return { loading, error, children, reload };
+  const own = state.owner === token;
+  return {
+    loading: own ? state.loading : Boolean(token && enabled),
+    error: own ? state.error : null,
+    children: own ? state.children : [],
+    reload,
+  };
 }
 
 // Подписи по позиции внутри недели (0 = понедельник), а не по индексу в массиве
