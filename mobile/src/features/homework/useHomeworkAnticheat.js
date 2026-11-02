@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import * as ScreenCapture from 'expo-screen-capture';
 import { useAuth } from '@features/auth/AuthContext';
 import { homeworkApi } from '@shared/api/homeworkApi';
@@ -50,10 +50,16 @@ export function useHomeworkAnticheat({ enabled, homeworkId, mode = 'test', quest
     // `allow` при уходе с теста снял бы заодно и её защиту. Ключ считает владельцев сам —
     // снимется запрет только тогда, когда его отпустит последний.
     ScreenCapture.preventScreenCaptureAsync(captureKey).catch(() => undefined);
-    const shot = ScreenCapture.addScreenshotListener(() => {
-      log('SCREENSHOT_ATTEMPT');
-      setWarning('Скриншот задания запрещён. Попытка отмечена для учителя.');
-    });
+    // Expo detects screenshots on Android 13 through READ_MEDIA_IMAGES. Play policy
+    // forbids that broad permission for this purpose, so detection is unavailable there.
+    // FLAG_SECURE below still blocks screenshots, and Android 14+ uses its system API.
+    const screenshotDetectionUnavailable = Platform.OS === 'android' && Number(Platform.Version) === 33;
+    const shot = screenshotDetectionUnavailable
+      ? null
+      : ScreenCapture.addScreenshotListener(() => {
+          log('SCREENSHOT_ATTEMPT');
+          setWarning('Скриншот задания запрещён. Попытка отмечена для учителя.');
+        });
 
     // Уход из приложения — нарушение только у теста. У обычного задания слушателя нет
     // вовсе: сервер такое событие и не примет, а отправлять запрос, чтобы его выбросили,

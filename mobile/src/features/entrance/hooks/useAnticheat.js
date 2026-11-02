@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import * as ScreenCapture from 'expo-screen-capture';
 
 /** Mobile anti-cheat — maps AppState to admissions event types (section 12). */
@@ -12,9 +12,15 @@ export function useAnticheat({ enabled, attemptId, onLogEvent, onPrivacy }) {
 
     ScreenCapture.preventScreenCaptureAsync().catch(() => {});
 
-    const screenshotSub = ScreenCapture.addScreenshotListener(() => {
-      onLogEvent?.('screenshot_attempt', 'screenshot detected');
-    });
+    // Android 13 detection in Expo requires READ_MEDIA_IMAGES, which Play policy
+    // forbids for screenshot monitoring. Screen blocking remains active; Android 14+
+    // uses the system screenshot callback and does not need broad photo access.
+    const screenshotDetectionUnavailable = Platform.OS === 'android' && Number(Platform.Version) === 33;
+    const screenshotSub = screenshotDetectionUnavailable
+      ? null
+      : ScreenCapture.addScreenshotListener(() => {
+          onLogEvent?.('screenshot_attempt', 'screenshot detected');
+        });
 
     const sub = AppState.addEventListener('change', (next) => {
       if (appState.current.match(/active/) && next.match(/inactive|background/)) {
