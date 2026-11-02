@@ -1,6 +1,6 @@
 export { API_BASE_URL } from './config';
 export { ApiError, request, requestMultipart, onSessionExpired } from './client';
-export { asUpload, authHeaders } from './upload';
+export { appendUpload, asUpload, authHeaders } from './upload';
 export { authApi } from './authApi';
 export { scheduleApi } from './scheduleApi';
 export { parentApi } from './parentApi';

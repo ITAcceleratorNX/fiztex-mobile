@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { useAuth } from '@features/auth/AuthContext';
 import { gradeDynamicsApi } from '@shared/api/gradeDynamicsApi';
@@ -41,6 +42,18 @@ function useDynamicsResource(kind, childId, period, subjectId = null) {
     return () => { mounted.current = false; };
   }, []);
   useEffect(() => { if (focused) void reload(); }, [focused, reload]);
+  // Как у оценок (`useGradeResource`): вернулись в приложение — числа перечитываются тихо,
+  // иначе показатель жил бы прежней оценкой, пока экран не откроют заново.
+  useEffect(() => {
+    if (!focused) return undefined;
+    let activeBefore = AppState.currentState === 'active';
+    const subscription = AppState.addEventListener('change', (next) => {
+      const activeNow = next === 'active';
+      if (activeNow && !activeBefore) void reload(true);
+      activeBefore = activeNow;
+    });
+    return () => subscription.remove();
+  }, [focused, reload]);
 
   const current = state?.context === context ? state : { data: null, loading: Boolean(ready), error: null, forbidden: false };
   return { ...current, reload };

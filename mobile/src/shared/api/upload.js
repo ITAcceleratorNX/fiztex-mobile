@@ -5,6 +5,7 @@
  * правило «как отдать файл из React Native» одно на приложение, и вторая его копия
  * разъехалась бы с первой ровно тогда, когда правило поменяется.
  */
+import { Platform } from 'react-native';
 import { isDemoToken } from '../demo/session';
 
 /**
@@ -23,6 +24,34 @@ export function asUpload(picked) {
 function fallbackName(picked) {
   const ext = (picked.mimeType || picked.type || '').split('/')[1];
   return `upload.${ext || 'bin'}`;
+}
+
+/**
+ * Положить вложение в форму. Все multipart-запросы приложения добавляют файлы только так.
+ *
+ * Объект `{uri, name, type}` понимает только нативный `FormData` React Native. Браузер
+ * (Expo Web) его не знает и приводит к строке: в запрос уходит поле `[object Object]`,
+ * а сервер видит работу без единой фотографии — «Работа пустая», если текста нет, и
+ * молча потерянные снимки, если он есть. В вебе поэтому уходит сам `File` из пикера
+ * (`asset.file`), а если пикер дал только `data:`-ссылку — `Blob`, собранный из неё.
+ */
+export function appendUpload(form, field, picked) {
+  const upload = asUpload(picked);
+  const blob = Platform.OS === 'web' ? webBlob(picked, upload.type) : null;
+  if (blob) form.append(field, blob, upload.name);
+  else form.append(field, upload);
+}
+
+function webBlob(picked, type) {
+  if (typeof Blob === 'undefined') return null;
+  if (picked.file instanceof Blob) return picked.file;
+  const match = /^data:([^;,]*)(;base64)?,([\s\S]*)$/.exec(picked.uri || '');
+  if (!match) return null;
+  const [, mime, base64, payload] = match;
+  const raw = base64 ? atob(payload) : decodeURIComponent(payload);
+  const bytes = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i += 1) bytes[i] = raw.charCodeAt(i);
+  return new Blob([bytes], { type: mime || type });
 }
 
 /**

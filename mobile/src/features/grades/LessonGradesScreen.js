@@ -200,6 +200,10 @@ export function LessonGradesScreen({ nav, payload }) {
     }
     return found;
   };
+  // Оценка 2–5, оставленная историей при переходе периода на баллы, правится в своей шкале:
+  // сервер перевод формы правкой не принимает (QA-06).
+  const keptScale = pointsMode && Boolean(pickedGrade?.scaleCode) && pickedGrade?.score == null;
+  const sheetPointsMode = pointsMode && !keptScale;
   const banner = cancelled ? null : writeStateBanner(sheet);
   const audience = [lesson?.className, lesson?.subgroupName].filter(Boolean).join(' · ');
 
@@ -210,7 +214,7 @@ export function LessonGradesScreen({ nav, payload }) {
    */
   async function pickValue(value, gradeType) {
     setSheetError(null);
-    const type = pointsMode ? gradeType : pickedGrade ? pickedGrade.gradeType ?? null : gradeType;
+    const type = sheetPointsMode ? gradeType : pickedGrade ? pickedGrade.gradeType ?? null : gradeType;
     const message = pickedGrade
       ? await updateGrade(pickedGrade.id, value, type ?? null)
       : await createGrade(picker.studentProfileId, value, type ?? null);
@@ -366,7 +370,7 @@ export function LessonGradesScreen({ nav, payload }) {
         grade={pickedGrade}
         busy={busy}
         error={sheetError}
-        pointsMode={pointsMode}
+        pointsMode={sheetPointsMode}
         workTypes={sheet?.workTypes || []}
         defaultWorkType={sheet?.defaultWorkType}
         suggestedMax={suggestedMax}

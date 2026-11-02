@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { View, ScrollView, Image, Modal, Pressable } from 'react-native';
+import { View, ScrollView, Modal, Pressable } from 'react-native';
+import { AuthImage } from '@shared/components/AuthImage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
@@ -241,7 +242,7 @@ export function ServiceRequestCardScreen({ nav, payload }) {
                   accessibilityLabel={`Открыть ${photo.fileName || 'фотографию'}`}
                   onPress={() => setZoomed({ ...photo, requestId: request.id })}
                 >
-                  <Image
+                  <AuthImage
                     source={{ uri: serviceRequestFiles.photo(request.id, photo.id), headers }}
                     style={{ width: 78, height: 74, borderRadius: 8, backgroundColor: c.bg2 }}
                   />
@@ -479,7 +480,7 @@ function HistoryFeed({ history, requestId, headers, onZoom }) {
                         accessibilityLabel={`Открыть ${photo.fileName || 'фотографию'}`}
                         onPress={() => onZoom({ ...photo, requestId })}
                       >
-                        <Image
+                        <AuthImage
                           source={{ uri: serviceRequestFiles.photo(requestId, photo.id), headers }}
                           style={{ width: 56, height: 56, borderRadius: 8, backgroundColor: c.bg2 }}
                         />
@@ -514,7 +515,7 @@ function PhotoZoom({ photo, headers, onClose }) {
         }}
       >
         {photo ? (
-          <Image
+          <AuthImage
             source={{ uri: serviceRequestFiles.photo(photo.requestId, photo.id), headers }}
             resizeMode="contain"
             style={{ width: '100%', height: '80%' }}

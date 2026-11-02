@@ -1,4 +1,4 @@
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { MAX_PHOTOS, MAX_PHOTO_BYTES } from '@shared/api/serviceRequestsMap';
 
@@ -27,6 +27,8 @@ function fromAsset(asset) {
     name,
     type: asset.mimeType || 'image/jpeg',
     sizeBytes: asset.fileSize ?? null,
+    // Только в вебе: браузер отправляет сам файл, а не ссылку (см. `appendUpload`).
+    file: asset.file,
   };
 }
 
@@ -59,17 +61,19 @@ function check(picked, alreadyPicked) {
 }
 
 /**
- * Разрешение спрашивается в момент выбора, а не на открытии формы: просить доступ к
- * галерее у того, кто прикладывать ничего не собирался, — просить зря.
+ * Android использует системный выбор фото без доступа ко всей галерее. На iOS
+ * разрешение на медиатеку запрашивается только при выборе снимка.
  */
 export async function pickFromLibrary(alreadyPicked = 0) {
-  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!permission.granted) {
-    Alert.alert(
-      'Нет доступа к фотографиям',
-      'Разрешите приложению доступ к галерее в настройках телефона, чтобы приложить фото.',
-    );
-    return { photos: [], error: null };
+  if (Platform.OS === 'ios') {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        'Нет доступа к фотографиям',
+        'Разрешите приложению доступ к фотографиям, чтобы приложить снимок.',
+      );
+      return { photos: [], error: null };
+    }
   }
 
   const result = await ImagePicker.launchImageLibraryAsync({

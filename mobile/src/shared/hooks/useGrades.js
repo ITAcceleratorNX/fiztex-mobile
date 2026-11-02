@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@features/auth/AuthContext';
 import { finalGradesApi, gradebookApi, gradesApi } from '@shared/api/gradesApi';
 import { diaryGradesByLesson } from '@shared/api/gradesMap';
@@ -388,46 +388,26 @@ export function useMySubjectDetail({
  *
  * За задание ставят одну оценку (уникальный индекс на бэке), но приходит список: правило
  * может измениться, а форма ответа — нет.
+ *
+ * Живёт на `useGradeResource`, как и остальные оценки ученика: открытая карточка сама
+ * перечитывает оценку при возврате на экран и в приложение. Раньше она грузилась один раз,
+ * и исправленная учителем оценка оставалась прежней, пока карточку не откроют заново.
  */
 export function useMyHomeworkGrade(homeworkId, { childStudentProfileId = null, enabled = true } = {}) {
   const { token } = useAuth();
-  const context = useMemo(() => ({ token, homeworkId, childStudentProfileId, enabled }),
-    [token, homeworkId, childStudentProfileId, enabled]);
-  const [state, setState] = useState(null);
-  const sequence = useRef(0);
-
-  const reload = useCallback(async (silent = false) => {
-    const requestId = ++sequence.current;
-    if (!context.token || !context.homeworkId || !context.enabled) {
-      setState({ context, grade: null, loading: false, error: null });
-      return;
-    }
-    setState((old) => ({ context, grade: old?.context === context ? old.grade : null,
-      loading: !silent || old?.context !== context || !old?.grade, error: null }));
-    try {
-      const list = await gradesApi.myHomeworkGrades(context.token, context.homeworkId,
-        { childStudentProfileId: context.childStudentProfileId });
-      if (requestId === sequence.current) {
-        setState({ context, grade: (Array.isArray(list) ? list : [])[0] || null, loading: false, error: null });
-      }
-    } catch (error) {
-      if (requestId === sequence.current) {
-        setState((old) => ({ context,
-          grade: old?.context === context && error?.status !== 403 && error?.status !== 404 ? old.grade : null,
-          loading: false, error: 'Не удалось загрузить оценку' }));
-      }
-    }
-  }, [context]);
-
-  useEffect(() => {
-    reload();
-    return () => { sequence.current += 1; };
-  }, [reload]);
-
-  const visible = state?.context === context ? state : {
-    grade: null, loading: Boolean(token && homeworkId && enabled), error: null,
+  const load = useCallback(async () => {
+    const list = await gradesApi.myHomeworkGrades(token, homeworkId, { childStudentProfileId });
+    return (Array.isArray(list) ? list : [])[0] || null;
+  }, [token, homeworkId, childStudentProfileId]);
+  const resource = useGradeResource(load, Boolean(token && homeworkId && enabled));
+  const { reload } = resource;
+  const reloadGrade = useCallback((silent = false) => reload({ silent: Boolean(silent) }), [reload]);
+  return {
+    grade: resource.data ?? null,
+    loading: resource.loading,
+    error: resource.error ? 'Не удалось загрузить оценку' : null,
+    reload: reloadGrade,
   };
-  return { grade: visible.grade, loading: visible.loading, error: visible.error, reload };
 }
 
 export function useGradeHistory(gradeId) {
