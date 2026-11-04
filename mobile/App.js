@@ -15,7 +15,7 @@ import { ThemeProvider, useTheme } from '@shared/theme/ThemeContext';
 import { PhysTechAppStateProvider } from '@shared/state/AppState';
 import { EntranceProvider } from '@features/entrance';
 import { AuthProvider, useAuth } from '@features/auth';
-import { RootNavigator, rootRouteForRole } from '@app/navigation/RootNavigator';
+import { RootNavigator, SessionRouteGuard, rootRouteForRole } from '@app/navigation/RootNavigator';
 import { PushNotifications, configurePushPresentation } from '@shared/push';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -53,6 +53,7 @@ function SessionContent({ navTheme, dark }) {
         <NavigationContainer ref={navigationRef} theme={navTheme}>
           <StatusBar style={dark ? 'light' : 'dark'} />
           <RootNavigator />
+          <SessionRouteGuard navigationRef={navigationRef} />
           <PushNotifications navigationRef={navigationRef} rootRouteFor={rootRouteForRole} />
         </NavigationContainer>
       </EntranceProvider>

@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import * as SecureStore from '@shared/storage/secureStore';
 import { authApi } from '@shared/api/authApi';
-import { onSessionExpired } from '@shared/api/client';
+import { onSessionExpired, onPasswordChangeRequired } from '@shared/api/client';
 import { unregisterThisDevice } from '@shared/push/registration';
 import { beginDemo, endDemo, demoIsActive } from '@shared/demo/session';
 import {
@@ -126,6 +126,12 @@ export function AuthProvider({ children }) {
     label: 'биометрию',
     types: [],
   });
+  /**
+   * Временный пароль, которым только что вошли, — **только в памяти**. Экран смены (M7)
+   * обязан прислать его как `currentPassword`, но класть секрет в хранилище ради одного
+   * запроса нельзя. Перезапуск приложения его теряет — тогда экран смены спрашивает его полем.
+   */
+  const [temporarySecret, setTemporarySecret] = useState(null);
 
   const clearLocal = useCallback(async () => {
     await SecureStore.deleteItemAsync(TOKEN_KEY);
@@ -135,6 +141,7 @@ export function AuthProvider({ children }) {
     setProfileState(null);
     setBiometricsEnabledState(false);
     setUnlocked(false);
+    setTemporarySecret(null);
   }, []);
 
   const persistSession = useCallback(async (loginResponse) => {
@@ -144,7 +151,14 @@ export function AuthProvider({ children }) {
       err.status = 403;
       throw err;
     }
-    const nextProfile = { role, fullName: loginResponse.fullName || '' };
+    // `mustChangePassword` хранится вместе с профилем: до смены временного пароля сервер
+    // отвечает 403 на всё, кроме смены и выхода, и перезапуск не должен открывать разделы,
+    // откуда человека всё равно развернут.
+    const nextProfile = {
+      role,
+      fullName: loginResponse.fullName || '',
+      mustChangePassword: Boolean(loginResponse.mustChangePassword),
+    };
     await SecureStore.setItemAsync(TOKEN_KEY, loginResponse.token);
     await SecureStore.setItemAsync(PROFILE_KEY, JSON.stringify(nextProfile));
     setTokenState(loginResponse.token);
@@ -197,9 +211,46 @@ export function AuthProvider({ children }) {
     });
   }, [clearLocal]);
 
+  // Сессия без отметки, а сервер требует смены (вход старой версией приложения): отметка
+  // ставится задним числом, и навигатор уводит на смену пароля. Профиль читается из
+  // хранилища, а не из состояния: обработчик подписан один раз и состояние видел бы старым.
+  useEffect(() => {
+    return onPasswordChangeRequired(async () => {
+      if (demoIsActive()) return;
+      const stored = await readProfile();
+      if (!stored || stored.mustChangePassword) return;
+      const next = { ...stored, mustChangePassword: true };
+      await SecureStore.setItemAsync(PROFILE_KEY, JSON.stringify(next));
+      setProfileState(next);
+    });
+  }, []);
+
+  /**
+   * Открывает сессию по ответу входа или активации. `secret` — то, чем вошли: он
+   * запоминается (в памяти) только при `mustChangePassword`, для смены временного пароля.
+   */
   const signInWithResponse = useCallback(
-    async (loginResponse) => persistSession(loginResponse),
+    async (loginResponse, { secret } = {}) => {
+      setTemporarySecret(loginResponse.mustChangePassword ? secret ?? null : null);
+      try {
+        return await persistSession(loginResponse);
+      } catch (error) {
+        setTemporarySecret(null);
+        throw error;
+      }
+    },
     [persistSession],
+  );
+
+  /**
+   * Смена временного пароля (M7). Только запрос: ответ — новая сессия, и открывает её экран
+   * через `signInWithResponse`, после предложения биометрии. Открой её здесь — навигатор
+   * сразу перестроился бы под роль, и предложение не успело бы появиться.
+   */
+  const changePassword = useCallback(
+    (currentPassword, newPassword) =>
+      authApi.changePassword(token, currentPassword ?? temporarySecret, newPassword),
+    [token, temporarySecret],
   );
 
   const signOut = useCallback(async () => {
@@ -274,6 +325,11 @@ export function AuthProvider({ children }) {
     return availability;
   }, []);
 
+  // Вошли временным паролем: сессия есть, но разделы роли закрыты до смены. Поэтому
+  // `isAuthenticated` в это время ложно — на нём держатся push-регистрация, полоса текущего
+  // урока и переходы по уведомлениям, и все они получили бы 403.
+  const mustChangePassword = Boolean(!demoSession && token && profile?.mustChangePassword);
+
   const value = useMemo(
     () => ({
       bootstrapping,
@@ -282,13 +338,16 @@ export function AuthProvider({ children }) {
       profile: demoSession || profile,
       role: demoSession?.role || profile?.role || null,
       fullName: demoSession?.fullName || profile?.fullName || '',
-      isAuthenticated: Boolean(demoSession || (token && profile && unlocked)),
+      isAuthenticated: Boolean(demoSession || (token && profile && unlocked && !mustChangePassword)),
       needsBiometricUnlock: Boolean(!demoSession && token && profile && biometricsEnabled && !unlocked),
+      needsPasswordChange: Boolean(mustChangePassword && unlocked),
+      temporarySecret: demoSession ? null : temporarySecret,
       biometricsEnabled: demoSession ? false : biometricsEnabled,
       isDemo: Boolean(demoSession),
       startDemo,
       biometricMeta: demoSession ? { ...biometricMeta, available: false } : biometricMeta,
       signInWithResponse,
+      changePassword,
       signOut,
       unlockWithBiometrics,
       enableBiometrics,
@@ -302,9 +361,12 @@ export function AuthProvider({ children }) {
       token,
       profile,
       unlocked,
+      mustChangePassword,
+      temporarySecret,
       biometricsEnabled,
       biometricMeta,
       signInWithResponse,
+      changePassword,
       signOut,
       unlockWithBiometrics,
       enableBiometrics,

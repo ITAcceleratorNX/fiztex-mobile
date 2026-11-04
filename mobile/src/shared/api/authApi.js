@@ -1,19 +1,31 @@
 import { request } from './client';
 
-/** School account auth — parent/teacher/admin login + student code/PIN + activation. */
+/** School account auth — единый вход, активация по коду, смена пароля, выход. */
 export const authApi = {
-  login: (login, password) =>
-    request('/api/auth/login', {
+  /**
+   * Единая точка входа (AUTH-BE-001 §9): телефон или почта + пароль либо персональный код +
+   * PIN — ветку сервер выбирает сам по форме логина. Прежние `/auth/login` и
+   * `/auth/student/login` живы, но приложение через них больше не ходит: они не отдают
+   * `mustChangePassword`, и человек с временным паролем вошёл бы в разделы, где сервер
+   * отвечает 403 на всё.
+   */
+  signIn: (login, secret) =>
+    request('/api/auth/sign-in', {
       method: 'POST',
-      body: { login, password },
+      body: { login, secret },
       skipSessionExpiry: true,
     }),
 
-  studentLogin: (code, pin) =>
-    request('/api/auth/student/login', {
+  /**
+   * Смена своего пароля — единственное, что открыто после входа временным. Сервер гасит все
+   * сессии и отвечает новым токеном. 401 здесь — настоящее окончание сессии (токен уже
+   * отозван), поэтому `skipSessionExpiry` не ставится: человек вернётся на вход.
+   */
+  changePassword: (token, currentPassword, newPassword) =>
+    request('/api/auth/password/change', {
       method: 'POST',
-      body: { code, pin },
-      skipSessionExpiry: true,
+      body: { currentPassword, newPassword },
+      token,
     }),
 
   activateStudent: (code, pin) =>

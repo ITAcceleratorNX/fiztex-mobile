@@ -69,7 +69,11 @@ export const shadowLg = {
 
 // Screen container — scrollable by default, themed background, status-bar inset.
 // Pass `onRefresh` (with `refreshing`) to enable pull-to-refresh.
-export function Screen({ children, scroll = true, contentStyle, style, refreshing = false, onRefresh }) {
+// `keyboardShouldPersistTaps` — для форм: без него первое нажатие на кнопку при открытой
+// клавиатуре только прячет клавиатуру, и «Войти» приходится нажимать дважды.
+export function Screen({
+  children, scroll = true, contentStyle, style, refreshing = false, onRefresh, keyboardShouldPersistTaps,
+}) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const topInset = useContext(ScreenTopInsetContext) ?? insets.top;
@@ -94,6 +98,7 @@ export function Screen({ children, scroll = true, contentStyle, style, refreshin
       style={[{ flex: 1, backgroundColor: c.bg }, style]}
       contentContainerStyle={safeContentStyle}
       showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps={keyboardShouldPersistTaps}
       refreshControl={
         onRefresh ? (
           <RefreshControl

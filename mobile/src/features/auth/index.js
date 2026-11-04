@@ -1,8 +1,6 @@
+export { AuthWelcome, AuthFaceID } from './screens/AuthScreens';
+export { AuthSignIn, AuthSecret } from './screens/SignInScreens';
 export {
-  AuthWelcome,
-  AuthSignIn,
-  AuthFaceID,
-  AuthStudentLogin,
-  AuthParentTeacherLogin,
-} from './screens/AuthScreens';
+  AuthPinSetup, AuthRecovery, AuthSchoolCode, AuthNewPassword,
+} from './screens/CredentialScreens';
 export { AuthProvider, useAuth } from './AuthContext';

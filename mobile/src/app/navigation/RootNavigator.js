@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import {
   AuthWelcome,
   AuthSignIn,
+  AuthSecret,
+  AuthPinSetup,
+  AuthRecovery,
+  AuthSchoolCode,
+  AuthNewPassword,
   AuthFaceID,
-  AuthStudentLogin,
-  AuthParentTeacherLogin,
   useAuth,
 } from '@features/auth';
 import { EntranceFlow } from '@features/entrance';
@@ -68,15 +71,32 @@ function WelcomeScreen() {
   );
 }
 
+/**
+ * Куда ведёт открытая сессия: на смену временного пароля (M7), пока стоит отметка, иначе —
+ * в раздел роли.
+ */
+function entryRoute(profile) {
+  return profile?.mustChangePassword ? 'NewPassword' : ROLE_ROUTE[profile?.role] || 'Welcome';
+}
+
+/**
+ * Логин, который стоит передать на восстановление: телефон или почта пригодятся активации по
+ * коду от школы, а персональный код ученика там не нужен.
+ */
+function recoveryLogin({ kind, login }) {
+  return kind === 'phone' || kind === 'email' ? login : undefined;
+}
+
+// Вход для всех ролей (AUTH-FE-001, M1–M7). После входа экраны никуда не переходят сами —
+// стек к открытой сессии приводит `SessionRouteGuard`.
 function SignInScreen() {
   const navigation = useNavigation();
   const { biometricsEnabled, needsBiometricUnlock, biometricMeta } = useAuth();
   return (
     <AuthSignIn
-      onBack={() => navigation.goBack()}
-      onStudent={() => navigation.navigate('StudentLogin')}
-      onParentTeacher={() => navigation.navigate('ParentTeacherLogin')}
-      onDemo={() => navigation.navigate('DemoRoles')}
+      onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
+      onContinue={({ kind, login }) => navigation.navigate('SignInSecret', { kind, login })}
+      onForgot={(classified) => navigation.navigate('Recovery', { login: recoveryLogin(classified) })}
       canUseFaceId={biometricsEnabled || needsBiometricUnlock}
       biometricLabel={biometricMeta?.label}
       onFaceId={() => navigation.navigate('FaceID')}
@@ -84,29 +104,55 @@ function SignInScreen() {
   );
 }
 
-function StudentLoginScreen() {
+function SignInSecretScreen({ route }) {
   const navigation = useNavigation();
+  const { kind, login } = route.params;
   return (
-    <AuthStudentLogin
+    <AuthSecret
+      kind={kind}
+      login={login}
       onBack={() => navigation.goBack()}
-      onActivatedHint={(role) => resetTo(navigation, ROLE_ROUTE[role] || 'StudentApp')}
+      onForgot={() => navigation.navigate('Recovery', { login: recoveryLogin({ kind, login }) })}
+      onCreatePin={() => navigation.navigate('PinSetup', { code: login })}
     />
   );
 }
 
-function ParentTeacherLoginScreen() {
+function PinSetupScreen({ route }) {
   const navigation = useNavigation();
   return (
-    <AuthParentTeacherLogin
+    <AuthPinSetup
+      code={route.params.code}
       onBack={() => navigation.goBack()}
-      onActivatedHint={(role) => resetTo(navigation, ROLE_ROUTE[role] || 'ParentApp')}
+      onEditCode={() => navigation.popTo('SignIn')}
+    />
+  );
+}
+
+function RecoveryScreen({ route }) {
+  const navigation = useNavigation();
+  return (
+    <AuthRecovery
+      onBack={() => navigation.goBack()}
+      onCode={(code) => navigation.navigate('SchoolCode', { code, login: route.params?.login })}
+    />
+  );
+}
+
+function SchoolCodeScreen({ route }) {
+  const navigation = useNavigation();
+  return (
+    <AuthSchoolCode
+      code={route.params.code}
+      login={route.params.login}
+      onBack={() => navigation.goBack()}
     />
   );
 }
 
 function FaceIDScreen() {
   const navigation = useNavigation();
-  const { role } = useAuth();
+  const { profile } = useAuth();
   return (
     <AuthFaceID
       // При запертой сессии Face ID — стартовый экран, и «назад» с него вести некуда:
@@ -115,9 +161,50 @@ function FaceIDScreen() {
       // которого помогала только повторная попытка распознавания.
       onBack={() =>
         navigation.canGoBack() ? navigation.goBack() : resetTo(navigation, 'SignIn')}
-      onSuccess={() => resetTo(navigation, ROLE_ROUTE[role] || 'StudentApp')}
+      onSuccess={() => resetTo(navigation, entryRoute(profile))}
     />
   );
+}
+
+const PROTECTED_ROUTES = new Set([...Object.values(ROLE_ROUTE), 'NewPassword']);
+
+/**
+ * Держит стек навигации в согласии с сессией: вошли — раздел роли, вошли временным паролем
+ * или сервер ответил `PASSWORD_CHANGE_REQUIRED` — смена пароля (M7), вышли или сессия
+ * истекла — приветствие.
+ *
+ * Сам навигатор этого не делает. Смена `initialRouteName` его пересобирает, но контейнер
+ * восстанавливает прежний стек: вошедший оставался бы на шаге входа, вышедший — в разделе
+ * роли с пустыми данными. А сброс, отправленный экраном в тот же момент, теряется вместе со
+ * старым навигатором — так «Выйти» в профиле срабатывал только со второго нажатия. Поэтому
+ * сброс делается здесь, после отрисовки, через ref контейнера. Рендерится рядом с
+ * навигатором, как мост push-уведомлений.
+ *
+ * Демо и запертую сессию не трогает: демо пересоздаёт контейнер целиком, а с Face ID человек
+ * вправе уйти на вход по паролю.
+ */
+export function SessionRouteGuard({ navigationRef }) {
+  const {
+    bootstrapping, isDemo, token, needsBiometricUnlock, needsPasswordChange, isAuthenticated, role,
+  } = useAuth();
+  let target;
+  if (bootstrapping || isDemo || needsBiometricUnlock) target = undefined;
+  else if (needsPasswordChange) target = 'NewPassword';
+  else if (isAuthenticated) target = ROLE_ROUTE[role];
+  else if (!token) target = null;
+
+  useEffect(() => {
+    if (target === undefined || !navigationRef.isReady()) return;
+    const state = navigationRef.getRootState();
+    const current = state?.routes?.[state.index]?.name;
+    // Без сессии уводим только из закрытых разделов: шаги входа, демо и вступительный тест
+    // живут без неё.
+    const next = target ?? (PROTECTED_ROUTES.has(current) ? 'Welcome' : null);
+    if (next && next !== current) {
+      navigationRef.dispatch(CommonActions.reset({ index: 0, routes: [{ name: next }] }));
+    }
+  }, [target, navigationRef]);
+  return null;
 }
 
 function EntranceFlowRoute() {
@@ -128,15 +215,21 @@ function EntranceFlowRoute() {
 }
 
 export function RootNavigator() {
-  const { bootstrapping, isAuthenticated, needsBiometricUnlock, role, isDemo, token } = useAuth();
+  const {
+    bootstrapping, isAuthenticated, needsBiometricUnlock, needsPasswordChange, role, isDemo, token,
+  } = useAuth();
 
   if (bootstrapping) return <BootSplash />;
 
+  // Временный пароль (M7) идёт после биометрии и раньше раздела роли: сервер до смены
+  // отвечает 403 на всё, кроме смены и выхода, и раздел встретил бы человека ошибками.
   const initialRouteName = needsBiometricUnlock
     ? 'FaceID'
-    : isAuthenticated && ROLE_ROUTE[role]
-      ? ROLE_ROUTE[role]
-      : 'Welcome';
+    : needsPasswordChange
+      ? 'NewPassword'
+      : isAuthenticated && ROLE_ROUTE[role]
+        ? ROLE_ROUTE[role]
+        : 'Welcome';
 
   return (
     <View style={{ flex: 1 }}>
@@ -150,8 +243,11 @@ export function RootNavigator() {
           <Root.Screen name="Welcome" component={WelcomeScreen} />
           <Root.Screen name="DemoRoles" component={DemoRolesScreen} />
           <Root.Screen name="SignIn" component={SignInScreen} />
-          <Root.Screen name="StudentLogin" component={StudentLoginScreen} />
-          <Root.Screen name="ParentTeacherLogin" component={ParentTeacherLoginScreen} />
+          <Root.Screen name="SignInSecret" component={SignInSecretScreen} />
+          <Root.Screen name="PinSetup" component={PinSetupScreen} />
+          <Root.Screen name="Recovery" component={RecoveryScreen} />
+          <Root.Screen name="SchoolCode" component={SchoolCodeScreen} />
+          <Root.Screen name="NewPassword" component={AuthNewPassword} />
           <Root.Screen name="FaceID" component={FaceIDScreen} />
           <Root.Screen name="StudentApp" component={StudentApp} />
           <Root.Screen name="ParentApp" component={ParentApp} />

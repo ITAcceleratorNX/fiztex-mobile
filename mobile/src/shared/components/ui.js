@@ -269,14 +269,31 @@ export function FilledButton({ children, onPress, disabled = false, color = 'gre
   );
 }
 
+// Подпись поля формы — общая у `TextField` и полей, которые рисуются не им (`PinField`).
+export function FieldLabel({ children, required = false }) {
+  const { c } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', gap: 2 }}>
+      <Txt style={{ fontSize: 13, fontWeight: '500', color: c.ink }}>{children}</Txt>
+      {required ? <Txt style={{ fontSize: 13, fontWeight: '500', color: c.red }}>*</Txt> : null}
+    </View>
+  );
+}
+
 // ─── TextField ───────────────────────────────────────────────────────────────
 // Поле формы из мобильных макетов: подпись, обязательность, единая геометрия ввода и
 // место под ошибку. Экран передаёт только семантику поля; цвета, фокус и disabled живут
 // здесь, чтобы формы не собирали разные варианты одного и того же input по месту.
+//
+// `invalid` красит рамку без строки ошибки — для форм, где текст отказа один на несколько
+// полей и стоит под ними отдельно (вход, Figma M5). `right` — элемент внутри рамки справа
+// от ввода (глаз у пароля); без него поле рисуется ровно как раньше.
 export function TextField({
   label,
   required = false,
   error,
+  invalid = false,
+  right,
   value,
   onChangeText,
   placeholder,
@@ -289,53 +306,90 @@ export function TextField({
   const { c } = useTheme();
   const [focused, setFocused] = React.useState(false);
 
+  const frame = {
+    minHeight: multiline ? 92 : 46,
+    borderWidth: 1,
+    borderColor: error || invalid ? c.red : focused ? c.blue : c.border,
+    borderRadius: 10,
+    backgroundColor: editable ? c.surface : c.bg2,
+  };
+  const text = {
+    color: c.ink,
+    paddingHorizontal: 14,
+    paddingVertical: multiline ? 12 : 10,
+    fontSize: 15,
+    fontFamily: FONT.regular,
+    textAlignVertical: multiline ? 'top' : 'center',
+  };
+  const input = (
+    <TextInput
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor={c.ink3}
+      editable={editable}
+      multiline={multiline}
+      onFocus={(event) => {
+        setFocused(true);
+        inputProps.onFocus?.(event);
+      }}
+      onBlur={(event) => {
+        setFocused(false);
+        inputProps.onBlur?.(event);
+      }}
+      {...inputProps}
+      // Внутри составной рамки фокус показывает сама рамка; браузерная обводка (Expo web)
+      // легла бы только вокруг ввода и отрезала бы глаз.
+      style={right
+        ? [text, { flex: 1, minHeight: frame.minHeight, outlineStyle: 'none' }, inputStyle]
+        : [frame, text, inputStyle]}
+    />
+  );
+
   return (
     <View style={[{ width: '100%', gap: 6 }, style]}>
-      {label ? (
-        <View style={{ flexDirection: 'row', gap: 2 }}>
-          <Txt style={{ fontSize: 13, fontWeight: '500', color: c.ink }}>{label}</Txt>
-          {required ? <Txt style={{ fontSize: 13, fontWeight: '500', color: c.red }}>*</Txt> : null}
+      {label ? <FieldLabel required={required}>{label}</FieldLabel> : null}
+      {right ? (
+        <View style={[frame, { flexDirection: 'row', alignItems: 'center', paddingRight: 12 }]}>
+          {input}
+          {right}
         </View>
-      ) : null}
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={c.ink3}
-        editable={editable}
-        multiline={multiline}
-        onFocus={(event) => {
-          setFocused(true);
-          inputProps.onFocus?.(event);
-        }}
-        onBlur={(event) => {
-          setFocused(false);
-          inputProps.onBlur?.(event);
-        }}
-        {...inputProps}
-        style={[
-          {
-            minHeight: multiline ? 92 : 46,
-            borderWidth: 1,
-            borderColor: error ? c.red : focused ? c.blue : c.border,
-            borderRadius: 10,
-            backgroundColor: editable ? c.surface : c.bg2,
-            color: c.ink,
-            paddingHorizontal: 14,
-            paddingVertical: multiline ? 12 : 10,
-            fontSize: 15,
-            fontFamily: FONT.regular,
-            textAlignVertical: multiline ? 'top' : 'center',
-          },
-          inputStyle,
-        ]}
-      />
+      ) : (
+        input
+      )}
       {error ? (
         <Txt accessibilityRole="alert" style={{ fontSize: 12, color: c.red }}>
           {error}
         </Txt>
       ) : null}
     </View>
+  );
+}
+
+// ─── PasswordField (Figma `Admin_Admissions`, M2 и M7) ───────────────────────
+// Пароль с глазом: показ — по нажатию, а не по умолчанию, и переключается только в этом
+// поле. Автозамена и автокапитализация выключены всегда: первая буква пароля, исправленная
+// клавиатурой, — это неверный пароль, который человек не видит.
+export function PasswordField(props) {
+  const { c } = useTheme();
+  const [shown, setShown] = React.useState(false);
+  return (
+    <TextField
+      autoCapitalize="none"
+      autoCorrect={false}
+      {...props}
+      secureTextEntry={!shown}
+      right={
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={shown ? 'Скрыть' : 'Показать'}
+          hitSlop={12}
+          onPress={() => setShown((value) => !value)}
+        >
+          <Icon name={shown ? 'eyeOff' : 'eye'} size={20} color={c.ink2} />
+        </Pressable>
+      }
+    />
   );
 }
 
