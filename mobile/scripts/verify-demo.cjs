@@ -173,3 +173,37 @@ test('demo enter, role switch and exit preserve real session, SecureStore and bi
   assert.deepEqual([...r.stored.entries()], storage); assert.equal(r.writes.length, writes);
   assert.equal(r.calls.length, 0);
 });
+
+test('homeroom teacher and parent issue the same student code; reissue needs confirmation; reset restores codes', async () => {
+  const r = runtime(); let { token } = r.session.beginDemo('TEACHER', { reset: true });
+  const codes = r.load('src/shared/api/studentCodesApi.js').studentCodesApi;
+  const myClass = r.load('src/shared/api/myClassApi.js').myClassApi;
+  const CODE = /^[2-9A-HJKMNP-TV-Z]{8}$/;
+  assert.deepEqual((await myClass.context(token)).classes.map((item) => item.name), ['7А']);
+  const roster = await myClass.rosterAll(token, 11);
+  assert.deepEqual(roster.items.map((item) => item.displayName), ['Данияр Демо', 'Тимур Примеров']);
+  assert.equal(roster.totalItems, 2);
+  assert.equal((await myClass.roster(token, 11, { size: 1 })).hasMore, true);
+  await assert.rejects(myClass.roster(token, 12), { status: 403, code: 'MY_CLASS_NOT_ACCESSIBLE' });
+  const granted = await codes.teacherStudents(token);
+  assert.deepEqual(granted.map((item) => [item.studentProfileId, item.pinSet, Boolean(item.codeIssuedAt)]), [[101, true, true], [103, false, false]]);
+  assert.match((await codes.issueForStudent(token, 103)).issuedCode, CODE);
+  await assert.rejects(codes.issueForStudent(token, 103), (error) => error.code === 'STUDENT_CODE_REISSUE_CONFIRM'
+    && error.details.pinSet === false && Boolean(error.details.codeIssuedAt));
+  await assert.rejects(codes.issueForStudent(token, 102, true), { status: 403, code: 'STUDENT_CODE_NOT_PERMITTED' });
+
+  ({ token } = r.session.beginDemo('PARENT'));
+  await assert.rejects(codes.teacherStudents(token), { status: 403 });
+  const children = await codes.children(token);
+  assert.deepEqual(children.map((item) => item.studentProfileId), [101, 102]);
+  await assert.rejects(codes.issueForChild(token, 101), (error) => error.code === 'STUDENT_CODE_REISSUE_CONFIRM' && error.details.pinSet === true);
+  assert.match((await codes.issueForChild(token, 101, true)).issuedCode, CODE);
+  await assert.rejects(codes.issueForChild(token, 103, true), { status: 404 });
+
+  ({ token } = r.session.beginDemo('TEACHER'));
+  const daniyar = (await codes.teacherStudents(token)).find((item) => item.studentProfileId === 101);
+  assert.notEqual(daniyar.codeIssuedAt, children[0].codeIssuedAt, 'the teacher sees the parent reissue');
+  ({ token } = r.session.beginDemo('TEACHER', { reset: true }));
+  assert.equal((await codes.teacherStudents(token)).find((item) => item.studentProfileId === 103).codeIssuedAt, null);
+  assert.equal(r.calls.length, 0);
+});

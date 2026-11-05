@@ -41,17 +41,15 @@ function Loading() {
   );
 }
 
-/** Демо отвечает на коды отказом `DEMO_UNSUPPORTED`: повтор там ничего не изменит. */
 function LoadError({ error, onRetry }) {
-  const demo = error?.code === 'DEMO_UNSUPPORTED';
   return (
     <StateView
-      icon={demo ? 'info' : 'alertCircle'}
-      tone={demo ? 'neutral' : 'error'}
-      title={demo ? 'Недоступно в демо' : 'Не удалось загрузить'}
+      icon="alertCircle"
+      tone="error"
+      title="Не удалось загрузить"
       subtitle={error?.message}
-      actionLabel={demo ? undefined : 'Повторить'}
-      onAction={demo ? undefined : onRetry}
+      actionLabel="Повторить"
+      onAction={onRetry}
       style={{ paddingVertical: AUTH.sectionGap }}
     />
   );
