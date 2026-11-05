@@ -95,7 +95,9 @@ function EnableBiometricsScreen({ label, onEnable, onSkip }) {
             }
           }}
         >
-          Включить {label}
+          {/* Одной строкой: `PrimaryButton` кладёт каждый текстовый кусок в свой `Txt` рядом через
+              `gap`, и «Включить {label}» расползался на «Включить   Face ID». */}
+          {`Включить ${label}`}
         </PrimaryButton>
         <PrimaryButton color="ghost" style={{ marginTop: 10 }} onPress={onSkip} disabled={busy}>
           Не сейчас

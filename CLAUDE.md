@@ -17,6 +17,21 @@ cd mobile && npx expo start        # a — Android, i — iOS, w — web
 `10.0.2.2:8080` (эмулятор Android) / `localhost:8080`. На реальном устройстве
 через Expo Go ничего настраивать не нужно.
 
+**Сборка под симулятор iOS** (проверено 2026-11-05, Xcode 27.1, iPhone 16e на iOS 26.2). `ios/`
+генерируется и не в git; `prebuild` без нужды не гонять — он перепишет локальные настройки подписи.
+
+```bash
+cd mobile && LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 CI=1 npx expo run:ios --no-bundler --device <UDID>
+```
+
+Без UTF-8 локали CocoaPods на Ruby 4 падает с `Unicode Normalization not appropriate for
+ASCII-8BIT`. Первая сборка с `pod install` — около 15 минут. JS Debug-сборка берёт у Metro на `:8081`
+(тот же `npx expo start`, что и для web). `xcrun simctl boot` из песочницы агента отвечает
+`Invalid argument` и оставляет устройство без экрана — загружать вне её. Face ID в симуляторе:
+`xcrun simctl spawn <UDID> notifyutil -s com.apple.BiometricKit.enrollmentChanged 1` и `… -p
+com.apple.BiometricKit.enrollmentChanged`, «совпавшее лицо» — `notifyutil -p
+com.apple.BiometricKit_Sim.pearl.match`.
+
 ## Что где
 
 | Путь | Что |
