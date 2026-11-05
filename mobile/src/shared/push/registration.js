@@ -5,6 +5,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import * as SecureStore from '@shared/storage/secureStore';
 import { notificationDevicesApi } from '@shared/api/notificationDevicesApi';
+import { accessRequestsApi } from '@shared/api/accessRequestsApi';
 import { ensureAndroidChannels } from './channels';
 import { getInstallationId } from './installationId';
 
@@ -156,6 +157,51 @@ export async function registerThisDevice(authToken, {
     if (__DEV__) {
       // eslint-disable-next-line no-console
       console.warn('[push] Регистрация телефона не удалась:', error?.message || error);
+    }
+    return { action: 'failed', error };
+  }
+}
+
+/**
+ * Телефон заявителя — для push об одобрении заявки (AUTH-BE-001 §14, `PUT /api/access-requests/device`).
+ *
+ * Аккаунта у заявителя ещё нет, поэтому установка регистрируется по токену заявки, а установкой аккаунта
+ * её делает бэк в момент одобрения. Те же условия, что у `registerThisDevice`: телефон, проект EAS,
+ * разрешение. Сервер принимает телефон только у заявки на рассмотрении — вызывать после подачи и на каждом
+ * открытии статуса ожидающей заявки: push-токен меняется при переустановке, и тот же `installationId` его
+ * заменяет. Никогда не бросает: без push решение всё равно видно в статусе.
+ */
+export async function registerDeviceForAccessRequest(requestToken) {
+  try {
+    if (Platform.OS === 'web' || !requestToken) return { action: 'skip', reason: 'unsupported-platform' };
+    await ensureAndroidChannels();
+    const projectId = resolveProjectId(Constants);
+    const allowEmulator = emulatorPushAllowed();
+    const eligible = (Device.isDevice || allowEmulator) && Boolean(projectId);
+    const permissionGranted = eligible ? await readPermission(true) : null;
+    const plan = registrationPlan({
+      platform: Platform.OS, isDevice: Device.isDevice, allowEmulator, projectId, permissionGranted,
+    });
+    // Отвязывать здесь нечего: заявка, в отличие от аккаунта, телефона за собой не держит.
+    if (plan.action !== 'register') return plan;
+    const installationId = await getInstallationId();
+    const nativeToken = await Notifications.getDevicePushTokenAsync();
+    const pushToken = await Notifications.getExpoPushTokenAsync({
+      projectId, deviceId: installationId, devicePushToken: nativeToken,
+    });
+    await accessRequestsApi.registerDevice({
+      token: requestToken,
+      installationId,
+      pushToken: pushToken.data,
+      platform: Platform.OS === 'ios' ? 'IOS' : 'ANDROID',
+      appVersion: (Application.nativeApplicationVersion || Constants.expoConfig?.version || '').slice(0, 32) || null,
+      locale: deviceLocale(),
+    });
+    return plan;
+  } catch (error) {
+    if (__DEV__) {
+      // eslint-disable-next-line no-console
+      console.warn('[push] Телефон для заявки не зарегистрирован:', error?.message || error);
     }
     return { action: 'failed', error };
   }

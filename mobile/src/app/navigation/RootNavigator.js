@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { useNavigation, CommonActions } from '@react-navigation/native';
+import { useNavigation, CommonActions, StackActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import {
   AuthWelcome,
@@ -14,6 +14,9 @@ import {
   useAuth,
 } from '@features/auth';
 import { EntranceFlow } from '@features/entrance';
+import {
+  AccessRequestStart, AccessRequestForm, AccessRequestSent, AccessRequestStatus,
+} from '@features/access';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { ScreenTopInsetContext } from '@shared/components/Screen';
 import { DemoRolesScreen, DemoToolbar } from '@features/demo/DemoScreens';
@@ -67,6 +70,7 @@ function WelcomeScreen() {
       onContinue={() => navigation.navigate('SignIn')}
       onEntrance={() => navigation.navigate('EntranceFlow')}
       onDemo={() => navigation.navigate('DemoRoles')}
+      onApply={() => navigation.navigate('AccessRequest')}
     />
   );
 }
@@ -100,6 +104,8 @@ function SignInScreen() {
       canUseFaceId={biometricsEnabled || needsBiometricUnlock}
       biometricLabel={biometricMeta?.label}
       onFaceId={() => navigation.navigate('FaceID')}
+      onApply={() => navigation.navigate('AccessRequest')}
+      onRequestStatus={() => navigation.navigate('AccessRequestStatus')}
     />
   );
 }
@@ -146,6 +152,61 @@ function SchoolCodeScreen({ route }) {
       code={route.params.code}
       login={route.params.login}
       onBack={() => navigation.goBack()}
+    />
+  );
+}
+
+// Заявка на доступ и её статус (AUTH-FE-001, A1–A5, S1–S6). Поток открывают со входа или с
+// приветствия, а «Готово» возвращает туда, откуда его открыли.
+const REQUEST_ROUTES = new Set(['AccessRequest', 'AccessRequestForm', 'AccessRequestSent', 'AccessRequestStatus']);
+
+function leaveRequestFlow(navigation) {
+  const state = navigation.getState();
+  const first = state.routes.findIndex((route) => REQUEST_ROUTES.has(route.name));
+  if (first > 0) navigation.dispatch(StackActions.pop(state.index - first + 1));
+  else resetTo(navigation, 'Welcome');
+}
+
+function AccessRequestStartScreen() {
+  const navigation = useNavigation();
+  return (
+    <AccessRequestStart
+      onBack={() => navigation.goBack()}
+      onRole={(role) => navigation.navigate('AccessRequestForm', { role, mode: 'new' })}
+      onStatus={() => navigation.navigate('AccessRequestStatus')}
+    />
+  );
+}
+
+function AccessRequestFormScreen({ route }) {
+  const navigation = useNavigation();
+  const { role, mode, prefill } = route.params;
+  return (
+    <AccessRequestForm
+      role={role}
+      mode={mode}
+      prefill={prefill}
+      onBack={() => navigation.goBack()}
+      // Отправленная форма уходит из стека: «назад» с итога не должен открывать её снова.
+      onSent={(ticket) => navigation.replace('AccessRequestSent', { requestId: ticket.requestId })}
+    />
+  );
+}
+
+function AccessRequestSentScreen({ route }) {
+  const navigation = useNavigation();
+  return <AccessRequestSent requestId={route.params?.requestId} onDone={() => leaveRequestFlow(navigation)} />;
+}
+
+function AccessRequestStatusScreen() {
+  const navigation = useNavigation();
+  return (
+    <AccessRequestStatus
+      onBack={() => navigation.goBack()}
+      onSignIn={() => navigation.popTo('SignIn')}
+      onRecovery={() => navigation.navigate('Recovery', {})}
+      onApply={() => navigation.navigate('AccessRequest')}
+      onContinue={(status, mode) => navigation.navigate('AccessRequestForm', { role: status.role, mode, prefill: status })}
     />
   );
 }
@@ -248,6 +309,10 @@ export function RootNavigator() {
           <Root.Screen name="Recovery" component={RecoveryScreen} />
           <Root.Screen name="SchoolCode" component={SchoolCodeScreen} />
           <Root.Screen name="NewPassword" component={AuthNewPassword} />
+          <Root.Screen name="AccessRequest" component={AccessRequestStartScreen} />
+          <Root.Screen name="AccessRequestForm" component={AccessRequestFormScreen} />
+          <Root.Screen name="AccessRequestSent" component={AccessRequestSentScreen} />
+          <Root.Screen name="AccessRequestStatus" component={AccessRequestStatusScreen} />
           <Root.Screen name="FaceID" component={FaceIDScreen} />
           <Root.Screen name="StudentApp" component={StudentApp} />
           <Root.Screen name="ParentApp" component={ParentApp} />

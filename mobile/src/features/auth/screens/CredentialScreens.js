@@ -11,7 +11,8 @@ import {
   passwordChangeErrorMessage, pinSetupErrorMessage, schoolCodeErrorMessage,
   PASSWORD_MAX_LENGTH, PIN_MAX_LENGTH, SCHOOL_CODE_LENGTH,
 } from '../signInModel';
-import { AuthPage, FormError, Hint, RecoveryRow, Rule, ValueCard, useSignInCompletion } from './SignInParts';
+import { FormPage, FormError, Hint, IconBadgeRow, Rule, ValueCard } from '@shared/ui/formParts';
+import { useSignInCompletion } from './SignInParts';
 
 // Длину кода и PIN режет этот разбор, а не `maxLength` поля: тот обрезал бы сырую строку
 // раньше, чем сняты дефис и пробелы, и вставка «8222-6447» потеряла бы последнюю цифру.
@@ -52,7 +53,7 @@ export function AuthPinSetup({ code, onBack, onEditCode }) {
   const message = error || offerError;
 
   return (
-    <AuthPage
+    <FormPage
       onBack={onBack}
       title="Придумайте PIN"
       subtitle="PIN — это ваш пароль: дальше вы будете входить по коду и PIN."
@@ -95,7 +96,7 @@ export function AuthPinSetup({ code, onBack, onEditCode }) {
       <PrimaryButton disabled={!state.ready || loading} onPress={submit}>
         {loading ? <ActivityIndicator color={c.heroInk} /> : 'Сохранить и войти'}
       </PrimaryButton>
-    </AuthPage>
+    </FormPage>
   );
 }
 
@@ -114,21 +115,21 @@ export function AuthRecovery({ onBack, onCode }) {
   const ready = isSchoolCode(code);
 
   return (
-    <AuthPage
+    <FormPage
       onBack={onBack}
       title="Восстановить доступ"
       subtitle="Пароль и PIN восстанавливает школа — по SMS это пока не работает."
     >
       <Card style={{ gap: AUTH.gap }}>
-        <RecoveryRow icon="graduationCap" title="Ученик">
+        <IconBadgeRow icon="graduationCap" title="Ученик">
           Новый персональный код выпустит классный руководитель или родитель — PIN останется
           прежним. Забытый PIN сбрасывает администратор школы, после этого придумайте новый.
-        </RecoveryRow>
+        </IconBadgeRow>
         <View style={{ height: 1, backgroundColor: c.border }} />
-        <RecoveryRow icon="users" tone="orange" title="Родитель, учитель или сотрудник">
+        <IconBadgeRow icon="users" tone="orange" title="Родитель, учитель или сотрудник">
           Обратитесь к администратору школы — он выдаст одноразовый код восстановления или
           временный пароль.
-        </RecoveryRow>
+        </IconBadgeRow>
       </Card>
 
       <View>
@@ -148,7 +149,7 @@ export function AuthRecovery({ onBack, onCode }) {
         Продолжить
       </PrimaryButton>
       <Hint center>Временный пароль вводится на обычном экране входа.</Hint>
-    </AuthPage>
+    </FormPage>
   );
 }
 
@@ -191,7 +192,7 @@ export function AuthSchoolCode({ code, login, onBack }) {
   const message = error || offerError;
 
   return (
-    <AuthPage
+    <FormPage
       onBack={onBack}
       title="Задайте пароль"
       subtitle="Код от школы проверится вместе с новым паролем. Дальше вы будете входить по телефону и этому паролю."
@@ -246,7 +247,7 @@ export function AuthSchoolCode({ code, login, onBack }) {
       <PrimaryButton disabled={!ready || loading} onPress={submit}>
         {loading ? <ActivityIndicator color={c.heroInk} /> : 'Сохранить и войти'}
       </PrimaryButton>
-    </AuthPage>
+    </FormPage>
   );
 }
 
@@ -291,7 +292,7 @@ export function AuthNewPassword() {
   const message = error || offerError;
 
   return (
-    <AuthPage
+    <FormPage
       title="Придумайте новый пароль"
       subtitle="Вы вошли по временному паролю от школы. Чтобы продолжить, задайте свой — временный перестанет работать."
     >
@@ -347,6 +348,6 @@ export function AuthNewPassword() {
         {loading ? <ActivityIndicator color={c.heroInk} /> : 'Сохранить и войти'}
       </PrimaryButton>
       <TextButton onPress={signOut}>Выйти</TextButton>
-    </AuthPage>
+    </FormPage>
   );
 }

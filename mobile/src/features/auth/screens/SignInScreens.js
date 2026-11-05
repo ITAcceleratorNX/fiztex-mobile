@@ -17,7 +17,8 @@ import {
   classifyLogin, formatPhone, isPin, loginHint, signInErrorMessage,
   PASSWORD_MAX_LENGTH, PIN_MAX_LENGTH, PIN_MIN_LENGTH,
 } from '../signInModel';
-import { AuthPage, FormError, Hint, ValueCard, useSignInCompletion } from './SignInParts';
+import { FormPage, FormError, Hint, ValueCard } from '@shared/ui/formParts';
+import { useSignInCompletion } from './SignInParts';
 
 /**
  * M1 «Вход — одно поле». Телефон, почта или персональный код — в одном поле, а пароль или
@@ -29,7 +30,9 @@ import { AuthPage, FormError, Hint, ValueCard, useSignInCompletion } from './Sig
  * светлые значки статус-бара держит, только пока он на виду: стек оставляет его
  * смонтированным под следующими шагами, а у тех светлый фон.
  */
-export function AuthSignIn({ onBack, onContinue, onForgot, onFaceId, canUseFaceId, biometricLabel }) {
+export function AuthSignIn({
+  onBack, onContinue, onForgot, onFaceId, canUseFaceId, biometricLabel, onApply, onRequestStatus,
+}) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const topInset = useContext(ScreenTopInsetContext) ?? insets.top;
@@ -124,9 +127,13 @@ export function AuthSignIn({ onBack, onContinue, onForgot, onFaceId, canUseFaceI
             ) : null}
 
             <View style={{ flex: 1 }} />
-            <Txt style={{ textAlign: 'center', fontSize: AUTH.captionSize, lineHeight: AUTH.captionLine, color: c.ink3 }}>
-              Нет доступа? Обратитесь в школу.
-            </Txt>
+            <View style={{ alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                <Txt style={{ fontSize: AUTH.bodySize, color: c.ink2 }}>Нет доступа?</Txt>
+                <TextButton onPress={onApply}>Отправить заявку</TextButton>
+              </View>
+              <TextButton onPress={onRequestStatus}>Проверить статус заявки</TextButton>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -177,7 +184,7 @@ export function AuthSecret({ kind, login, onBack, onForgot, onCreatePin }) {
   const message = error || offerError;
 
   return (
-    <AuthPage
+    <FormPage
       onBack={onBack}
       title={pin ? 'Введите PIN' : 'Введите пароль'}
       subtitle={pin ? 'Тот, что вы придумали при первом входе.' : kind === 'email' ? 'Вход по почте' : 'Вход по телефону'}
@@ -227,6 +234,6 @@ export function AuthSecret({ kind, login, onBack, onForgot, onCreatePin }) {
       </PrimaryButton>
       <TextButton onPress={onForgot}>{pin ? 'Забыли PIN?' : 'Забыли пароль?'}</TextButton>
       {pin ? <TextButton onPress={onCreatePin}>Ещё нет PIN? Придумать</TextButton> : null}
-    </AuthPage>
+    </FormPage>
   );
 }

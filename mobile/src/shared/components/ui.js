@@ -602,29 +602,37 @@ export function ScreenHeader({ title, back, right, large = false, sub }) {
 // the default":
 //   soft  → tinted background, coloured ink (substitution — informative)
 //   solid → filled background, white ink (closed period — restrictive)
+//   info  → navy tint without a border, body ink (Figma `Admin_Admissions`, A1/A4/S1):
+//           a side note to read, not a state of the screen, so it must not shout in orange
+//   danger → red tint, red ink (S5 «Причина отказа»): the reason something came back
 export function Banner({ icon, children, tone = 'soft', style }) {
   const { c } = useTheme();
   const solid = tone === 'solid';
-  const fg = solid ? '#fff' : c.green;
+  const info = tone === 'info';
+  const danger = tone === 'danger';
+  const quiet = info || danger;
+  const fg = solid ? '#fff' : info ? c.ink2 : danger ? c.red : c.green;
+  const iconColor = info ? c.blueInk : fg;
+  const bg = solid ? c.green : info ? c.blueSoft : danger ? c.redSoft : c.greenSoft;
   return (
     <View
       style={[
         {
           flexDirection: 'row',
-          alignItems: 'center',
+          alignItems: quiet ? 'flex-start' : 'center',
           gap: 10,
           paddingVertical: 12,
           paddingHorizontal: 14,
           borderRadius: 16,
-          backgroundColor: solid ? c.green : c.greenSoft,
-          borderWidth: solid ? 0 : 1,
+          backgroundColor: bg,
+          borderWidth: solid || quiet ? 0 : 1,
           borderColor: c.green,
         },
         style,
       ]}
     >
-      {icon ? <Icon name={icon} size={18} color={fg} strokeWidth={2} /> : null}
-      <Txt style={{ flex: 1, fontSize: 13, fontWeight: '600', color: fg }}>
+      {icon ? <Icon name={icon} size={18} color={iconColor} strokeWidth={2} /> : null}
+      <Txt style={{ flex: 1, fontSize: 13, lineHeight: quiet ? 19 : undefined, fontWeight: quiet ? '500' : '600', color: fg }}>
         {children}
       </Txt>
     </View>

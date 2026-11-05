@@ -38,7 +38,7 @@ function BrandEmblem() {
   );
 }
 
-export function AuthWelcome({ onContinue, onEntrance, onDemo }) {
+export function AuthWelcome({ onContinue, onEntrance, onDemo, onApply }) {
   const { c } = useTheme();
   return (
     <Screen scroll={false}>
@@ -69,8 +69,13 @@ export function AuthWelcome({ onContinue, onEntrance, onDemo }) {
               Вступительный тест
             </PrimaryButton>
           ) : null}
+          {/* Доступ теперь просят заявкой (AUTH-FE-001, A1): «спросите у школы» отправляло
+              человека туда, где ему ответили бы тем же — подайте заявку. */}
           <Txt style={{ marginTop: 12, fontSize: 13, color: c.ink3, textAlign: 'center' }}>
-            Нет аккаунта? <Txt style={{ color: c.green, fontWeight: '600' }}>Спросите у школы</Txt>
+            Нет аккаунта?{' '}
+            <Txt accessibilityRole="link" onPress={onApply} style={{ color: c.green, fontWeight: '600' }}>
+              Отправить заявку
+            </Txt>
           </Txt>
           {onDemo ? <TextButton onPress={onDemo}>Попробовать демо</TextButton> : null}
         </View>

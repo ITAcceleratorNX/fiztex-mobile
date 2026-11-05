@@ -57,15 +57,16 @@ export const HISTORY = {
   maxWidth: 560, maxHeight: '85%', borderWidth: 1,
 };
 
-// Вход для всех ролей (Figma `Admin_Admissions`, кадры M1–M7). Своё у блока — шапка со
-// знаком и лист поверх неё, клетки PIN и значки экрана восстановления; поля, кнопки и
-// крупный заголовок берутся из `TextField`, `PrimaryButton` и `ScreenHeader`. Поля стоят
-// на отступе 16, как заголовок `ScreenHeader`: макетные 20 развели бы их по вертикали.
+// Вход и заявка на доступ (Figma `Admin_Admissions`: M1–M7, A1–A5, S1–S6). Своё у блоков —
+// шапка со знаком и лист поверх неё, клетки PIN, значки ролей и итогов, шкала статуса; поля,
+// кнопки и заголовки берутся из `TextField`, `PrimaryButton` и `ScreenHeader`. Поля стоят на
+// отступе 16, как заголовок `ScreenHeader`: макетные 20 развели бы их по вертикали.
 export const AUTH = {
   gutter: 16, gap: 16, sectionGap: 24, captionGap: 6,
   heroHeight: 164, logoHeight: 40, sheetRadius: 28, sheetOverlap: 28,
   titleSize: 30, titleLine: 36, bodySize: 15, bodyLine: 22,
   captionSize: 13, captionLine: 18, valueSize: 17, codeSpacing: 1.5, iconSize: 16,
   pinCellWidth: 52, pinCellHeight: 60, pinCellRadius: 14, pinGap: 12, pinDot: 12,
-  badgeSize: 36, badgeRadius: 10,
+  badgeSize: 36, badgeRadius: 10, markSize: 64, markIconSize: 30,
+  numberSize: 34, stepDot: 20, stepLine: 2, avatarSize: 40,
 };
