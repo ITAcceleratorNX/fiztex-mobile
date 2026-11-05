@@ -5,6 +5,8 @@ import { Txt } from './Txt';
 import Icon from './Icon';
 import { TextButton } from './TextButton';
 import { Card, FieldLabel, TextField } from './ui';
+import { shadowCard } from './Screen';
+import { REQUEST } from '../theme/tokens';
 
 /** Сколько совпадений показывать: дальше список не помогает, а мешает — пусть уточнят ввод. */
 const MAX_MATCHES = 12;
@@ -19,6 +21,9 @@ const MAX_MATCHES = 12;
  *
  * `options` — `{ value, label }`; `filter(options, query)` решает, что совпало, — правило
  * знает экран (класс ищут по цифре, а не по подстроке). Выбор хранит экран: здесь только ввод.
+ *
+ * `size="lg"` — как в макете заявки: поле 52, список — белое меню с тенью и строками 44 на радиусе 10
+ * без разделителей, выбранная строка подсвечена (A2); выбранное — строка поля с «Изменить» (A3).
  */
 export function ComboField({
   label,
@@ -31,28 +36,34 @@ export function ComboField({
   editable = true,
   keyboardType = 'default',
   emptyText = 'Ничего не нашлось',
+  size = 'md',
 }) {
   const { c } = useTheme();
+  const lg = size === 'lg';
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState(false);
 
   if (selected && !editing) {
     return (
-      <View style={{ gap: 6 }}>
-        {label ? <FieldLabel>{label}</FieldLabel> : null}
+      <View style={{ gap: lg ? REQUEST.labelGap : 6 }}>
+        {label ? <FieldLabel size={size}>{label}</FieldLabel> : null}
         <View
           style={{
-            minHeight: 46,
+            minHeight: lg ? REQUEST.fieldHeight : 46,
             borderWidth: 1,
             borderColor: invalid ? c.red : c.border,
-            borderRadius: 10,
+            borderRadius: lg ? REQUEST.fieldRadius : 10,
             backgroundColor: editable ? c.surface : c.bg2,
             flexDirection: 'row',
             alignItems: 'center',
-            paddingLeft: 14,
+            paddingLeft: lg ? REQUEST.fieldInset : 14,
+            // У `TextButton` свои 8 по бокам: вместе с ними «Изменить» стоит на отступе поля.
+            paddingRight: lg ? REQUEST.fieldInset - 8 : 0,
           }}
         >
-          <Txt style={{ flex: 1, fontSize: 15 }}>{selected.label}</Txt>
+          <Txt style={lg ? { flex: 1, fontSize: REQUEST.fieldTextSize, fontWeight: '500' } : { flex: 1, fontSize: 15 }}>
+            {selected.label}
+          </Txt>
           {editable ? (
             <TextButton
               onPress={() => {
@@ -72,8 +83,9 @@ export function ComboField({
   const matches = typed ? filter(options, typed) : [];
 
   return (
-    <View style={{ gap: 6 }}>
+    <View style={{ gap: lg ? REQUEST.labelGap : 6 }}>
       <TextField
+        size={size}
         label={label}
         value={query}
         onChangeText={setQuery}
@@ -85,7 +97,47 @@ export function ComboField({
         autoCorrect={false}
         autoComplete="off"
       />
-      {matches.length ? (
+      {matches.length && lg ? (
+        <View
+          style={{
+            padding: REQUEST.menuInset,
+            borderWidth: 1,
+            borderColor: c.border,
+            borderRadius: REQUEST.fieldRadius,
+            backgroundColor: c.surface,
+            ...shadowCard,
+          }}
+        >
+          {matches.slice(0, MAX_MATCHES).map((option) => {
+            const active = selected?.value === option.value;
+            return (
+              <Pressable
+                key={String(option.value)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                onPress={() => {
+                  onSelect(option);
+                  setEditing(false);
+                  setQuery('');
+                }}
+                style={({ pressed }) => ({
+                  minHeight: REQUEST.menuRowHeight,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 14,
+                  borderRadius: REQUEST.menuRowRadius,
+                  backgroundColor: pressed || active ? c.blueSoft : 'transparent',
+                })}
+              >
+                <Txt style={{ flex: 1, fontSize: REQUEST.fieldTextSize, fontWeight: active ? '600' : '500' }}>
+                  {option.label}
+                </Txt>
+                {active ? <Icon name="check" size={18} color={c.blueInk} strokeWidth={2.4} /> : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : matches.length ? (
         <Card padded={false} style={{ overflow: 'hidden' }}>
           {matches.slice(0, MAX_MATCHES).map((option, index) => {
             const active = selected?.value === option.value;

@@ -266,6 +266,9 @@ const light = {
   borderStrong: '#CBD5E1',
   ...grid,
   greenSoft: '#FFF7ED',
+  // Текст оранжевой плашки-предупреждения (A5 «Сохраните номер…»): коричневый, а не оранжевый —
+  // оранжевый на оранжевой подложке не читается.
+  warnInk: '#7A4A12',
   blueSoft: '#EEF1F8',
   blueInk: '#274185',
   redSoft: '#FEE2E2',
@@ -305,6 +308,7 @@ const dark = {
   borderStrong: '#3E4F6D',
   ...gridDark,
   greenSoft: '#3A2412',
+  warnInk: '#F8C99A',
   blueSoft: '#1B2745',
   blueInk: '#93B4FD',
   redSoft: '#3A1C1C',

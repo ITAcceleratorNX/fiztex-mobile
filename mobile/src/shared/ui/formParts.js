@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-import { AUTH } from '../theme/tokens';
+import { AUTH, REQUEST } from '../theme/tokens';
 import { Screen } from '../components/Screen';
 import { TextButton } from '../components/TextButton';
 import { Txt } from '../components/Txt';
@@ -37,23 +37,141 @@ function toneColors(c, tone) {
  * `footer` прижимается к низу экрана, пока содержимое короче экрана, и уезжает вниз вместе
  * с ним, когда длиннее, — главная кнопка не перекрывает поля.
  */
-export function FormPage({ title, subtitle, onBack, large = true, footer, children }) {
+export function FormPage({ title, subtitle, onBack, large = true, footer, layout = 'auth', children }) {
+  // `layout="request"` — заявка на доступ по макету (A1–A5): поля на 20, шаг 18, своя шапка
+  // `FormHeader`. Экраны входа M1–M7 остаются на `auth`, пока их не сверили с макетом.
+  const request = layout === 'request';
+  const gutter = request ? REQUEST.gutter : AUTH.gutter;
+  const gap = request ? REQUEST.gap : AUTH.gap;
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
       <Screen keyboardShouldPersistTaps="handled" contentStyle={{ flexGrow: 1, paddingBottom: AUTH.sectionGap }}>
-        <ScreenHeader large={large} title={title} sub={subtitle} back={onBack} />
-        <View style={{ paddingHorizontal: AUTH.gutter, marginTop: large ? AUTH.gap : 0, gap: AUTH.gap }}>
+        {request ? (
+          <FormHeader large={large} title={title} subtitle={subtitle} onBack={onBack} />
+        ) : (
+          <ScreenHeader large={large} title={title} sub={subtitle} back={onBack} />
+        )}
+        <View style={{ paddingHorizontal: gutter, marginTop: large ? (request ? AUTH.sectionGap : AUTH.gap) : 0, gap }}>
           {children}
         </View>
         {footer ? (
           <>
             <View style={{ flex: 1, minHeight: AUTH.sectionGap }} />
-            <View style={{ paddingHorizontal: AUTH.gutter, gap: AUTH.captionGap }}>{footer}</View>
+            <View style={{ paddingHorizontal: gutter, gap: AUTH.captionGap }}>{footer}</View>
           </>
         ) : null}
       </Screen>
     </KeyboardAvoidingView>
   );
+}
+
+/** Круглая «назад» 42 с рамкой (A1–A4). */
+function BackCircle({ onPress }) {
+  const { c } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Назад"
+      hitSlop={6}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        width: REQUEST.backSize,
+        height: REQUEST.backSize,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: c.border,
+        backgroundColor: c.surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: pressed ? 0.8 : 1,
+      })}
+    >
+      <Icon name="chevronLeft" size={18} color={c.ink} strokeWidth={2.2} />
+    </Pressable>
+  );
+}
+
+/**
+ * Шапка форм заявки (Figma A1–A4). Крупная — «назад», под ней заголовок 30/800 и подзаголовок
+ * (A1); маленькая — заголовок 16/700 слева, рядом с «назад» (A2–A4), а не по центру, как у
+ * `ScreenHeader`: в макете он читается продолжением кнопки.
+ */
+export function FormHeader({ title, subtitle, onBack, large = true }) {
+  const { c } = useTheme();
+  if (large) {
+    return (
+      <View style={{ paddingHorizontal: REQUEST.gutter, paddingTop: 4 }}>
+        {onBack ? <BackCircle onPress={onBack} /> : null}
+        {title ? (
+          <View style={{ marginTop: onBack ? AUTH.sectionGap : 0, gap: 8 }}>
+            <Txt
+              accessibilityRole="header"
+              style={{
+                fontSize: REQUEST.titleSize,
+                lineHeight: REQUEST.titleLine,
+                letterSpacing: REQUEST.titleTracking,
+                fontWeight: '800',
+              }}
+            >
+              {title}
+            </Txt>
+            {subtitle ? (
+              <Txt style={{ fontSize: REQUEST.leadSize, lineHeight: REQUEST.leadLine, color: c.ink2 }}>{subtitle}</Txt>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
+    );
+  }
+  return (
+    <View
+      style={{
+        paddingHorizontal: REQUEST.gutter,
+        paddingTop: 4,
+        paddingBottom: REQUEST.gap,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        minHeight: REQUEST.backSize,
+      }}
+    >
+      {onBack ? <BackCircle onPress={onBack} /> : null}
+      {title ? (
+        <Txt
+          accessibilityRole="header"
+          numberOfLines={1}
+          style={{ flex: 1, fontSize: REQUEST.headerTitleSize, lineHeight: REQUEST.headerTitleLine, fontWeight: '700' }}
+        >
+          {title}
+        </Txt>
+      ) : null}
+    </View>
+  );
+}
+
+/** Подпись раздела длинной формы — «О ВАС», «РЕБЁНОК» (A4): 13/700 капсом, серая. */
+export function FormSectionLabel({ children }) {
+  const { c } = useTheme();
+  return (
+    <Txt
+      accessibilityRole="header"
+      style={{
+        fontSize: REQUEST.sectionLabelSize,
+        lineHeight: REQUEST.hintLine,
+        fontWeight: '700',
+        letterSpacing: REQUEST.sectionLabelTracking,
+        color: c.ink3,
+      }}
+    >
+      {String(children).toUpperCase()}
+    </Txt>
+  );
+}
+
+/** Черта между разделами формы (A4): 1 px, с воздухом сверху и снизу. */
+export function FormDivider() {
+  const { c } = useTheme();
+  return <View style={{ height: 1, backgroundColor: c.border, marginVertical: REQUEST.sectionGap - REQUEST.gap }} />;
 }
 
 /**
@@ -128,22 +246,23 @@ export function Rule({ met, children }) {
   );
 }
 
-/** Квадратный значок с мягкой подложкой — у строк ролей (M6, A1). */
-export function IconBadge({ icon, tone, size = AUTH.badgeSize }) {
+/** Квадратный значок с мягкой подложкой — у строк ролей (M6, A1). `large` — 48 на радиусе 14 (A1). */
+export function IconBadge({ icon, tone, size, large = false }) {
   const { c } = useTheme();
   const [bg, fg] = toneColors(c, tone);
+  const side = size ?? (large ? REQUEST.badgeSize : AUTH.badgeSize);
   return (
     <View
       style={{
-        width: size,
-        height: size,
-        borderRadius: AUTH.badgeRadius,
+        width: side,
+        height: side,
+        borderRadius: large ? REQUEST.badgeRadius : AUTH.badgeRadius,
         backgroundColor: bg,
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      <Icon name={icon} size={20} color={fg} />
+      <Icon name={icon} size={large ? REQUEST.badgeIcon : 20} color={fg} />
     </View>
   );
 }
@@ -168,8 +287,40 @@ export function IconBadgeRow({ icon, tone, title, children }) {
  * Нажимаемая карточка с той же строкой и шевроном — выбор пути: роль на A1, вступительный тест
  * на M1. Одна на оба экрана, чтобы «куда ещё можно пойти» выглядело везде одинаково.
  */
-export function ChoiceCard({ icon, tone, title, children, onPress }) {
+export function ChoiceCard({ icon, tone, title, children, onPress, size = 'md' }) {
   const { c } = useTheme();
+  if (size === 'lg') {
+    // A1: карточка 20, значок 48, заголовок 17/700, пояснение 14/20. Нажатая — navy-рамка, как
+    // «Я ученик» в макете: так видно, какую строку сейчас выбрали.
+    return (
+      <Pressable
+        accessibilityRole="button"
+        onPress={onPress}
+        style={({ pressed }) => ({
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: REQUEST.choiceGap,
+          paddingVertical: REQUEST.choicePadV,
+          paddingHorizontal: REQUEST.choicePadH,
+          borderRadius: REQUEST.choiceRadius,
+          borderWidth: 1,
+          borderColor: pressed ? c.blueInk : c.border,
+          backgroundColor: c.surface,
+        })}
+      >
+        <IconBadge icon={icon} tone={tone} large />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Txt style={{ fontSize: REQUEST.choiceTitleSize, lineHeight: REQUEST.choiceTitleLine, fontWeight: '700' }}>
+            {title}
+          </Txt>
+          <Txt style={{ marginTop: 2, fontSize: REQUEST.choiceTextSize, lineHeight: REQUEST.choiceTextLine, color: c.ink2 }}>
+            {children}
+          </Txt>
+        </View>
+        <Icon name="chevronRight" size={REQUEST.chevron} color={c.ink2} />
+      </Pressable>
+    );
+  }
   return (
     <Card onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
       <View style={{ flex: 1, minWidth: 0 }}>
@@ -182,15 +333,19 @@ export function ChoiceCard({ icon, tone, title, children, onPress }) {
   );
 }
 
-/** Крупный круглый значок над заголовком экрана-итога (A5 «отправлена», S6 «на проверке»). */
-export function StatusMark({ icon, tone }) {
+/**
+ * Крупный круглый значок над заголовком экрана-итога (A5 «отправлена», S6 «на проверке»).
+ * `large` — 72 со значком 34, как на A5.
+ */
+export function StatusMark({ icon, tone, large = false }) {
   const { c } = useTheme();
   const [bg, fg] = toneColors(c, tone);
+  const side = large ? REQUEST.markSize : AUTH.markSize;
   return (
     <View
       style={{
-        width: AUTH.markSize,
-        height: AUTH.markSize,
+        width: side,
+        height: side,
         borderRadius: 999,
         backgroundColor: bg,
         alignItems: 'center',
@@ -198,7 +353,7 @@ export function StatusMark({ icon, tone }) {
         alignSelf: 'center',
       }}
     >
-      <Icon name={icon} size={AUTH.markIconSize} color={fg} strokeWidth={2.2} />
+      <Icon name={icon} size={large ? REQUEST.markIconSize : AUTH.markIconSize} color={fg} strokeWidth={2.2} />
     </View>
   );
 }

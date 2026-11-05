@@ -215,6 +215,14 @@ Push-регистрация и серверный выход пропускаю�
   входил»: аккаунт с паролем из заявки активен с момента одобрения.
 * **Телефон для push** (`registerDeviceForAccessRequest`) регистрируется после подачи и на каждом
   открытии статуса ожидающей заявки — сервер принимает его только у заявки на рассмотрении.
+* **A1–A5 свёрстаны по макету через опциональный слой DS** (2026-11-05): токены `REQUEST` в
+  `tokens.js` (поля на 20, шаг 18, поле 52, подпись 14/600, ввод 16/500), `FormPage
+  layout="request"` со своей шапкой `FormHeader` (заголовок слева от «назад»), `size="lg"` у
+  `TextField`/`PasswordField`/`FieldLabel`/`ComboField`/`ChoiceCard`/`Banner`/`PrimaryButton`,
+  `sunken` у поля внутри карточки, `optional` у подписи, `StatusMark`/`IconBadge large`,
+  `FormSectionLabel`, `FormDivider`, `OutlineButton size="pill" icon`, `Banner tone="warning"`
+  (`warnInk`), значок `copy`. Умолчания не тронуты — экраны входа M1–M7 и статуса S1–S6 пока
+  на прежних размерах, их сверка с макетом — отдельные заходы.
 
 Контракт и отличия от макета — `.cursor/tasks/extended-auth/screens/MobileAccessRequest.md`.
 

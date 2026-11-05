@@ -80,6 +80,26 @@ export const AUTH = {
   codeSize: 28, codeLine: 36, codeTracking: 3, maskSize: 20, maskTracking: 6, heroAvatar: 52,
 };
 
+// Заявка на доступ, вёрстка по макету (Figma `phyztex` A1 2460:1302 … A5 2460:1528). Опциональный
+// слой поверх `AUTH`: формы заявки стоят на макетных 20 и с полями 52, а экраны входа M1–M7 пока
+// на прежних 16 / 46 — их сверка с макетом идёт отдельным заходом. Включается `layout="request"`
+// у `FormPage` и `size="lg"` у полей, карточек, плашек и кнопок.
+export const REQUEST = {
+  gutter: 20, gap: 18, sectionGap: 22, labelGap: 8,
+  backSize: 42, headerTitleSize: 16, headerTitleLine: 20,
+  titleSize: 30, titleLine: 38, titleTracking: -0.5, leadSize: 15, leadLine: 22,
+  fieldHeight: 52, fieldRadius: 16, fieldInset: 16, fieldTextSize: 16, fieldTextLine: 20,
+  labelSize: 14, labelLine: 18, hintSize: 13, hintLine: 17,
+  choicePadV: 18, choicePadH: 16, choiceGap: 14, choiceRadius: 20,
+  badgeSize: 48, badgeRadius: 14, badgeIcon: 24, choiceTitleSize: 17, choiceTitleLine: 22,
+  choiceTextSize: 14, choiceTextLine: 20, chevron: 18,
+  bannerTextSize: 14, bannerTextLine: 20, blockTitleSize: 15, blockTitleLine: 19,
+  ctaTextSize: 17, pillHeight: 38,
+  menuInset: 7, menuRowHeight: 44, menuRowRadius: 10,
+  markSize: 72, markIconSize: 34, doneTitleSize: 28, doneTitleLine: 36, numberTracking: 1, numberLine: 43,
+  sectionLabelSize: 13, sectionLabelTracking: 0.6,
+};
+
 // Запуск приложения (заметки дизайнера рядом с M1 и кадр «Повторный запуск» 2468:22): знак по
 // центру тёмно-синего экрана, 279×72 pt — как в видео дизайнера на экране 390 pt. В конце
 // первого запуска он уезжает в шапку M1 и становится `AUTH.logoHeight`.

@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '@shared/theme/ThemeContext';
-import { AUTH } from '@shared/theme/tokens';
+import { AUTH, REQUEST } from '@shared/theme/tokens';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { TextButton } from '@shared/components/TextButton';
@@ -10,7 +11,9 @@ import { ComboField } from '@shared/components/ComboField';
 import {
   Avatar, Banner, Card, FieldLabel, OutlineButton, PasswordField, PrimaryButton, TextField,
 } from '@shared/components/ui';
-import { ChoiceCard, FormError, FormPage, Hint, IconBadge, Rule, StatusMark } from '@shared/ui/formParts';
+import {
+  ChoiceCard, FormDivider, FormError, FormPage, FormSectionLabel, Hint, IconBadge, Rule, StatusMark,
+} from '@shared/ui/formParts';
 import { accessRequestsApi } from '@shared/api/accessRequestsApi';
 import { registerDeviceForAccessRequest } from '@shared/push/registration';
 import { PASSWORD_MAX_LENGTH } from '@features/auth/signInModel';
@@ -26,13 +29,15 @@ const CLASS_KEYBOARD = Platform.select({ ios: 'numbers-and-punctuation', default
 
 const UNREACHABLE = 'Не удалось связаться со школой. Проверьте интернет и попробуйте ещё раз.';
 
-function Title({ children, center = false }) {
+function Title({ children, center = false, done = false }) {
+  // `done` — заголовок экрана-итога A5: 28/36, 800, сжатие −0,5.
   return (
     <Txt
       style={{
-        fontSize: AUTH.titleSize,
-        lineHeight: AUTH.titleLine,
-        fontWeight: '700',
+        fontSize: done ? REQUEST.doneTitleSize : AUTH.titleSize,
+        lineHeight: done ? REQUEST.doneTitleLine : AUTH.titleLine,
+        fontWeight: done ? '800' : '700',
+        letterSpacing: done ? REQUEST.titleTracking : 0,
         textAlign: center ? 'center' : 'left',
       }}
     >
@@ -41,12 +46,12 @@ function Title({ children, center = false }) {
   );
 }
 
-function Lead({ children, center = false }) {
+function Lead({ children, center = false, gap = 4 }) {
   const { c } = useTheme();
   return (
     <Txt
       style={{
-        marginTop: 4,
+        marginTop: gap,
         fontSize: AUTH.bodySize,
         lineHeight: AUTH.bodyLine,
         color: c.ink2,
@@ -54,15 +59,6 @@ function Lead({ children, center = false }) {
       }}
     >
       {children}
-    </Txt>
-  );
-}
-
-function SectionLabel({ children }) {
-  const { c } = useTheme();
-  return (
-    <Txt style={{ fontSize: AUTH.captionSize, fontWeight: '600', letterSpacing: 0.8, color: c.ink3 }}>
-      {String(children).toUpperCase()}
     </Txt>
   );
 }
@@ -87,26 +83,29 @@ export function AccessRequestStart({ onBack, onRole, onStatus }) {
   );
 
   const roleCard = (role, icon, tone, title, text) => (
-    <ChoiceCard icon={icon} tone={tone} title={title} onPress={() => onRole(role)}>
+    <ChoiceCard size="lg" icon={icon} tone={tone} title={title} onPress={() => onRole(role)}>
       {text}
     </ChoiceCard>
   );
 
   return (
     <FormPage
+      layout="request"
       onBack={onBack}
       title="Заявка на доступ"
-      subtitle="Администратор школы проверит данные и откроет доступ."
+      subtitle={'Администратор школы проверит данные и\u00a0откроет доступ.'}
       footer={<TextButton onPress={onStatus}>Уже отправили? Проверить статус</TextButton>}
     >
       {stored ? (
-        <Banner tone="info" icon="info">
+        <Banner tone="info" icon="info" size="lg">
           {`На этом телефоне уже есть заявка${stored.requestId ? ` № ${stored.requestId}` : ''} — её статус по ссылке внизу.`}
         </Banner>
       ) : null}
-      {roleCard(ROLES.STUDENT, 'graduationCap', undefined, 'Я ученик', 'Телефон можно не указывать')}
-      {roleCard(ROLES.PARENT, 'users', 'orange', 'Я родитель', 'Укажите одного ребёнка — остальных привяжет школа')}
-      <Banner tone="info" icon="info">
+      <View style={{ gap: 12 }}>
+        {roleCard(ROLES.STUDENT, 'graduationCap', undefined, 'Я ученик', 'Телефон можно не указывать')}
+        {roleCard(ROLES.PARENT, 'users', 'orange', 'Я родитель', 'Укажите одного ребёнка — остальных привяжет школа')}
+      </View>
+      <Banner tone="info" icon="info" size="lg">
         Учителям заявка не нужна — аккаунт создаёт администратор школы.
       </Banner>
     </FormPage>
@@ -216,7 +215,7 @@ export function AccessRequestForm({ role, mode = 'new', prefill, onBack, onSent 
     if (catalogError) {
       return (
         <View style={{ gap: 6 }}>
-          <FieldLabel>{label}</FieldLabel>
+          <FieldLabel size="lg">{label}</FieldLabel>
           <FormError>{catalogError}</FormError>
           <TextButton onPress={loadClasses}>Загрузить классы ещё раз</TextButton>
         </View>
@@ -225,20 +224,21 @@ export function AccessRequestForm({ role, mode = 'new', prefill, onBack, onSent 
     if (!catalog) {
       return (
         <View style={{ gap: 6 }}>
-          <FieldLabel>{label}</FieldLabel>
+          <FieldLabel size="lg">{label}</FieldLabel>
           <ActivityIndicator />
         </View>
       );
     }
     if (!catalog.yearConfigured) {
       return (
-        <Banner tone="info" icon="info">
+        <Banner tone="info" icon="info" size="lg">
           Школа ещё не открыла запись: учебный год не настроен. Попробуйте позже или обратитесь в школу.
         </Banner>
       );
     }
     return (
       <ComboField
+        size="lg"
         label={label}
         placeholder="Например, 5"
         selected={options.find((option) => option.classId === form[key]) || null}
@@ -256,6 +256,8 @@ export function AccessRequestForm({ role, mode = 'new', prefill, onBack, onSent 
     <>
       <View>
         <PasswordField
+          size="lg"
+          sunken={!parent}
           label={parent ? 'Пароль' : undefined}
           value={form.password}
           onChangeText={set('password')}
@@ -269,6 +271,8 @@ export function AccessRequestForm({ role, mode = 'new', prefill, onBack, onSent 
       </View>
       <View>
         <PasswordField
+          size="lg"
+          sunken={!parent}
           label={parent ? 'Повторите пароль' : undefined}
           value={form.repeat}
           onChangeText={set('repeat')}
@@ -286,6 +290,7 @@ export function AccessRequestForm({ role, mode = 'new', prefill, onBack, onSent 
   const nameField = (key, label, hint) => (
     <View>
       <TextField
+        size="lg"
         label={label}
         value={form[key]}
         onChangeText={set(key)}
@@ -298,9 +303,11 @@ export function AccessRequestForm({ role, mode = 'new', prefill, onBack, onSent 
     </View>
   );
 
-  const phoneField = (label, hint) => (
+  const phoneField = (label, hint, optional = false) => (
     <View>
       <TextField
+        size="lg"
+        optional={optional}
         label={label}
         value={form.phone}
         onChangeText={set('phone')}
@@ -310,12 +317,13 @@ export function AccessRequestForm({ role, mode = 'new', prefill, onBack, onSent 
         textContentType="telephoneNumber"
         invalid={Boolean(fieldError('phone'))}
       />
-      {fieldError('phone') ? <FormError>{fieldError('phone')}</FormError> : <Hint>{hint}</Hint>}
+      {fieldError('phone') ? <FormError>{fieldError('phone')}</FormError> : hint ? <Hint>{hint}</Hint> : null}
     </View>
   );
 
   return (
     <FormPage
+      layout="request"
       onBack={onBack}
       large={false}
       title={mode === 'resubmit' ? 'Повторная заявка' : parent ? 'Заявка родителя' : 'Заявка ученика'}
@@ -325,7 +333,7 @@ export function AccessRequestForm({ role, mode = 'new', prefill, onBack, onSent 
           {mode === 'resubmit' ? (
             <Hint center>Это будет новая заявка со своим номером — прежняя останется в истории школы.</Hint>
           ) : null}
-          <PrimaryButton style={{ marginTop: AUTH.captionGap }} disabled={sending} onPress={submit}>
+          <PrimaryButton size="lg" style={{ marginTop: AUTH.captionGap }} disabled={sending} onPress={submit}>
             {sending ? (
               <ActivityIndicator color={c.heroInk} />
             ) : mode === 'resubmit' ? 'Отправить повторно' : 'Отправить заявку'}
@@ -334,23 +342,23 @@ export function AccessRequestForm({ role, mode = 'new', prefill, onBack, onSent 
       }
     >
       {mode === 'resubmit' && prefill?.rejectionReason ? (
-        <Banner tone="danger" icon="alertCircle">{`Причина отказа: ${prefill.rejectionReason}`}</Banner>
+        <Banner tone="danger" icon="alertCircle" size="lg">{`Причина отказа: ${prefill.rejectionReason}`}</Banner>
       ) : null}
 
       {parent ? (
         <>
-          <SectionLabel>О вас</SectionLabel>
+          <FormSectionLabel>О вас</FormSectionLabel>
           {nameField('fullName', 'ФИО')}
           {phoneField('Телефон', 'Это будет ваш логин')}
           {passwordFields}
-          <View style={{ height: 1, backgroundColor: c.border }} />
-          <SectionLabel>Ребёнок</SectionLabel>
+          <FormDivider />
+          <FormSectionLabel>Ребёнок</FormSectionLabel>
           {nameField('childFullName', 'ФИО ребёнка')}
           <View>
             {classField('childClassId', 'Класс ребёнка')}
             {fieldError('childClassId') ? <FormError>{fieldError('childClassId')}</FormError> : null}
           </View>
-          <Banner tone="info" icon="info">
+          <Banner tone="info" icon="info" size="lg">
             Несколько детей в школе? Укажите одного — остальных привяжет администратор.
           </Banner>
         </>
@@ -365,10 +373,17 @@ export function AccessRequestForm({ role, mode = 'new', prefill, onBack, onSent 
               <Hint>Начните вводить цифру — покажем классы вашей школы</Hint>
             )}
           </View>
-          {phoneField('Телефон · необязательно', 'Без телефона вы будете входить по коду от классного руководителя и PIN.')}
+          {/* С телефоном подсказка «без телефона — по коду» уже неправда: дальше блок пароля (A3). */}
+          {phoneField(
+            'Телефон',
+            check.needsPassword ? null : 'Без телефона вы будете входить по коду от классного руководителя и PIN.',
+            true,
+          )}
           {check.needsPassword ? (
-            <Card style={{ gap: AUTH.gap }}>
-              <Txt style={{ fontSize: AUTH.bodySize, fontWeight: '600' }}>Пароль для входа по телефону</Txt>
+            <Card style={{ gap: 12 }}>
+              <Txt style={{ fontSize: REQUEST.blockTitleSize, lineHeight: REQUEST.blockTitleLine, fontWeight: '700' }}>
+                Пароль для входа по телефону
+              </Txt>
               {passwordFields}
             </Card>
           ) : null}
@@ -381,28 +396,59 @@ export function AccessRequestForm({ role, mode = 'new', prefill, onBack, onSent 
 /**
  * A5 «Заявка отправлена». Номер — для разговора со школой: статус по нему не узнать, его
  * отдают только по токену заявки, который приложение запомнило само (§2). Поэтому совет
- * «сохраните номер» из макета заменён на то, где смотреть решение. Номер можно выделить и
- * скопировать долгим нажатием — своей кнопки нет: ради пяти цифр нативная зависимость лишняя.
+ * «сохраните номер — по нему узнаете решение» из макета заменён на то, где смотреть решение.
+ * «Скопировать» кладёт номер в буфер обмена (`expo-clipboard` — тот же, что у кода ученика).
  */
 export function AccessRequestSent({ requestId, onDone }) {
   const { c } = useTheme();
+  const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(null);
+
+  const copy = async () => {
+    setCopyError(null);
+    try {
+      await Clipboard.setStringAsync(String(requestId));
+      setCopied(true);
+    } catch {
+      setCopyError('Не получилось скопировать — перепишите номер вручную.');
+    }
+  };
+
   return (
-    <FormPage large={false} footer={<PrimaryButton onPress={onDone}>Готово</PrimaryButton>}>
-      <View style={{ height: AUTH.sectionGap }} />
-      <StatusMark icon="check" tone="success" />
-      <View>
-        <Title center>Заявка отправлена</Title>
-        <Lead center>Администратор школы проверит данные и откроет доступ.</Lead>
+    <FormPage
+      layout="request"
+      large={false}
+      footer={<PrimaryButton size="lg" onPress={onDone}>Готово</PrimaryButton>}
+    >
+      <View style={{ alignItems: 'center', paddingTop: AUTH.sectionGap, gap: AUTH.gap }}>
+        <StatusMark icon="check" tone="success" large />
+        <View>
+          <Title center done>Заявка отправлена</Title>
+          <Lead center gap={12}>Администратор школы проверит данные и откроет доступ.</Lead>
+        </View>
       </View>
       {requestId ? (
-        <Card style={{ alignItems: 'center', gap: 4 }}>
-          <Txt style={{ fontSize: AUTH.captionSize, color: c.ink2 }}>Номер заявки</Txt>
-          <Txt selectable style={{ fontSize: AUTH.numberSize, fontWeight: '800', color: c.blueInk }}>
+        <Card style={{ alignItems: 'center', gap: 10, paddingVertical: REQUEST.choicePadV }}>
+          <Txt style={{ fontSize: REQUEST.hintSize, lineHeight: REQUEST.hintLine, color: c.inkMuted }}>Номер заявки</Txt>
+          <Txt
+            selectable
+            style={{
+              fontSize: AUTH.numberSize,
+              lineHeight: REQUEST.numberLine,
+              letterSpacing: REQUEST.numberTracking,
+              fontWeight: '800',
+              color: c.blueInk,
+            }}
+          >
             {String(requestId)}
           </Txt>
+          <OutlineButton size="pill" icon={copied ? 'check' : 'copy'} onPress={copy}>
+            {copied ? 'Скопировано' : 'Скопировать'}
+          </OutlineButton>
+          {copyError ? <FormError>{copyError}</FormError> : null}
         </Card>
       ) : null}
-      <Banner tone="soft" icon="alertCircle">
+      <Banner tone="warning" icon="alertCircle" size="lg">
         Решение будет видно в приложении: на экране входа — «Проверить статус заявки». Номер пригодится, если
         спросите о заявке в школе.
       </Banner>
