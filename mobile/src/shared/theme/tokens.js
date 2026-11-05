@@ -57,10 +57,14 @@ export const HISTORY = {
   maxWidth: 560, maxHeight: '85%', borderWidth: 1,
 };
 
-// Вход и заявка на доступ (Figma `Admin_Admissions`: M1–M7, A1–A5, S1–S6). Своё у блоков —
-// шапка со знаком и лист поверх неё, клетки PIN, значки ролей и итогов, шкала статуса; поля,
-// кнопки и заголовки берутся из `TextField`, `PrimaryButton` и `ScreenHeader`. Поля стоят на
-// отступе 16, как заголовок `ScreenHeader`: макетные 20 развели бы их по вертикали.
+// Вход и заявка на доступ (Figma `Admin_Admissions`: M1–M7, A1–A5, S1–S6, коды у учителя и
+// родителя). Своё у блоков — шапка со знаком и лист поверх неё, клетки PIN, значки ролей и
+// итогов, шкала статуса, выданный код; поля, кнопки и заголовки берутся из `TextField`,
+// `PrimaryButton` и `ScreenHeader`. Поля стоят на отступе 16, как заголовок `ScreenHeader`:
+// макетные 20 развели бы их по вертикали.
+//
+// Выданный код и маска вместо него стоят в строке одной высоты (`codeLine`): иначе карточка
+// прыгала бы на «Выдать код» и «Скрыть».
 export const AUTH = {
   gutter: 16, gap: 16, sectionGap: 24, captionGap: 6,
   heroHeight: 164, logoHeight: 40, sheetRadius: 28, sheetOverlap: 28,
@@ -69,4 +73,5 @@ export const AUTH = {
   pinCellWidth: 52, pinCellHeight: 60, pinCellRadius: 14, pinGap: 12, pinDot: 12,
   badgeSize: 36, badgeRadius: 10, markSize: 64, markIconSize: 30,
   numberSize: 34, stepDot: 20, stepLine: 2, avatarSize: 40,
+  codeSize: 28, codeLine: 36, codeTracking: 3, maskSize: 20, maskTracking: 6, heroAvatar: 52,
 };

@@ -557,8 +557,44 @@ export function AppHeader({ greeting, name, right }) {
 }
 
 // ─── ScreenHeader (back chevron + title, or large title) ──────────────────────
-export function ScreenHeader({ title, back, right, large = false, sub }) {
+// `inline` — заголовок с подписью рядом с кнопкой «назад», слева (Figma `Admin_Admissions`,
+// «Мой класс» и карточка ученика: «7А класс / Классное руководство · 21 ученик»). Отдельный
+// флаг, а не «есть `sub` — значит рядом»: часть экранов передаёт `sub` без `large`, и он у них
+// молча не рисуется — включить его разом значило бы поменять шапки чужих экранов.
+export function ScreenHeader({ title, back, right, large = false, inline = false, sub }) {
   const { c } = useTheme();
+  if (inline) {
+    return (
+      <View style={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}>
+          {back !== undefined ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Назад"
+              onPress={back}
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 999,
+                backgroundColor: c.surface,
+                borderWidth: 1,
+                borderColor: c.border,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Icon name="chevronLeft" size={20} color={c.ink} />
+            </Pressable>
+          ) : null}
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Txt numberOfLines={1} style={{ fontSize: 17, fontWeight: '700' }}>{title}</Txt>
+            {sub ? <Txt numberOfLines={1} style={{ fontSize: 13, color: c.inkMuted, marginTop: 2 }}>{sub}</Txt> : null}
+          </View>
+          {right || null}
+        </View>
+      </View>
+    );
+  }
   return (
     <View style={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 12 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, height: 44 }}>

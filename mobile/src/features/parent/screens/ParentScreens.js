@@ -14,6 +14,7 @@ import { useMyProfile } from '@shared/hooks/useProfile';
 import { useParentChildren } from '@shared/hooks/useSchedule';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@features/auth/AuthContext';
+import { childCaption } from '@features/access/studentCodeModel';
 
 const chunk = (arr, n) => arr.reduce((rows, item, i) => {
   if (i % n === 0) rows.push([]);
@@ -352,7 +353,7 @@ function parentSubtitle(count) {
   return `Родитель · ${count} ${word}`;
 }
 
-export function ParentProfile({ onSignOut }) {
+export function ParentProfile({ nav, onSignOut }) {
   const bottomPad = useBottomChromePadding();
   const { c, dark, toggle } = useTheme();
   const { biometricsEnabled, biometricMeta, enableBiometrics, disableBiometrics } = useAuth();
@@ -398,17 +399,22 @@ export function ParentProfile({ onSignOut }) {
             ) : null}
           </View>
         ) : (
+          // Строка ребёнка ведёт к его коду входа (Figma 2460:4539 → 4612): список — та же
+          // подтверждённая школой связь, что у `/api/me/children/access`, другого входа к коду нет.
           children.map((ch, i) => (
-            <View
+            <Pressable
               key={ch.id}
-              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: i < children.length - 1 ? 1 : 0, borderBottomColor: c.border, gap: 12 }}
+              accessibilityRole="button"
+              onPress={() => nav('child-code', { studentProfileId: ch.id, fullName: ch.fullName, className: ch.className })}
+              style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: i < children.length - 1 ? 1 : 0, borderBottomColor: c.border, gap: 12, opacity: pressed ? 0.85 : 1 })}
             >
               <Avatar name={ch.fullName} size={38} color={CHILD_AVATAR_COLORS[i % CHILD_AVATAR_COLORS.length]} />
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Txt style={{ fontSize: 14, fontWeight: '700' }} numberOfLines={1}>{ch.fullName}</Txt>
-                <Txt style={{ fontSize: 12, color: c.ink3 }}>{ch.className || 'Класс не назначен'}</Txt>
+                <Txt style={{ fontSize: 12, color: c.ink3 }}>{childCaption(ch.className)}</Txt>
               </View>
-            </View>
+              <Icon name="chevronRight" size={16} color={c.ink3} />
+            </Pressable>
           ))
         )}
       </Card>

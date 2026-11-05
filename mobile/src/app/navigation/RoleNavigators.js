@@ -70,6 +70,9 @@ import {
   EquipmentStockScreen, EquipmentIssuedScreen, EquipmentHistoryScreen,
   EquipmentDetailScreen, EquipmentRecipientScreen, EquipmentFormScreen,
 } from '@features/equipment';
+// Персональный код ученика у классного руководителя и родителя (AUTH-FE-001): вход — из
+// профиля, выдача — по разрешению администратора или по подтверждённой связи с ребёнком.
+import { HomeroomClassScreen, HomeroomStudentScreen, ChildCodeScreen } from '@features/access';
 
 const tabScreenOptions = { headerShown: false };
 
@@ -239,6 +242,7 @@ export function ParentApp() {
           { name: 'grade-dynamics', comp: ParentGradeDynamicsScreen },
           { name: 'grade-dynamics-subject', comp: ParentSubjectDynamicsScreen },
           { name: 'notifications', comp: NotificationsScreen },
+          { name: 'child-code', comp: ChildCodeScreen },
         ])}
       </PStack.Navigator>
     </SelectedChildProvider>
@@ -299,6 +303,8 @@ export function TeacherApp() {
         { name: 'ai-upload', comp: TeacherAIUpload },
         { name: 'feedback-write', comp: TeacherFeedbackWrite },
         { name: 'notifications', comp: NotificationsScreen },
+        { name: 'homeroom-class', comp: HomeroomClassScreen },
+        { name: 'homeroom-student', comp: HomeroomStudentScreen },
         ...SERVICE_DETAILS,
       ])}
     </TStack.Navigator>

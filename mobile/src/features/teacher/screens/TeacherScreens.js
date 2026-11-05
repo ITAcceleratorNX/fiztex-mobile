@@ -14,6 +14,7 @@ import { TEACHER, CLASS_ROSTER, AI_QUESTIONS } from '@shared/data/mock';
 import { LessonRow, ProfileRow, QuickAction, brandColor } from '@shared/ui/rows';
 import { useMyProfile } from '@shared/hooks/useProfile';
 import { useMySchedule } from '@shared/hooks/useSchedule';
+import { HomeroomSection } from '@features/access';
 
 const chunk = (arr, n) => arr.reduce((rows, item, i) => {
   if (i % n === 0) rows.push([]);
@@ -480,6 +481,10 @@ export function TeacherProfile({ nav, onSignOut }) {
           <Txt style={{ fontSize: 14, color: c.ink2, marginTop: 2 }}>{subjectsLine}</Txt>
         ) : null}
       </View>
+
+      {/* Коды входа учеников — над «Моими классами», как в макете (Figma 2460:4109): это
+          классное руководство, а не нагрузка по предметам. */}
+      <HomeroomSection nav={nav} />
 
       <SectionTitle title="Мои классы" />
       <Card style={{ marginHorizontal: 16, marginBottom: 12, padding: 0 }}>
