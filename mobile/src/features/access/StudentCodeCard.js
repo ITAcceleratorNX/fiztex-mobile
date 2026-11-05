@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Share, View } from 'react-native';
+import { View } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { AUTH } from '@shared/theme/tokens';
 import { Txt } from '@shared/components/Txt';
@@ -32,6 +33,7 @@ import {
 export function StudentCodeCard({ access, audience, onIssue, onChanged }) {
   const { c } = useTheme();
   const [code, setCode] = useState(null);
+  const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   // Открытый вопрос о перевыпуске; `pinSet` — для текста: в 409 сервер присылает свежий.
@@ -47,6 +49,7 @@ export function StudentCodeCard({ access, audience, onIssue, onChanged }) {
     try {
       const result = await onIssue(confirmReissue);
       setConfirm(null);
+      setCopied(false);
       setCode(result?.issuedCode || null);
       onChanged?.();
     } catch (e) {
@@ -65,17 +68,21 @@ export function StudentCodeCard({ access, audience, onIssue, onChanged }) {
     }
   };
 
-  const share = async () => {
+  // Буфер обмена, а не системное «Поделиться»: код диктуют ученику или вставляют в чат, а
+  // меню отправки предлагало заодно послать его почтой — лишний способ унести секрет.
+  const copy = async () => {
     setError(null);
     try {
-      await Share.share({ message: code });
+      await Clipboard.setStringAsync(code);
+      setCopied(true);
     } catch {
-      setError('Не получилось открыть «Поделиться» — перепишите код вручную.');
+      setError('Не получилось скопировать — перепишите код вручную.');
     }
   };
 
   const hide = () => {
     setCode(null);
+    setCopied(false);
     setError(null);
   };
 
@@ -120,7 +127,9 @@ export function StudentCodeCard({ access, audience, onIssue, onChanged }) {
         {code ? (
           <>
             <OutlineButton size="lg" style={{ flex: 1 }} onPress={hide}>Скрыть</OutlineButton>
-            <FilledButton size="lg" style={{ flex: 1 }} onPress={share}>Поделиться</FilledButton>
+            <FilledButton size="lg" style={{ flex: 1 }} onPress={copy}>
+              {copied ? 'Скопировано' : 'Скопировать'}
+            </FilledButton>
           </>
         ) : issuedBefore ? (
           <OutlineButton
