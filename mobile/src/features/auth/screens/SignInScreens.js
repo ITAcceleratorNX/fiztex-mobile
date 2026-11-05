@@ -17,7 +17,8 @@ import {
   classifyLogin, formatPhone, isPin, loginHint, signInErrorMessage,
   PASSWORD_MAX_LENGTH, PIN_MAX_LENGTH, PIN_MIN_LENGTH,
 } from '../signInModel';
-import { FormPage, FormError, Hint, ValueCard } from '@shared/ui/formParts';
+import { ChoiceCard, FormPage, FormError, Hint, ValueCard } from '@shared/ui/formParts';
+import { signInHero } from '../signInHero';
 import { useSignInCompletion } from './SignInParts';
 
 /**
@@ -28,14 +29,20 @@ import { useSignInCompletion } from './SignInParts';
  *
  * Шапка со знаком — под статус-баром, поэтому экран рисует отступ сам, без `Screen`, и
  * светлые значки статус-бара держит, только пока он на виду: стек оставляет его
- * смонтированным под следующими шагами, а у тех светлый фон.
+ * смонтированным под следующими шагами, а у тех светлый фон. Её размеры — `signInHero`: в них
+ * же приходит анимация первого запуска.
+ *
+ * M1 — первый экран приложения без сессии, поэтому внизу и пути тех, кому вход не нужен:
+ * поступающим — вступительный тест по коду из приглашения, остальным — демо.
  */
 export function AuthSignIn({
   onBack, onContinue, onForgot, onFaceId, canUseFaceId, biometricLabel, onApply, onRequestStatus,
+  onEntrance, onDemo,
 }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const topInset = useContext(ScreenTopInsetContext) ?? insets.top;
+  const hero = signInHero(topInset);
   const focused = useIsFocused();
   const [value, setValue] = useState('');
   const [hint, setHint] = useState(null);
@@ -63,14 +70,14 @@ export function AuthSignIn({
         >
           <View
             style={{
-              height: topInset + AUTH.heroHeight,
+              height: hero.height,
               paddingTop: topInset,
               paddingBottom: AUTH.sheetOverlap,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <PhysTechWordmark size={AUTH.logoHeight} color={c.heroInk} />
+            <PhysTechWordmark size={hero.logoHeight} color={c.heroInk} />
             {onBack ? (
               <View style={{ position: 'absolute', top: topInset + 4, left: AUTH.gutter }}>
                 <CircleButton icon="chevronLeft" size={38} onPress={onBack} />
@@ -127,12 +134,18 @@ export function AuthSignIn({
             ) : null}
 
             <View style={{ flex: 1 }} />
+            {onEntrance ? (
+              <ChoiceCard icon="graduationCap" title="Вступительный тест" onPress={onEntrance}>
+                Для поступающих — по коду из приглашения
+              </ChoiceCard>
+            ) : null}
             <View style={{ alignItems: 'center' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
                 <Txt style={{ fontSize: AUTH.bodySize, color: c.ink2 }}>Нет доступа?</Txt>
                 <TextButton onPress={onApply}>Отправить заявку</TextButton>
               </View>
               <TextButton onPress={onRequestStatus}>Проверить статус заявки</TextButton>
+              {onDemo ? <TextButton onPress={onDemo}>Попробовать демо</TextButton> : null}
             </View>
           </View>
         </ScrollView>

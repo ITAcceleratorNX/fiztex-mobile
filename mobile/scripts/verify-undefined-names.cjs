@@ -24,6 +24,8 @@ const GLOBALS = new Set([
   // Есть и в Hermes, и в браузере. `Buffer` сюда НЕ добавлять: в Hermes его нет, и
   // обращение к нему — настоящая находка, а не шум.
   'atob','btoa',
+  // Глобальные функции React Native и браузера — кадр отрисовки (занавес запуска).
+  'requestAnimationFrame','cancelAnimationFrame',
 ]);
 
 function allSources(dir) {

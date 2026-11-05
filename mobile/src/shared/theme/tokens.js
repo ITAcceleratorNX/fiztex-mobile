@@ -65,9 +65,13 @@ export const HISTORY = {
 //
 // Выданный код и маска вместо него стоят в строке одной высоты (`codeLine`): иначе карточка
 // прыгала бы на «Выдать код» и «Скрыть».
+//
+// Шапка M1 — как в кадре 2460:1002 и в конце видео первого запуска: под статус-баром видно
+// 163 pt синего (`heroHeight − sheetOverlap`), знак высотой 48 pt по её центру. Анимация
+// запуска приводит знак и лист ровно сюда, так что расхождение было бы видно скачком.
 export const AUTH = {
   gutter: 16, gap: 16, sectionGap: 24, captionGap: 6,
-  heroHeight: 164, logoHeight: 40, sheetRadius: 28, sheetOverlap: 28,
+  heroHeight: 191, logoHeight: 48, sheetRadius: 28, sheetOverlap: 28,
   titleSize: 30, titleLine: 36, bodySize: 15, bodyLine: 22,
   captionSize: 13, captionLine: 18, valueSize: 17, codeSpacing: 1.5, iconSize: 16,
   pinCellWidth: 52, pinCellHeight: 60, pinCellRadius: 14, pinGap: 12, pinDot: 12,
@@ -75,3 +79,8 @@ export const AUTH = {
   numberSize: 34, stepDot: 20, stepLine: 2, avatarSize: 40,
   codeSize: 28, codeLine: 36, codeTracking: 3, maskSize: 20, maskTracking: 6, heroAvatar: 52,
 };
+
+// Запуск приложения (заметки дизайнера рядом с M1 и кадр «Повторный запуск» 2468:22): знак по
+// центру тёмно-синего экрана, 279×72 pt — как в видео дизайнера на экране 390 pt. В конце
+// первого запуска он уезжает в шапку M1 и становится `AUTH.logoHeight`.
+export const LAUNCH = { logoHeight: 72 };

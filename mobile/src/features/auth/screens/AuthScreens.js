@@ -2,87 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
-import { TextButton } from '@shared/components/TextButton';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
-import { PhysTechMark } from '@shared/components/Hex';
-import { PrimaryButton, ScreenHeader, PhysTechWordmark } from '@shared/components/ui';
+import { PrimaryButton, ScreenHeader } from '@shared/components/ui';
 import { useAuth } from '../AuthContext';
-
-function BrandEmblem() {
-  const { c } = useTheme();
-  return (
-    <View
-      style={{
-        width: 200,
-        height: 200,
-        borderRadius: 100,
-        backgroundColor: c.blueSoft,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <View
-        style={{
-          width: 128,
-          height: 128,
-          borderRadius: 40,
-          backgroundColor: c.blue,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <PhysTechMark size={68} color="#fff" />
-      </View>
-    </View>
-  );
-}
-
-export function AuthWelcome({ onContinue, onEntrance, onDemo, onApply }) {
-  const { c } = useTheme();
-  return (
-    <Screen scroll={false}>
-      <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 40 }}>
-        <View style={{ alignItems: 'center', marginTop: 20 }}>
-          <PhysTechWordmark size={40} />
-        </View>
-
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <BrandEmblem />
-        </View>
-
-        <View style={{ paddingBottom: 24 }}>
-          <Txt style={{ fontSize: 30, fontWeight: '700', letterSpacing: -0.7, lineHeight: 35 }}>
-            Школа в твоём кармане
-          </Txt>
-          <Txt style={{ fontSize: 15, color: c.ink2, marginTop: 10, lineHeight: 22 }}>
-            Расписание, оценки, кружки, достижения и связь с учителями — всё в одном месте.
-          </Txt>
-        </View>
-
-        <View style={{ paddingBottom: 24 }}>
-          <PrimaryButton color="green" onPress={onContinue}>
-            Войти
-          </PrimaryButton>
-          {onEntrance ? (
-            <PrimaryButton color="blue" style={{ marginTop: 10 }} onPress={onEntrance}>
-              Вступительный тест
-            </PrimaryButton>
-          ) : null}
-          {/* Доступ теперь просят заявкой (AUTH-FE-001, A1): «спросите у школы» отправляло
-              человека туда, где ему ответили бы тем же — подайте заявку. */}
-          <Txt style={{ marginTop: 12, fontSize: 13, color: c.ink3, textAlign: 'center' }}>
-            Нет аккаунта?{' '}
-            <Txt accessibilityRole="link" onPress={onApply} style={{ color: c.green, fontWeight: '600' }}>
-              Отправить заявку
-            </Txt>
-          </Txt>
-          {onDemo ? <TextButton onPress={onDemo}>Попробовать демо</TextButton> : null}
-        </View>
-      </View>
-    </Screen>
-  );
-}
 
 export function AuthFaceID({ onSuccess, onFail, onBack }) {
   const { c } = useTheme();

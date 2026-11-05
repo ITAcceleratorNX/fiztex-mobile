@@ -14,13 +14,17 @@ import { Card, ScreenHeader } from '../components/ui';
  * одним визуальным языком, и копия по месту разошлась бы с оригиналом.
  */
 
-/** Тон значка: подложка и глиф. Оранжевый — фирменный CTA, «внимание» без тревоги. */
+/**
+ * Тон значка: подложка и глиф. Оранжевый — фирменный CTA, «внимание» без тревоги. Синий глиф —
+ * `blueInk`: в светлой теме он и есть фирменный navy, а в тёмной navy на тёмно-синей подложке
+ * почти пропадал (шапочка вступительного теста на M1).
+ */
 function toneColors(c, tone) {
   switch (tone) {
     case 'orange': return [c.greenSoft, c.green];
     case 'success': return [c.successSoft, c.success];
     case 'danger': return [c.redSoft, c.red];
-    default: return [c.blueSoft, c.blue];
+    default: return [c.blueSoft, c.blueInk];
   }
 }
 
@@ -157,6 +161,24 @@ export function IconBadgeRow({ icon, tone, title, children }) {
         </Txt>
       </View>
     </View>
+  );
+}
+
+/**
+ * Нажимаемая карточка с той же строкой и шевроном — выбор пути: роль на A1, вступительный тест
+ * на M1. Одна на оба экрана, чтобы «куда ещё можно пойти» выглядело везде одинаково.
+ */
+export function ChoiceCard({ icon, tone, title, children, onPress }) {
+  const { c } = useTheme();
+  return (
+    <Card onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <IconBadgeRow icon={icon} tone={tone} title={title}>
+          {children}
+        </IconBadgeRow>
+      </View>
+      <Icon name="chevronRight" size={20} color={c.ink3} />
+    </Card>
   );
 }
 

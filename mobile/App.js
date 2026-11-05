@@ -17,6 +17,7 @@ import { EntranceProvider } from '@features/entrance';
 import { AuthProvider, useAuth } from '@features/auth';
 import { RootNavigator, SessionRouteGuard, rootRouteForRole } from '@app/navigation/RootNavigator';
 import { PushNotifications, configurePushPresentation } from '@shared/push';
+import { LaunchCurtain } from '@features/launch';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 configurePushPresentation();
@@ -38,9 +39,12 @@ function Inner() {
       primary: c.green,
     },
   };
+  // Занавес запуска — после навигатора и вне ключа демо: лежит поверх всего с первого кадра и
+  // не пересоздаётся, когда демо пересобирает дерево экранов.
   return (
     <AuthProvider>
       <SessionContent navTheme={navTheme} dark={dark} />
+      <LaunchCurtain />
     </AuthProvider>
   );
 }

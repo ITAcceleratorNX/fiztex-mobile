@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
-import { useNavigation, CommonActions, StackActions } from '@react-navigation/native';
+import { View } from 'react-native';
+import {
+  useNavigation, useNavigationState, CommonActions, StackActions,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import {
-  AuthWelcome,
   AuthSignIn,
   AuthSecret,
   AuthPinSetup,
@@ -50,29 +51,17 @@ export function rootRouteForRole(role) {
   return ROLE_ROUTE[role] || null;
 }
 
+/**
+ * Пока сессия поднимается из хранилища — тот же синий, что у системного сплэша и занавеса
+ * запуска (`LaunchCurtain`) поверх: светлый экран со спиннером мигнул бы между ними.
+ */
 function BootSplash() {
   const { c } = useTheme();
-  return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bg }}>
-      <ActivityIndicator color={c.green} />
-    </View>
-  );
+  return <View style={{ flex: 1, backgroundColor: c.heroBg }} />;
 }
 
 function resetTo(navigation, name) {
   navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name }] }));
-}
-
-function WelcomeScreen() {
-  const navigation = useNavigation();
-  return (
-    <AuthWelcome
-      onContinue={() => navigation.navigate('SignIn')}
-      onEntrance={() => navigation.navigate('EntranceFlow')}
-      onDemo={() => navigation.navigate('DemoRoles')}
-      onApply={() => navigation.navigate('AccessRequest')}
-    />
-  );
 }
 
 /**
@@ -80,7 +69,7 @@ function WelcomeScreen() {
  * в раздел роли.
  */
 function entryRoute(profile) {
-  return profile?.mustChangePassword ? 'NewPassword' : ROLE_ROUTE[profile?.role] || 'Welcome';
+  return profile?.mustChangePassword ? 'NewPassword' : ROLE_ROUTE[profile?.role] || 'SignIn';
 }
 
 /**
@@ -92,13 +81,18 @@ function recoveryLogin({ kind, login }) {
 }
 
 // Вход для всех ролей (AUTH-FE-001, M1–M7). После входа экраны никуда не переходят сами —
-// стек к открытой сессии приводит `SessionRouteGuard`.
-function SignInScreen() {
+// стек к открытой сессии приводит `SessionRouteGuard`. M1 — первый экран без сессии: старое
+// приветствие убрано, его пути (вступительный тест, демо, заявка) живут внизу M1.
+function SignInScreen({ route }) {
   const navigation = useNavigation();
   const { biometricsEnabled, needsBiometricUnlock, biometricMeta } = useAuth();
+  // «Назад» — только когда под M1 что-то лежит (Face ID, статус заявки). Не `canGoBack()` при
+  // отрисовке: M1 перерисовывается и под накрывшим его экраном, запоминал «можно назад» и после
+  // возврата показывал стрелку на корне стека — нажать её было некуда.
+  const hasBack = useNavigationState((state) => state.routes.findIndex((r) => r.key === route.key) > 0);
   return (
     <AuthSignIn
-      onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
+      onBack={hasBack ? () => navigation.goBack() : undefined}
       onContinue={({ kind, login }) => navigation.navigate('SignInSecret', { kind, login })}
       onForgot={(classified) => navigation.navigate('Recovery', { login: recoveryLogin(classified) })}
       canUseFaceId={biometricsEnabled || needsBiometricUnlock}
@@ -106,6 +100,8 @@ function SignInScreen() {
       onFaceId={() => navigation.navigate('FaceID')}
       onApply={() => navigation.navigate('AccessRequest')}
       onRequestStatus={() => navigation.navigate('AccessRequestStatus')}
+      onEntrance={() => navigation.navigate('EntranceFlow')}
+      onDemo={() => navigation.navigate('DemoRoles')}
     />
   );
 }
@@ -156,15 +152,15 @@ function SchoolCodeScreen({ route }) {
   );
 }
 
-// Заявка на доступ и её статус (AUTH-FE-001, A1–A5, S1–S6). Поток открывают со входа или с
-// приветствия, а «Готово» возвращает туда, откуда его открыли.
+// Заявка на доступ и её статус (AUTH-FE-001, A1–A5, S1–S6). Поток открывают со входа, а
+// «Готово» возвращает туда, откуда его открыли.
 const REQUEST_ROUTES = new Set(['AccessRequest', 'AccessRequestForm', 'AccessRequestSent', 'AccessRequestStatus']);
 
 function leaveRequestFlow(navigation) {
   const state = navigation.getState();
   const first = state.routes.findIndex((route) => REQUEST_ROUTES.has(route.name));
   if (first > 0) navigation.dispatch(StackActions.pop(state.index - first + 1));
-  else resetTo(navigation, 'Welcome');
+  else resetTo(navigation, 'SignIn');
 }
 
 function AccessRequestStartScreen() {
@@ -232,7 +228,7 @@ const PROTECTED_ROUTES = new Set([...Object.values(ROLE_ROUTE), 'NewPassword']);
 /**
  * Держит стек навигации в согласии с сессией: вошли — раздел роли, вошли временным паролем
  * или сервер ответил `PASSWORD_CHANGE_REQUIRED` — смена пароля (M7), вышли или сессия
- * истекла — приветствие.
+ * истекла — вход (M1).
  *
  * Сам навигатор этого не делает. Смена `initialRouteName` его пересобирает, но контейнер
  * восстанавливает прежний стек: вошедший оставался бы на шаге входа, вышедший — в разделе
@@ -260,7 +256,7 @@ export function SessionRouteGuard({ navigationRef }) {
     const current = state?.routes?.[state.index]?.name;
     // Без сессии уводим только из закрытых разделов: шаги входа, демо и вступительный тест
     // живут без неё.
-    const next = target ?? (PROTECTED_ROUTES.has(current) ? 'Welcome' : null);
+    const next = target ?? (PROTECTED_ROUTES.has(current) ? 'SignIn' : null);
     if (next && next !== current) {
       navigationRef.dispatch(CommonActions.reset({ index: 0, routes: [{ name: next }] }));
     }
@@ -271,7 +267,7 @@ export function SessionRouteGuard({ navigationRef }) {
 function EntranceFlowRoute() {
   const navigation = useNavigation();
   return (
-    <EntranceFlow onExit={() => resetTo(navigation, 'Welcome')} />
+    <EntranceFlow onExit={() => resetTo(navigation, 'SignIn')} />
   );
 }
 
@@ -290,7 +286,7 @@ export function RootNavigator() {
       ? 'NewPassword'
       : isAuthenticated && ROLE_ROUTE[role]
         ? ROLE_ROUTE[role]
-        : 'Welcome';
+        : 'SignIn';
 
   return (
     <View style={{ flex: 1 }}>
@@ -301,7 +297,6 @@ export function RootNavigator() {
           initialRouteName={initialRouteName}
           screenOptions={{ headerShown: false }}
         >
-          <Root.Screen name="Welcome" component={WelcomeScreen} />
           <Root.Screen name="DemoRoles" component={DemoRolesScreen} />
           <Root.Screen name="SignIn" component={SignInScreen} />
           <Root.Screen name="SignInSecret" component={SignInSecretScreen} />

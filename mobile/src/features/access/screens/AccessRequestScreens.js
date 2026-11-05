@@ -10,7 +10,7 @@ import { ComboField } from '@shared/components/ComboField';
 import {
   Avatar, Banner, Card, FieldLabel, OutlineButton, PasswordField, PrimaryButton, TextField,
 } from '@shared/components/ui';
-import { FormError, FormPage, Hint, IconBadge, IconBadgeRow, Rule, StatusMark } from '@shared/ui/formParts';
+import { ChoiceCard, FormError, FormPage, Hint, IconBadge, Rule, StatusMark } from '@shared/ui/formParts';
 import { accessRequestsApi } from '@shared/api/accessRequestsApi';
 import { registerDeviceForAccessRequest } from '@shared/push/registration';
 import { PASSWORD_MAX_LENGTH } from '@features/auth/signInModel';
@@ -72,7 +72,6 @@ function SectionLabel({ children }) {
  * «ученик» или «родитель», аккаунт остальных создаёт администратор.
  */
 export function AccessRequestStart({ onBack, onRole, onStatus }) {
-  const { c } = useTheme();
   const [stored, setStored] = useState(null);
 
   useFocusEffect(
@@ -88,14 +87,9 @@ export function AccessRequestStart({ onBack, onRole, onStatus }) {
   );
 
   const roleCard = (role, icon, tone, title, text) => (
-    <Card onPress={() => onRole(role)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <IconBadgeRow icon={icon} tone={tone} title={title}>
-          {text}
-        </IconBadgeRow>
-      </View>
-      <Icon name="chevronRight" size={20} color={c.ink3} />
-    </Card>
+    <ChoiceCard icon={icon} tone={tone} title={title} onPress={() => onRole(role)}>
+      {text}
+    </ChoiceCard>
   );
 
   return (

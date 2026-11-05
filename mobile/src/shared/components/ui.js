@@ -88,8 +88,10 @@ export function Card({ children, style, padded = true, onPress, elevated = false
     ...(elevated ? shadowCard : null),
   };
   if (onPress) {
+    // Роль кнопки — иначе VoiceOver читает карточку как текст и не говорит, что её можно нажать.
     return (
-      <Pressable onPress={onPress} style={({ pressed }) => [base, style, pressed && { opacity: 0.9 }]}>
+      <Pressable accessibilityRole="button" onPress={onPress}
+        style={({ pressed }) => [base, style, pressed && { opacity: 0.9 }]}>
         {children}
       </Pressable>
     );

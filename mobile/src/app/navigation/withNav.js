@@ -42,7 +42,7 @@ export function withNav(Component) {
     const onSignOut = useCallback(async () => {
       await signOut();
       rootOf(navigation).dispatch(
-        CommonActions.reset({ index: 0, routes: [{ name: 'Welcome' }] }),
+        CommonActions.reset({ index: 0, routes: [{ name: 'SignIn' }] }),
       );
     }, [navigation, signOut]);
     return <Component {...props} nav={nav} payload={route.params?.payload} onSignOut={onSignOut} />;
