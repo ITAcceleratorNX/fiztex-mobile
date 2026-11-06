@@ -271,6 +271,8 @@ const light = {
   warnInk: '#7A4A12',
   // Текст красной плашки причины отказа (S5): тёмно-красный читается на розовом, яркий — режет.
   dangerInk: '#7F1D1D',
+  // «Ещё не входил» у ученика (2460:4192): янтарный, не оранжевый CTA — это состояние, а не действие.
+  amberInk: '#B45309',
   blueSoft: '#EEF1F8',
   blueInk: '#274185',
   redSoft: '#FEE2E2',
@@ -312,6 +314,7 @@ const dark = {
   greenSoft: '#3A2412',
   warnInk: '#F8C99A',
   dangerInk: '#FCA5A5',
+  amberInk: '#FBBF24',
   blueSoft: '#1B2745',
   blueInk: '#93B4FD',
   redSoft: '#3A1C1C',

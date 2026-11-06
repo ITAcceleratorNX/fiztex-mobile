@@ -9,7 +9,7 @@ import {
   setBiometricsEnabled,
   getBiometricAvailability,
   authenticateWithBiometrics,
-  biometricLabel,
+  biometricLabel, biometricTitle,
 } from './biometrics';
 
 const TOKEN_KEY = 'fiztex.auth.token';
@@ -124,6 +124,7 @@ export function AuthProvider({ children }) {
   const [biometricMeta, setBiometricMeta] = useState({
     available: false,
     label: 'биометрию',
+    title: 'Вход по биометрии',
     types: [],
   });
   /**
@@ -181,6 +182,7 @@ export function AuthProvider({ children }) {
         setBiometricMeta({
           available: availability.available,
           label: biometricLabel(availability.types),
+        title: biometricTitle(availability.types),
           types: availability.types,
         });
         setBiometricsEnabledState(bioOn);
@@ -294,6 +296,7 @@ export function AuthProvider({ children }) {
     setBiometricMeta({
       available: availability.available,
       label: biometricLabel(availability.types),
+        title: biometricTitle(availability.types),
       types: availability.types,
     });
     if (!availability.available) {
@@ -320,6 +323,7 @@ export function AuthProvider({ children }) {
     setBiometricMeta({
       available: availability.available,
       label: biometricLabel(availability.types),
+        title: biometricTitle(availability.types),
       types: availability.types,
     });
     return availability;

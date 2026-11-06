@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '@shared/theme/ThemeContext';
-import { AUTH } from '@shared/theme/tokens';
+import { AUTH, CODES } from '@shared/theme/tokens';
+import { useAppState } from '@shared/state/AppState';
 import { Txt } from '@shared/components/Txt';
-import { Card, ConfirmDialog, FilledButton, OutlineButton } from '@shared/components/ui';
+import { Card, ConfirmDialog, OutlineButton, PrimaryButton } from '@shared/components/ui';
 import { FormError, Hint } from '@shared/ui/formParts';
 import {
   CODE_MASK, NOT_ISSUABLE_TEXT, codeHint, grantCaption, issueErrorText, issuedCaption,
@@ -32,8 +33,8 @@ import {
  */
 export function StudentCodeCard({ access, audience, onIssue, onChanged }) {
   const { c } = useTheme();
+  const appState = useAppState();
   const [code, setCode] = useState(null);
-  const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   // Открытый вопрос о перевыпуске; `pinSet` — для текста: в 409 сервер присылает свежий.
@@ -49,7 +50,6 @@ export function StudentCodeCard({ access, audience, onIssue, onChanged }) {
     try {
       const result = await onIssue(confirmReissue);
       setConfirm(null);
-      setCopied(false);
       setCode(result?.issuedCode || null);
       onChanged?.();
     } catch (e) {
@@ -74,7 +74,8 @@ export function StudentCodeCard({ access, audience, onIssue, onChanged }) {
     setError(null);
     try {
       await Clipboard.setStringAsync(code);
-      setCopied(true);
+      // Подпись кнопки не меняется (2460:4371): что код в буфере, говорит карточка сверху.
+      appState.notice({ title: 'Код скопирован', text: 'Можно вставить в сообщение.' });
     } catch {
       setError('Не получилось скопировать — перепишите код вручную.');
     }
@@ -82,58 +83,58 @@ export function StudentCodeCard({ access, audience, onIssue, onChanged }) {
 
   const hide = () => {
     setCode(null);
-    setCopied(false);
     setError(null);
   };
 
+  // Карточка по макету 2460:4292 / 4371 / 4460: поля 21, шаг 14 — подпись, код (или маска той же
+  // высоты, чтобы карточка не прыгала на «Выдать» и «Скрыть»), таблетки 48 и подсказка.
   return (
-    <Card style={{ marginHorizontal: AUTH.gutter }}>
+    <Card style={{ padding: CODES.cardPad, gap: CODES.cardGap }}>
       <Txt style={{ fontSize: AUTH.captionSize, lineHeight: AUTH.captionLine, color: c.inkMuted }}>
         Персональный код
       </Txt>
-      {code ? (
-        <Txt
-          selectable
-          style={{
-            marginTop: 8,
-            fontSize: AUTH.codeSize,
-            lineHeight: AUTH.codeLine,
-            letterSpacing: AUTH.codeTracking,
-            fontWeight: '800',
-            color: c.blueInk,
-          }}
-        >
-          {code}
+      <View style={{ gap: 4 }}>
+        {code ? (
+          <Txt
+            selectable
+            style={{
+              fontSize: CODES.codeSize,
+              lineHeight: CODES.codeLine,
+              letterSpacing: CODES.codeTracking,
+              fontWeight: '800',
+              color: c.blueInk,
+            }}
+          >
+            {code}
+          </Txt>
+        ) : (
+          <Txt
+            accessibilityLabel="Код скрыт"
+            style={{
+              fontSize: CODES.codeSize,
+              lineHeight: CODES.codeLine,
+              letterSpacing: CODES.codeTracking,
+              fontWeight: '800',
+              color: c.borderStrong,
+            }}
+          >
+            {CODE_MASK}
+          </Txt>
+        )}
+        <Txt style={{ fontSize: AUTH.captionSize, lineHeight: AUTH.captionLine, color: code ? c.amberInk : c.ink3 }}>
+          {code ? 'Посмотреть код ещё раз не получится — только выдать новый.' : issuedCaption(access)}
         </Txt>
-      ) : (
-        <Txt
-          accessibilityLabel="Код скрыт"
-          style={{
-            marginTop: 8,
-            fontSize: AUTH.maskSize,
-            lineHeight: AUTH.codeLine,
-            letterSpacing: AUTH.maskTracking,
-            color: c.ink3,
-          }}
-        >
-          {CODE_MASK}
-        </Txt>
-      )}
-      <Txt style={{ fontSize: AUTH.captionSize, lineHeight: AUTH.captionLine, color: code ? c.greenDeep : c.ink3 }}>
-        {code ? 'Посмотреть код ещё раз не получится — только выдать новый.' : issuedCaption(access)}
-      </Txt>
+      </View>
 
-      <View style={{ flexDirection: 'row', gap: 12, marginTop: AUTH.gap }}>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
         {code ? (
           <>
-            <OutlineButton size="lg" style={{ flex: 1 }} onPress={hide}>Скрыть</OutlineButton>
-            <FilledButton size="lg" style={{ flex: 1 }} onPress={copy}>
-              {copied ? 'Скопировано' : 'Скопировать'}
-            </FilledButton>
+            <OutlineButton size="pill-lg" style={{ flex: 1 }} onPress={hide}>Скрыть</OutlineButton>
+            <PrimaryButton size="compact" full={false} style={{ flex: 1 }} onPress={copy}>Скопировать</PrimaryButton>
           </>
         ) : issuedBefore ? (
           <OutlineButton
-            size="lg"
+            size="pill-lg"
             style={{ flex: 1 }}
             disabled={!canIssue || busy}
             onPress={() => setConfirm({ pinSet: access?.pinSet })}
@@ -141,20 +142,20 @@ export function StudentCodeCard({ access, audience, onIssue, onChanged }) {
             Выдать новый код
           </OutlineButton>
         ) : (
-          <FilledButton size="lg" style={{ flex: 1 }} disabled={!canIssue || busy} onPress={() => send(false)}>
+          <PrimaryButton size="compact" full={false} style={{ flex: 1 }} disabled={!canIssue || busy} onPress={() => send(false)}>
             {busy ? 'Выдаём…' : 'Выдать код'}
-          </FilledButton>
+          </PrimaryButton>
         )}
       </View>
 
       {error ? <FormError>{error}</FormError> : null}
       {!canIssue ? (
-        <Txt style={{ marginTop: AUTH.captionGap, fontSize: AUTH.captionSize, lineHeight: AUTH.captionLine, color: c.greenDeep }}>
+        <Txt style={{ fontSize: AUTH.captionSize, lineHeight: AUTH.captionLine, color: c.amberInk }}>
           {NOT_ISSUABLE_TEXT}
         </Txt>
       ) : null}
-      <View style={{ marginTop: 6 }}>
-        <Hint>{codeHint(audience, access)}</Hint>
+      <View>
+        <Txt style={{ fontSize: AUTH.captionSize, lineHeight: AUTH.captionLine, color: c.inkMuted }}>{codeHint(audience, access)}</Txt>
         {grant ? <Hint>{grant}</Hint> : null}
       </View>
 

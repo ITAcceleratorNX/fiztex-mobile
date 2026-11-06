@@ -77,7 +77,6 @@ export const AUTH = {
   pinCellWidth: 52, pinCellHeight: 60, pinCellRadius: 14, pinGap: 12, pinDot: 12,
   badgeSize: 36, badgeRadius: 10, markSize: 64, markIconSize: 30,
   numberSize: 34, stepDot: 20, stepLine: 2, avatarSize: 40,
-  codeSize: 28, codeLine: 36, codeTracking: 3, maskSize: 20, maskTracking: 6, heroAvatar: 52,
 };
 
 // Заявка на доступ, вёрстка по макету (Figma `phyztex` A1 2460:1302 … A5 2460:1528). Опциональный
@@ -116,6 +115,18 @@ export const REQUEST = {
   reasonSize: 16, reasonLine: 24,
   outlineCtaHeight: 50, outlineCtaText: 16,
   avatarSize: 44, nameSize: 16, nameLine: 20,
+};
+
+// Коды у классного руководителя и родителя (Figma `phyztex` 2460:4109 … 2460:4612): строки людей
+// с квадратной аватаркой 40/12, герой экрана 56/18, карточка кода с полями 21 и кнопками-таблетками 48.
+export const CODES = {
+  backSize: 40,
+  rowAvatar: 40, rowRadius: 12, rowInitials: 13, rowPadV: 14, rowGap: 14, rowNameSize: 16, rowStatusSize: 13,
+  heroAvatar: 56, heroRadius: 18, heroInitials: 18, heroNameSize: 18, heroGap: 14,
+  searchHeight: 48, searchRadius: 14, searchText: 15,
+  cardPad: 21, cardGap: 14, codeSize: 28, codeLine: 34, codeTracking: 2,
+  pillHeight: 48, pillText: 15,
+  noticeRadius: 18, noticeIcon: 40, noticeClose: 32,
 };
 
 // Запуск приложения (заметки дизайнера рядом с M1 и кадр «Повторный запуск» 2468:22): знак по

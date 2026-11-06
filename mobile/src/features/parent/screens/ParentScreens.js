@@ -9,7 +9,7 @@ import { Card, Pill, Avatar, PrimaryButton, AppHeader, ScreenHeader, SectionTitl
 import { GradCard, GRAD } from '@shared/components/Grad';
 import { useAppState } from '@shared/state/AppState';
 import { PARENT, FEEDBACK, TODAY_SCHEDULE } from '@shared/data/mock';
-import { LessonRow, ProfileRow, QuickAction, brandColor } from '@shared/ui/rows';
+import { LessonRow, PersonRow, ProfileRow, QuickAction, brandColor } from '@shared/ui/rows';
 import { useMyProfile } from '@shared/hooks/useProfile';
 import { useParentChildren } from '@shared/hooks/useSchedule';
 import { useFocusEffect } from '@react-navigation/native';
@@ -382,7 +382,7 @@ export function ParentProfile({ nav, onSignOut }) {
       </View>
 
       <SectionTitle title="Мои дети" />
-      <Card style={{ marginHorizontal: 16, marginBottom: 12, padding: 0 }}>
+      <Card style={{ marginHorizontal: 16, marginBottom: 12, padding: 0, overflow: 'hidden' }}>
         {children.length === 0 ? (
           <View style={{ paddingVertical: 18, paddingHorizontal: 16, gap: 8 }}>
             <Txt style={{ fontSize: 13, color: c.ink3 }}>
@@ -401,20 +401,17 @@ export function ParentProfile({ nav, onSignOut }) {
         ) : (
           // Строка ребёнка ведёт к его коду входа (Figma 2460:4539 → 4612): список — та же
           // подтверждённая школой связь, что у `/api/me/children/access`, другого входа к коду нет.
+          // Строка — та же, что у учеников классного руководителя (`PersonRow`, 2460:4539): квадратная
+          // аватарка, имя, «класс · код для входа» и шеврон к коду.
           children.map((ch, i) => (
-            <Pressable
+            <PersonRow
               key={ch.id}
-              accessibilityRole="button"
+              first={i === 0}
+              name={ch.fullName}
+              status={childCaption(ch.className)}
+              avatar={{ color: CHILD_AVATAR_COLORS[i % CHILD_AVATAR_COLORS.length] }}
               onPress={() => nav('child-code', { studentProfileId: ch.id, fullName: ch.fullName, className: ch.className })}
-              style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: i < children.length - 1 ? 1 : 0, borderBottomColor: c.border, gap: 12, opacity: pressed ? 0.85 : 1 })}
-            >
-              <Avatar name={ch.fullName} size={38} color={CHILD_AVATAR_COLORS[i % CHILD_AVATAR_COLORS.length]} />
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Txt style={{ fontSize: 14, fontWeight: '700' }} numberOfLines={1}>{ch.fullName}</Txt>
-                <Txt style={{ fontSize: 12, color: c.ink3 }}>{childCaption(ch.className)}</Txt>
-              </View>
-              <Icon name="chevronRight" size={16} color={c.ink3} />
-            </Pressable>
+            />
           ))
         )}
       </Card>
@@ -427,7 +424,7 @@ export function ParentProfile({ nav, onSignOut }) {
         <Pressable onPress={toggleBio}>
           <ProfileRow
             icon="face"
-            title={biometricMeta.label || 'Face ID'}
+            title={biometricMeta.title || 'Face ID'}
             value={biometricsEnabled ? 'Вкл' : biometricMeta.available ? 'Выкл' : 'Нет'}
             last
           />

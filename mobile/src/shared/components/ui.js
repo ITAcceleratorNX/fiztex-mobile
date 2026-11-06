@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Pressable, Modal, ScrollView, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
-import { FONT, REQUEST } from '../theme/tokens';
+import { CODES, FONT, REQUEST } from '../theme/tokens';
 import { Txt, Ink, wrapStrings } from './Txt';
 import Icon from './Icon';
 import { Hex, HexBadge, PhysTechMark, PhysTechLogotype } from './Hex';
@@ -144,8 +144,19 @@ export function Pill({ children, color = 'gray', style }) {
 // ─── Avatar (hexagonal, initials) ─────────────────────────────────────────────
 // `variant="soft"` — круг на бледно-синем с navy-инициалами (карточка ребёнка на S6); по умолчанию —
 // шестигранник с заливкой, как в остальном приложении.
-export function Avatar({ name = '', size = 40, color = 'green', variant = 'hex' }) {
+// `variant="tile"` — скруглённый квадрат с инициалами (люди в кодах, 2460:4192): `radius` и
+// `label` (вместо инициалов — например, «7А» у класса) задаёт экран, цвет — `color`.
+export function Avatar({ name = '', size = 40, color = 'green', variant = 'hex', radius, label, textSize }) {
   const { c } = useTheme();
+  if (variant === 'tile') {
+    const fill = { green: c.green, blue: c.blue, red: c.red, gold: c.gold }[color] || c.blue;
+    const text = label ?? name.split(' ').map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+    return (
+      <View style={{ width: size, height: size, borderRadius: radius ?? CODES.rowRadius, backgroundColor: fill, alignItems: 'center', justifyContent: 'center' }}>
+        <Txt numberOfLines={1} style={{ color: '#fff', fontWeight: '700', fontSize: textSize ?? CODES.rowInitials }}>{text}</Txt>
+      </View>
+    );
+  }
   if (variant === 'soft') {
     const letters = name.split(' ').map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
     return (
@@ -171,6 +182,7 @@ export function Avatar({ name = '', size = 40, color = 'green', variant = 'hex' 
 // ─── PrimaryButton ────────────────────────────────────────────────────────────
 // `size="lg"` — подпись 17/700, как у кнопок форм заявки (Figma A2 «Отправить заявку»); по
 // умолчанию прежние 16/600, на них стоят остальные экраны.
+// `size="compact"` — таблетка 48 с подписью 15/700 (кнопки карточки кода, 2460:4371).
 export function PrimaryButton({ children, onPress, color = 'green', style, full = true, disabled, size = 'md' }) {
   const { c } = useTheme();
   const map = {
@@ -187,7 +199,7 @@ export function PrimaryButton({ children, onPress, color = 'green', style, full 
       style={({ pressed }) => [
         {
           width: full ? '100%' : undefined,
-          height: 54,
+          height: size === 'compact' ? CODES.pillHeight : 54,
           borderRadius: 999,
           backgroundColor: bg,
           flexDirection: 'row',
@@ -203,7 +215,9 @@ export function PrimaryButton({ children, onPress, color = 'green', style, full 
       <Ink color={fg}>
         {wrapStrings(children, size === 'lg'
           ? { fontSize: REQUEST.ctaTextSize, fontWeight: '700', color: fg }
-          : { fontSize: 16, fontWeight: '600', color: fg })}
+          : size === 'compact'
+            ? { fontSize: CODES.pillText, fontWeight: '700', color: fg }
+            : { fontSize: 16, fontWeight: '600', color: fg })}
       </Ink>
     </Pressable>
   );
@@ -222,6 +236,8 @@ const BTN_SIZES = {
   pill: { height: REQUEST.pillHeight, paddingVertical: 0, paddingHorizontal: 16, radius: 999, fontSize: 14, weight: '600', border: 1, neutral: true },
   // Главное действие без заливки — «Обновить статус» внизу S2: во всю ширину, 50, navy-контур.
   cta: { height: REQUEST.outlineCtaHeight, paddingVertical: 0, paddingHorizontal: 24, radius: 999, fontSize: REQUEST.outlineCtaText, weight: '700', border: 1 },
+  // Таблетка 48 рядом с `PrimaryButton size="compact"` — «Скрыть» и «Выдать новый код» (2460:4371).
+  'pill-lg': { height: CODES.pillHeight, paddingVertical: 0, paddingHorizontal: 20, radius: 999, fontSize: CODES.pillText, weight: '700', border: 1 },
 };
 
 export function OutlineButton({ children, onPress, disabled = false, size = 'sm', icon, style }) {
@@ -405,6 +421,45 @@ export function TextField({
           {error}
         </Txt>
       ) : null}
+    </View>
+  );
+}
+
+// ─── SearchField (Figma 2460:4192 «Поиск ученика») ───────────────────────────
+// Поле поиска над списком: 48 на радиусе 14, лупа 16 слева. Отдельно от `TextField`: у поиска нет
+// подписи и ошибки, а лупа — часть рамки, а не наложение поверх ввода.
+export function SearchField({ value, onChangeText, placeholder, style, ...inputProps }) {
+  const { c } = useTheme();
+  const [focused, setFocused] = React.useState(false);
+  return (
+    <View
+      style={[{
+        height: CODES.searchHeight,
+        borderRadius: CODES.searchRadius,
+        borderWidth: 1,
+        borderColor: focused ? c.blue : c.border,
+        backgroundColor: c.surface,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingLeft: 15,
+        paddingRight: 12,
+      }, style]}
+    >
+      <Icon name="search" size={16} color={c.ink3} />
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={c.ink3}
+        returnKeyType="search"
+        autoCorrect={false}
+        accessibilityLabel={placeholder}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        {...inputProps}
+        style={{ flex: 1, height: '100%', color: c.ink, fontSize: CODES.searchText, fontFamily: FONT.regular, outlineStyle: 'none' }}
+      />
     </View>
   );
 }
@@ -600,44 +655,8 @@ export function AppHeader({ greeting, name, right }) {
 }
 
 // ─── ScreenHeader (back chevron + title, or large title) ──────────────────────
-// `inline` — заголовок с подписью рядом с кнопкой «назад», слева (Figma `Admin_Admissions`,
-// «Мой класс» и карточка ученика: «7А класс / Классное руководство · 21 ученик»). Отдельный
-// флаг, а не «есть `sub` — значит рядом»: часть экранов передаёт `sub` без `large`, и он у них
-// молча не рисуется — включить его разом значило бы поменять шапки чужих экранов.
-export function ScreenHeader({ title, back, right, large = false, inline = false, sub }) {
+export function ScreenHeader({ title, back, right, large = false, sub }) {
   const { c } = useTheme();
-  if (inline) {
-    return (
-      <View style={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 12 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}>
-          {back !== undefined ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Назад"
-              onPress={back}
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 999,
-                backgroundColor: c.surface,
-                borderWidth: 1,
-                borderColor: c.border,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Icon name="chevronLeft" size={20} color={c.ink} />
-            </Pressable>
-          ) : null}
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Txt numberOfLines={1} style={{ fontSize: 17, fontWeight: '700' }}>{title}</Txt>
-            {sub ? <Txt numberOfLines={1} style={{ fontSize: 13, color: c.inkMuted, marginTop: 2 }}>{sub}</Txt> : null}
-          </View>
-          {right || null}
-        </View>
-      </View>
-    );
-  }
   return (
     <View style={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 12 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, height: 44 }}>

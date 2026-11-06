@@ -66,8 +66,8 @@ export function FormPage({ title, subtitle, onBack, large = true, footer, layout
   );
 }
 
-/** Круглая «назад» 42 с рамкой (A1–A4). */
-function BackCircle({ onPress }) {
+/** Круглая «назад» 42 с рамкой (A1–A4); у экранов кодов — 40 (`size`). */
+function BackCircle({ onPress, size = REQUEST.backSize }) {
   const { c } = useTheme();
   return (
     <Pressable
@@ -76,8 +76,8 @@ function BackCircle({ onPress }) {
       hitSlop={6}
       onPress={onPress}
       style={({ pressed }) => ({
-        width: REQUEST.backSize,
-        height: REQUEST.backSize,
+        width: size,
+        height: size,
         borderRadius: 999,
         borderWidth: 1,
         borderColor: c.border,
@@ -97,7 +97,7 @@ function BackCircle({ onPress }) {
  * (A1); маленькая — заголовок 16/700 слева, рядом с «назад» (A2–A4), а не по центру, как у
  * `ScreenHeader`: в макете он читается продолжением кнопки.
  */
-export function FormHeader({ title, subtitle, onBack, large = true }) {
+export function FormHeader({ title, subtitle, onBack, large = true, backSize = REQUEST.backSize }) {
   const { c } = useTheme();
   if (large) {
     return (
@@ -136,15 +136,21 @@ export function FormHeader({ title, subtitle, onBack, large = true }) {
         minHeight: REQUEST.backSize,
       }}
     >
-      {onBack ? <BackCircle onPress={onBack} /> : null}
+      {onBack ? <BackCircle onPress={onBack} size={backSize} /> : null}
       {title ? (
-        <Txt
-          accessibilityRole="header"
-          numberOfLines={1}
-          style={{ flex: 1, fontSize: REQUEST.headerTitleSize, lineHeight: REQUEST.headerTitleLine, fontWeight: '700' }}
-        >
-          {title}
-        </Txt>
+        // Подзаголовок маленькой шапки — «7А · ученик 21 из 21» (2460:4292): 13 серым под заголовком.
+        <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
+          <Txt
+            accessibilityRole="header"
+            numberOfLines={1}
+            style={{ fontSize: REQUEST.headerTitleSize, lineHeight: REQUEST.headerTitleLine, fontWeight: '700' }}
+          >
+            {title}
+          </Txt>
+          {subtitle ? (
+            <Txt numberOfLines={1} style={{ fontSize: REQUEST.hintSize, lineHeight: REQUEST.hintLine, color: c.inkMuted }}>{subtitle}</Txt>
+          ) : null}
+        </View>
       ) : null}
     </View>
   );

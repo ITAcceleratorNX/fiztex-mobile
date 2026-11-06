@@ -1,14 +1,14 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
-import { AUTH } from '@shared/theme/tokens';
+import { AUTH, CODES, REQUEST } from '@shared/theme/tokens';
 import { Screen, useBottomChromePadding } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
-import Icon from '@shared/components/Icon';
 import {
-  Avatar, Card, HexBadge, ScreenHeader, SectionTitle, StateView, TextField,
+  Avatar, Card, SearchField, SectionTitle, StateView,
 } from '@shared/components/ui';
-import { Hint } from '@shared/ui/formParts';
+import { FormHeader, Hint } from '@shared/ui/formParts';
+import { PersonRow } from '@shared/ui/rows';
 import { studentCodesApi } from '@shared/api/studentCodesApi';
 import { useAuth } from '@features/auth/AuthContext';
 import { StudentCodeCard } from '../StudentCodeCard';
@@ -28,8 +28,13 @@ import {
 
 function toneColor(c, tone) {
   if (tone === 'success') return c.success;
-  if (tone === 'orange') return c.greenDeep;
+  if (tone === 'orange') return c.amberInk;
   return c.inkMuted;
+}
+
+/** Шапка экранов кодов (2460:4192, 4292, 4612): «назад» 40, заголовок 16/700 и подпись под ним. */
+function CodesHeader({ onBack, title, subtitle }) {
+  return <FormHeader large={false} onBack={onBack} title={title} subtitle={subtitle} backSize={CODES.backSize} />;
 }
 
 function Loading() {
@@ -55,16 +60,23 @@ function LoadError({ error, onRetry }) {
   );
 }
 
-/** Аватар, полное имя и «входил ли» под ним (2460:4292, 4460, 4612). */
+/** Аватар 56/18, полное имя 18/700 и «входил ли» с точкой под ним (2460:4292, 4460, 4612). */
 function StudentHero({ name, status }) {
   const { c } = useTheme();
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: AUTH.gutter, marginBottom: AUTH.gap }}>
-      <Avatar name={name || ''} size={AUTH.heroAvatar} color="blue" />
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Txt numberOfLines={2} style={{ fontSize: AUTH.valueSize, fontWeight: '700' }}>{name}</Txt>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: CODES.heroGap, paddingVertical: 4 }}>
+      <Avatar
+        name={name || ''}
+        size={CODES.heroAvatar}
+        variant="tile"
+        color="blue"
+        radius={CODES.heroRadius}
+        textSize={CODES.heroInitials}
+      />
+      <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+        <Txt numberOfLines={2} style={{ fontSize: CODES.heroNameSize, fontWeight: '700' }}>{name}</Txt>
         {status ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: toneColor(c, status.tone) }} />
             <Txt style={{ fontSize: AUTH.captionSize, color: toneColor(c, status.tone) }}>{status.text}</Txt>
           </View>
@@ -78,7 +90,7 @@ function StudentHero({ name, status }) {
 function NoCodeCard({ text, hint }) {
   const { c } = useTheme();
   return (
-    <Card style={{ marginHorizontal: AUTH.gutter }}>
+    <Card style={{ padding: CODES.cardPad }}>
       <Txt style={{ fontSize: AUTH.captionSize, lineHeight: AUTH.captionLine, color: c.inkMuted }}>
         Персональный код
       </Txt>
@@ -96,38 +108,21 @@ function NoCodeCard({ text, hint }) {
  * и профиль не должен краснеть из-за него.
  */
 export function HomeroomSection({ nav }) {
-  const { c } = useTheme();
   const { data } = useHomeroomClasses();
   if (!data?.length) return null;
   return (
     <>
       <SectionTitle title="Классное руководство" />
-      <Card padded={false} style={{ marginHorizontal: AUTH.gutter, marginBottom: 12 }}>
+      <Card padded={false} style={{ marginHorizontal: AUTH.gutter, marginBottom: 12, overflow: 'hidden' }}>
         {data.map((item, i) => (
-          <Pressable
+          <PersonRow
             key={item.id}
-            accessibilityRole="button"
+            first={i === 0}
+            name={classTitle(item.name)}
+            status={homeroomCaption(item.count)}
+            avatar={{ label: item.name, textSize: 12 }}
             onPress={() => nav('homeroom-class', { classId: item.id, className: item.name, count: item.count })}
-            style={({ pressed }) => ({
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 12,
-              paddingVertical: 14,
-              paddingHorizontal: 16,
-              borderBottomWidth: i < data.length - 1 ? 1 : 0,
-              borderBottomColor: c.border,
-              opacity: pressed ? 0.85 : 1,
-            })}
-          >
-            <HexBadge size={AUTH.avatarSize} fill={c.blue}>
-              <Txt style={{ color: c.heroInk, fontSize: 11, fontWeight: '700' }}>{item.name}</Txt>
-            </HexBadge>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Txt numberOfLines={1} style={{ fontSize: 14, fontWeight: '600' }}>{classTitle(item.name)}</Txt>
-              <Txt numberOfLines={1} style={{ fontSize: 12, color: c.ink3 }}>{homeroomCaption(item.count)}</Txt>
-            </View>
-            <Icon name="chevronRight" size={16} color={c.ink3} />
-          </Pressable>
+          />
         ))}
       </Card>
     </>
@@ -137,7 +132,6 @@ export function HomeroomSection({ nav }) {
 // ═══ Класс: список учеников (2460:4192) ═══
 
 export function HomeroomClassScreen({ nav, payload }) {
-  const { c } = useTheme();
   const bottomPad = useBottomChromePadding();
   const roster = useHomeroomRoster(payload?.classId);
   const [query, setQuery] = useState('');
@@ -154,13 +148,16 @@ export function HomeroomClassScreen({ nav, payload }) {
     body = <Hint center>Никого не нашли — проверьте написание.</Hint>;
   } else {
     body = (
-      <Card padded={false}>
+      <Card padded={false} style={{ overflow: 'hidden' }}>
         {shown.map((row, i) => {
           const status = rowStatus(row.access);
           return (
-            <Pressable
+            <PersonRow
               key={row.studentProfileId}
-              accessibilityRole="button"
+              first={i === 0}
+              name={row.listName}
+              status={status.text}
+              tone={status.tone === 'orange' ? 'amber' : 'muted'}
               onPress={() => nav('homeroom-student', {
                 studentProfileId: row.studentProfileId,
                 listName: row.listName,
@@ -169,26 +166,7 @@ export function HomeroomClassScreen({ nav, payload }) {
                 index: rows.indexOf(row),
                 total: rows.length,
               })}
-              style={({ pressed }) => ({
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 12,
-                paddingVertical: 12,
-                paddingHorizontal: 16,
-                borderBottomWidth: i < shown.length - 1 ? 1 : 0,
-                borderBottomColor: c.border,
-                opacity: pressed ? 0.85 : 1,
-              })}
-            >
-              <Avatar name={row.listName} size={AUTH.avatarSize} color="blue" />
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Txt numberOfLines={1} style={{ fontSize: AUTH.bodySize, fontWeight: '700' }}>{row.listName}</Txt>
-                <Txt numberOfLines={1} style={{ fontSize: AUTH.captionSize, color: toneColor(c, status.tone) }}>
-                  {status.text}
-                </Txt>
-              </View>
-              <Icon name="chevronRight" size={16} color={c.ink3} />
-            </Pressable>
+            />
           );
         })}
       </Card>
@@ -197,21 +175,9 @@ export function HomeroomClassScreen({ nav, payload }) {
 
   return (
     <Screen keyboardShouldPersistTaps="handled">
-      <ScreenHeader inline back={nav.back} title={classTitle(payload?.className)} sub={rosterSubtitle(total)} />
-      <View style={{ paddingHorizontal: AUTH.gutter, paddingBottom: bottomPad, gap: 12 }}>
-        <View>
-          <TextField
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Поиск ученика"
-            returnKeyType="search"
-            autoCorrect={false}
-            inputStyle={{ paddingLeft: 42 }}
-          />
-          <View pointerEvents="none" style={{ position: 'absolute', left: 14, top: 14 }}>
-            <Icon name="search" size={18} color={c.ink3} />
-          </View>
-        </View>
+      <CodesHeader onBack={nav.back} title={classTitle(payload?.className)} subtitle={rosterSubtitle(total)} />
+      <View style={{ paddingHorizontal: REQUEST.gutter, paddingBottom: bottomPad, gap: AUTH.gap }}>
+        <SearchField value={query} onChangeText={setQuery} placeholder="Поиск ученика" />
         {body}
       </View>
     </Screen>
@@ -251,14 +217,15 @@ export function HomeroomStudentScreen({ nav, payload }) {
 
   return (
     <Screen>
-      <ScreenHeader
-        inline
-        back={nav.back}
+      <CodesHeader
+        onBack={nav.back}
         title={payload?.listName}
-        sub={positionLabel(payload?.className, payload?.index, payload?.total)}
+        subtitle={positionLabel(payload?.className, payload?.index, payload?.total)}
       />
-      <StudentHero name={payload?.fullName} status={heroStatus(access.data)} />
-      <View style={{ paddingBottom: bottomPad }}>{body}</View>
+      <View style={{ paddingHorizontal: REQUEST.gutter, paddingBottom: bottomPad, gap: AUTH.gap }}>
+        <StudentHero name={payload?.fullName} status={heroStatus(access.data)} />
+        {body}
+      </View>
     </Screen>
   );
 }
@@ -297,9 +264,11 @@ export function ChildCodeScreen({ nav, payload }) {
 
   return (
     <Screen>
-      <ScreenHeader inline back={nav.back} title={name} sub={className ? classTitle(className) : null} />
-      <StudentHero name={name} status={heroStatus(access.data)} />
-      <View style={{ paddingBottom: bottomPad }}>{body}</View>
+      <CodesHeader onBack={nav.back} title={name} subtitle={className ? classTitle(className) : null} />
+      <View style={{ paddingHorizontal: REQUEST.gutter, paddingBottom: bottomPad, gap: AUTH.gap }}>
+        <StudentHero name={name} status={heroStatus(access.data)} />
+        {body}
+      </View>
     </Screen>
   );
 }

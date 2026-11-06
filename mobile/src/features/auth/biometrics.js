@@ -35,6 +35,17 @@ export function biometricLabel(types = []) {
   return 'биометрию';
 }
 
+/**
+ * Название способа для строки настроек — в именительном падеже. `biometricLabel` — винительный,
+ * для «Используйте {label}» и «Включить {label}»; в заголовке строки он читался как «биометрию».
+ */
+export function biometricTitle(types = []) {
+  if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) return 'Face ID';
+  if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) return 'Отпечаток пальца';
+  if (types.includes(LocalAuthentication.AuthenticationType.IRIS)) return 'Iris';
+  return 'Вход по биометрии';
+}
+
 export async function authenticateWithBiometrics({ promptMessage, cancelLabel } = {}) {
   const { available } = await getBiometricAvailability();
   if (!available) {

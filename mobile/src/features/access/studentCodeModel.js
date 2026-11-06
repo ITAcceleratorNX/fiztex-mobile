@@ -15,7 +15,8 @@ const NOT_PERMITTED = 'STUDENT_CODE_NOT_PERMITTED';
 const NOT_ISSUABLE = 'STUDENT_CODE_NOT_ISSUABLE';
 
 /** Восемь точек — длина настоящего кода, но не он сам. */
-export const CODE_MASK = '••••••••';
+// «●», а не «•»: на кегле кода (28) точка «•» в Onest еле видна, а макет рисует крупные круги.
+export const CODE_MASK = '●●●●●●●●';
 
 export const NOT_ISSUABLE_TEXT = 'Аккаунт ученика выключен — код сейчас не выдать.';
 
