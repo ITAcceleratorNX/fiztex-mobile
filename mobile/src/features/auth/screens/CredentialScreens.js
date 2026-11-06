@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
-import { AUTH } from '@shared/theme/tokens';
+import { AUTH, REQUEST } from '@shared/theme/tokens';
 import { TextButton } from '@shared/components/TextButton';
 import { Card, PasswordField, PrimaryButton, TextField } from '@shared/components/ui';
 import { authApi } from '@shared/api/authApi';
@@ -11,12 +11,21 @@ import {
   passwordChangeErrorMessage, pinSetupErrorMessage, schoolCodeErrorMessage,
   PASSWORD_MAX_LENGTH, PIN_MAX_LENGTH, SCHOOL_CODE_LENGTH,
 } from '../signInModel';
-import { FormPage, FormError, Hint, IconBadgeRow, Rule, ValueCard } from '@shared/ui/formParts';
+import { FormDivider, FormPage, FormError, Hint, IconBadgeRow, Rule, ValueCard } from '@shared/ui/formParts';
 import { useSignInCompletion } from './SignInParts';
 
 // Длину кода и PIN режет этот разбор, а не `maxLength` поля: тот обрезал бы сырую строку
 // раньше, чем сняты дефис и пробелы, и вставка «8222-6447» потеряла бы последнюю цифру.
 const digitsOnly = (text, max) => text.replace(/\D/g, '').slice(0, max);
+
+// Набранный PIN — крупные точки с разрядкой (M4): по ним видно, сколько цифр уже введено.
+// Только когда есть ввод — плейсхолдер «4–6 цифр» остаётся обычным текстом поля.
+const PIN_TEXT = {
+  fontSize: REQUEST.pinTextSize,
+  lineHeight: REQUEST.pinTextLine,
+  letterSpacing: REQUEST.pinTracking,
+  fontWeight: '600',
+};
 
 /**
  * M4 «Код без PIN → первая активация» — `POST /api/auth/student/activate`.
@@ -54,13 +63,16 @@ export function AuthPinSetup({ code, onBack, onEditCode }) {
 
   return (
     <FormPage
+      layout="request"
+      gap={REQUEST.stepGap}
       onBack={onBack}
       title="Придумайте PIN"
       subtitle="PIN — это ваш пароль: дальше вы будете входить по коду и PIN."
     >
-      <ValueCard label="Персональный код" value={code} code onAction={onEditCode} />
+      <ValueCard size="lg" label="Персональный код" value={code} code onAction={onEditCode} />
       <View>
         <TextField
+          size="lg"
           label="Новый PIN"
           value={pin}
           onChangeText={(text) => {
@@ -72,11 +84,13 @@ export function AuthPinSetup({ code, onBack, onEditCode }) {
           secureTextEntry
           autoFocus
           autoComplete="off"
+          inputStyle={pin ? PIN_TEXT : null}
         />
         <Hint>4–6 цифр. Не используйте дату рождения.</Hint>
       </View>
       <View>
         <TextField
+          size="lg"
           label="Повторите PIN"
           value={repeat}
           onChangeText={(text) => {
@@ -89,11 +103,12 @@ export function AuthPinSetup({ code, onBack, onEditCode }) {
           autoComplete="off"
           returnKeyType="go"
           onSubmitEditing={submit}
+          inputStyle={repeat ? PIN_TEXT : null}
         />
         {state.mismatch ? <FormError>PIN не совпадает</FormError> : null}
       </View>
       {message ? <FormError>{message}</FormError> : null}
-      <PrimaryButton disabled={!state.ready || loading} onPress={submit}>
+      <PrimaryButton size="lg" disabled={!state.ready || loading} onPress={submit}>
         {loading ? <ActivityIndicator color={c.heroInk} /> : 'Сохранить и войти'}
       </PrimaryButton>
     </FormPage>
@@ -110,30 +125,32 @@ export function AuthPinSetup({ code, onBack, onEditCode }) {
  * активации нового аккаунта). Временный пароль вводится обычным входом и уводит на M7.
  */
 export function AuthRecovery({ onBack, onCode }) {
-  const { c } = useTheme();
   const [code, setCode] = useState('');
   const ready = isSchoolCode(code);
 
   return (
     <FormPage
+      layout="request"
+      gap={REQUEST.stepGap}
       onBack={onBack}
       title="Восстановить доступ"
       subtitle="Пароль и PIN восстанавливает школа — по SMS это пока не работает."
     >
-      <Card style={{ gap: AUTH.gap }}>
-        <IconBadgeRow icon="graduationCap" title="Ученик">
-          Новый персональный код выпустит классный руководитель или родитель — PIN останется
+      <Card style={{ gap: 14 }}>
+        <IconBadgeRow compact icon="graduationCap" title="Ученик">
+          {'Новый персональный код выпустит классный руководитель или\u00a0родитель\u00a0— PIN останется '}
           прежним. Забытый PIN сбрасывает администратор школы, после этого придумайте новый.
         </IconBadgeRow>
-        <View style={{ height: 1, backgroundColor: c.border }} />
-        <IconBadgeRow icon="users" tone="orange" title="Родитель, учитель или сотрудник">
-          Обратитесь к администратору школы — он выдаст одноразовый код восстановления или
+        <FormDivider />
+        <IconBadgeRow compact icon="users" tone="orange" title="Родитель, учитель или сотрудник">
+          {'Обратитесь к\u00a0администратору школы\u00a0— он выдаст одноразовый код восстановления или '}
           временный пароль.
         </IconBadgeRow>
       </Card>
 
       <View>
         <TextField
+          size="lg"
           label="Уже получили код восстановления?"
           value={code}
           onChangeText={(text) => setCode(digitsOnly(text, SCHOOL_CODE_LENGTH))}
@@ -145,7 +162,7 @@ export function AuthRecovery({ onBack, onCode }) {
         />
         <Hint>Код активации нового аккаунта вводится сюда же.</Hint>
       </View>
-      <PrimaryButton disabled={!ready} onPress={() => onCode(code)}>
+      <PrimaryButton size="lg" disabled={!ready} onPress={() => onCode(code)}>
         Продолжить
       </PrimaryButton>
       <Hint center>Временный пароль вводится на обычном экране входа.</Hint>
@@ -193,12 +210,15 @@ export function AuthSchoolCode({ code, login, onBack }) {
 
   return (
     <FormPage
+      layout="request"
+      gap={REQUEST.stepGap}
       onBack={onBack}
       title="Задайте пароль"
       subtitle="Код от школы проверится вместе с новым паролем. Дальше вы будете входить по телефону и этому паролю."
     >
-      <ValueCard label="Код от школы" value={code} code onAction={onBack} />
+      <ValueCard size="lg" label="Код от школы" value={code} code onAction={onBack} />
       <TextField
+          size="lg"
         label="Телефон или почта"
         value={contact}
         onChangeText={(text) => {
@@ -213,6 +233,7 @@ export function AuthSchoolCode({ code, login, onBack }) {
       />
       <View>
         <PasswordField
+          size="lg"
           label="Новый пароль"
           value={password}
           onChangeText={(text) => {
@@ -228,6 +249,7 @@ export function AuthSchoolCode({ code, login, onBack }) {
       </View>
       <View>
         <PasswordField
+          size="lg"
           label="Повторите пароль"
           value={repeat}
           onChangeText={(text) => {
@@ -244,7 +266,7 @@ export function AuthSchoolCode({ code, login, onBack }) {
         <Rule met={rules.matches}>Пароли совпадают</Rule>
       </View>
       {message ? <FormError>{message}</FormError> : null}
-      <PrimaryButton disabled={!ready || loading} onPress={submit}>
+      <PrimaryButton size="lg" disabled={!ready || loading} onPress={submit}>
         {loading ? <ActivityIndicator color={c.heroInk} /> : 'Сохранить и войти'}
       </PrimaryButton>
     </FormPage>
@@ -293,11 +315,14 @@ export function AuthNewPassword() {
 
   return (
     <FormPage
+      layout="request"
+      gap={REQUEST.stepGap}
       title="Придумайте новый пароль"
       subtitle="Вы вошли по временному паролю от школы. Чтобы продолжить, задайте свой — временный перестанет работать."
     >
       {askCurrent ? (
         <PasswordField
+          size="lg"
           label="Временный пароль"
           value={current}
           onChangeText={(text) => {
@@ -312,6 +337,7 @@ export function AuthNewPassword() {
       ) : null}
       <View>
         <PasswordField
+          size="lg"
           label="Новый пароль"
           value={password}
           onChangeText={(text) => {
@@ -328,6 +354,7 @@ export function AuthNewPassword() {
       </View>
       <View>
         <PasswordField
+          size="lg"
           label="Повторите пароль"
           value={repeat}
           onChangeText={(text) => {
@@ -344,10 +371,10 @@ export function AuthNewPassword() {
         <Rule met={rules.matches}>Пароли совпадают</Rule>
       </View>
       {message ? <FormError>{message}</FormError> : null}
-      <PrimaryButton disabled={!ready || loading} onPress={submit}>
+      <PrimaryButton size="lg" disabled={!ready || loading} onPress={submit}>
         {loading ? <ActivityIndicator color={c.heroInk} /> : 'Сохранить и войти'}
       </PrimaryButton>
-      <TextButton onPress={signOut}>Выйти</TextButton>
+      <TextButton size="lg" onPress={signOut}>Выйти</TextButton>
     </FormPage>
   );
 }

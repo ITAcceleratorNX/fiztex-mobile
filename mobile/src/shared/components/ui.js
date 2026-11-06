@@ -371,7 +371,8 @@ export function TextField({
       // Внутри составной рамки фокус показывает сама рамка; браузерная обводка (Expo web)
       // легла бы только вокруг ввода и отрезала бы глаз.
       style={right
-        ? [text, { flex: 1, minHeight: frame.minHeight, outlineStyle: 'none' }, inputStyle]
+        // У большого поля рамка снаружи ввода: без вычета рамки поле с глазом было бы 54, а не 52.
+        ? [text, { flex: 1, minHeight: lg ? frame.minHeight - 2 : frame.minHeight, outlineStyle: 'none' }, inputStyle]
         : [frame, text, lg && { outlineStyle: 'none' }, inputStyle]}
     />
   );

@@ -98,6 +98,14 @@ export const REQUEST = {
   menuInset: 7, menuRowHeight: 44, menuRowRadius: 10,
   markSize: 72, markIconSize: 34, doneTitleSize: 28, doneTitleLine: 36, numberTracking: 1, numberLine: 43,
   sectionLabelSize: 13, sectionLabelTracking: 0.6,
+  // Вход M1–M7 (2460:1002 … 2460:1269): тот же язык, шаг между блоками крупнее — 24.
+  stepGap: 24, sheetPadTop: 32, sheetGap: 20, signInTitleSize: 28, signInTitleLine: 36, leadGap: 12,
+  valuePadV: 13, valuePadH: 16, valueRadius: 16, valueLabelSize: 12, valueLabelLine: 15,
+  valueSize: 16, valueLine: 20, valueTracking: 1,
+  pinCellWidth: 54, pinCellHeight: 62, pinCellRadius: 16, pinGap: 10, pinDot: 12,
+  pinTextSize: 20, pinTextLine: 25, pinTracking: 6,
+  linkSize: 15, linkLine: 19, quietLinkSize: 13, quietLinkLine: 17,
+  rowTitleSize: 15, rowTitleLine: 19, rowTextSize: 14, rowTextLine: 20,
 };
 
 // Запуск приложения (заметки дизайнера рядом с M1 и кадр «Повторный запуск» 2468:22): знак по

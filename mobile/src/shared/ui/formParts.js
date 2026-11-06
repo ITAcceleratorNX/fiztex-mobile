@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-import { AUTH, REQUEST } from '../theme/tokens';
+import { AUTH, DEMO, REQUEST } from '../theme/tokens';
 import { Screen } from '../components/Screen';
 import { TextButton } from '../components/TextButton';
 import { Txt } from '../components/Txt';
@@ -37,12 +37,13 @@ function toneColors(c, tone) {
  * `footer` прижимается к низу экрана, пока содержимое короче экрана, и уезжает вниз вместе
  * с ним, когда длиннее, — главная кнопка не перекрывает поля.
  */
-export function FormPage({ title, subtitle, onBack, large = true, footer, layout = 'auth', children }) {
+export function FormPage({ title, subtitle, onBack, large = true, footer, layout = 'auth', gap: gapOverride, children }) {
   // `layout="request"` — заявка на доступ по макету (A1–A5): поля на 20, шаг 18, своя шапка
   // `FormHeader`. Экраны входа M1–M7 остаются на `auth`, пока их не сверили с макетом.
   const request = layout === 'request';
   const gutter = request ? REQUEST.gutter : AUTH.gutter;
-  const gap = request ? REQUEST.gap : AUTH.gap;
+  // Шаг между блоками: у форм заявки 18, у шагов входа M2–M7 — 24 (`gap={REQUEST.stepGap}`).
+  const gap = gapOverride ?? (request ? REQUEST.gap : AUTH.gap);
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
       <Screen keyboardShouldPersistTaps="handled" contentStyle={{ flexGrow: 1, paddingBottom: AUTH.sectionGap }}>
@@ -103,7 +104,7 @@ export function FormHeader({ title, subtitle, onBack, large = true }) {
       <View style={{ paddingHorizontal: REQUEST.gutter, paddingTop: 4 }}>
         {onBack ? <BackCircle onPress={onBack} /> : null}
         {title ? (
-          <View style={{ marginTop: onBack ? AUTH.sectionGap : 0, gap: 8 }}>
+          <View style={{ marginTop: onBack ? AUTH.sectionGap : REQUEST.backSize + AUTH.sectionGap, gap: 8 }}>
             <Txt
               accessibilityRole="header"
               style={{
@@ -178,25 +179,50 @@ export function FormDivider() {
  * Уже введённое на прошлом шаге (M2–M4): «Телефон +7 700…» и «Изменить». Логин здесь не
  * поле, а напоминание — править его возвращаются туда, где он и вводился.
  */
-export function ValueCard({ label, value, code = false, action = 'Изменить', onAction }) {
+export function ValueCard({ label, value, code = false, action = 'Изменить', onAction, status, size = 'md' }) {
   const { c } = useTheme();
+  const lg = size === 'lg';
+  // `size="lg"` — карточка 65 по макету M2–M4: радиус 16, подпись 12/15, значение 16/20.
+  // `status` вместо действия — «✓ Подтверждён» у кода на M4: менять его уже не нужно.
   return (
-    <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+    <Card
+      style={[
+        { flexDirection: 'row', alignItems: 'center', gap: 12 },
+        lg && { borderRadius: REQUEST.valueRadius, paddingVertical: REQUEST.valuePadV, paddingHorizontal: REQUEST.valuePadH, paddingRight: REQUEST.valuePadH - 8 },
+      ]}
+    >
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Txt style={{ fontSize: AUTH.captionSize, lineHeight: AUTH.captionLine, color: c.ink2 }}>{label}</Txt>
+        <Txt
+          style={lg
+            ? { fontSize: REQUEST.valueLabelSize, lineHeight: REQUEST.valueLabelLine, color: c.inkMuted }
+            : { fontSize: AUTH.captionSize, lineHeight: AUTH.captionLine, color: c.ink2 }}
+        >
+          {label}
+        </Txt>
         <Txt
           numberOfLines={1}
           style={{
-            fontSize: AUTH.valueSize,
+            fontSize: lg ? REQUEST.valueSize : AUTH.valueSize,
+            lineHeight: lg ? REQUEST.valueLine : undefined,
             fontWeight: '600',
             marginTop: 2,
-            letterSpacing: code ? AUTH.codeSpacing : 0,
+            letterSpacing: code ? (lg ? REQUEST.valueTracking : AUTH.codeSpacing) : 0,
           }}
         >
           {value}
         </Txt>
       </View>
-      {onAction ? <TextButton onPress={onAction}>{action}</TextButton> : null}
+      {status ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingRight: 8 }}>
+          <Icon name="check" size={14} color={c.success} strokeWidth={2.4} />
+          <Txt style={{ fontSize: REQUEST.hintSize, lineHeight: REQUEST.hintLine, fontWeight: '600', color: c.success }}>{status}</Txt>
+        </View>
+      ) : onAction ? (
+        // Зона нажатия остаётся 44, но в высоту карточки не входит — иначе карточка 72 вместо 65.
+        <TextButton onPress={onAction} style={lg ? { marginVertical: -(DEMO.touchSize - REQUEST.valueLine) / 2 } : undefined}>
+          {action}
+        </TextButton>
+      ) : null}
     </Card>
   );
 }
@@ -267,15 +293,28 @@ export function IconBadge({ icon, tone, size, large = false }) {
   );
 }
 
-/** Строка «значок роли + заголовок + пояснение» (M6, A1). */
-export function IconBadgeRow({ icon, tone, title, children }) {
+/**
+ * Строка «значок роли + заголовок + пояснение» (M6, A1). `compact` — как в карточке M6 по макету:
+ * заголовок 15/19, пояснение 14/20.
+ */
+export function IconBadgeRow({ icon, tone, title, children, compact = false }) {
   const { c } = useTheme();
   return (
     <View style={{ flexDirection: 'row', gap: 12 }}>
       <IconBadge icon={icon} tone={tone} />
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Txt style={{ fontSize: AUTH.bodySize, fontWeight: '700' }}>{title}</Txt>
-        <Txt style={{ marginTop: 4, fontSize: AUTH.bodySize, lineHeight: AUTH.bodyLine, color: c.ink2 }}>
+        <Txt
+          style={compact
+            ? { fontSize: REQUEST.rowTitleSize, lineHeight: REQUEST.rowTitleLine, fontWeight: '700' }
+            : { fontSize: AUTH.bodySize, fontWeight: '700' }}
+        >
+          {title}
+        </Txt>
+        <Txt
+          style={compact
+            ? { marginTop: 2, fontSize: REQUEST.rowTextSize, lineHeight: REQUEST.rowTextLine, color: c.ink2 }
+            : { marginTop: 4, fontSize: AUTH.bodySize, lineHeight: AUTH.bodyLine, color: c.ink2 }}
+        >
           {children}
         </Txt>
       </View>

@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/theme/ThemeContext';
-import { AUTH } from '@shared/theme/tokens';
+import { AUTH, REQUEST } from '@shared/theme/tokens';
 import { ScreenTopInsetContext } from '@shared/components/Screen';
 import { TextButton } from '@shared/components/TextButton';
 import { Txt } from '@shared/components/Txt';
@@ -92,21 +92,32 @@ export function AuthSignIn({
               backgroundColor: c.bg,
               borderTopLeftRadius: AUTH.sheetRadius,
               borderTopRightRadius: AUTH.sheetRadius,
-              paddingHorizontal: AUTH.gutter,
-              paddingTop: AUTH.sectionGap,
+              paddingHorizontal: REQUEST.gutter,
+              paddingTop: REQUEST.sheetPadTop,
               paddingBottom: insets.bottom + AUTH.gap,
-              gap: AUTH.gap,
+              gap: REQUEST.sheetGap,
             }}
           >
             <View>
-              <Txt style={{ fontSize: AUTH.titleSize, lineHeight: AUTH.titleLine, fontWeight: '700' }}>Вход</Txt>
-              <Txt style={{ marginTop: 4, fontSize: AUTH.bodySize, lineHeight: AUTH.bodyLine, color: c.ink2 }}>
-                Телефон или персональный код от школы
+              <Txt
+                accessibilityRole="header"
+                style={{
+                  fontSize: REQUEST.signInTitleSize,
+                  lineHeight: REQUEST.signInTitleLine,
+                  letterSpacing: REQUEST.titleTracking,
+                  fontWeight: '800',
+                }}
+              >
+                Вход
+              </Txt>
+              <Txt style={{ marginTop: REQUEST.leadGap, fontSize: REQUEST.leadSize, lineHeight: REQUEST.leadLine, color: c.ink2 }}>
+                {'Телефон или\u00a0персональный код от\u00a0школы'}
               </Txt>
             </View>
 
             <View>
               <TextField
+                size="lg"
                 label="Телефон или код"
                 value={value}
                 onChangeText={(text) => {
@@ -125,7 +136,7 @@ export function AuthSignIn({
               {hint ? <FormError>{hint}</FormError> : null}
             </View>
 
-            <PrimaryButton disabled={!value.trim()} onPress={submit}>
+            <PrimaryButton size="lg" disabled={!value.trim()} onPress={submit}>
               Продолжить
             </PrimaryButton>
             <TextButton onPress={() => onForgot(classifyLogin(value))}>Забыли пароль или PIN?</TextButton>
@@ -135,16 +146,16 @@ export function AuthSignIn({
 
             <View style={{ flex: 1 }} />
             {onEntrance ? (
-              <ChoiceCard icon="graduationCap" title="Вступительный тест" onPress={onEntrance}>
+              <ChoiceCard size="lg" icon="graduationCap" title="Вступительный тест" onPress={onEntrance}>
                 Для поступающих — по коду из приглашения
               </ChoiceCard>
             ) : null}
             <View style={{ alignItems: 'center' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-                <Txt style={{ fontSize: AUTH.bodySize, color: c.ink2 }}>Нет доступа?</Txt>
-                <TextButton onPress={onApply}>Отправить заявку</TextButton>
+                <Txt style={{ fontSize: REQUEST.linkSize, lineHeight: REQUEST.linkLine, color: c.ink2 }}>Нет доступа?</Txt>
+                <TextButton size="lg" onPress={onApply}>Отправить заявку</TextButton>
               </View>
-              <TextButton onPress={onRequestStatus}>Проверить статус заявки</TextButton>
+              <TextButton tone="quiet" onPress={onRequestStatus}>Проверить статус заявки</TextButton>
               {onDemo ? <TextButton onPress={onDemo}>Попробовать демо</TextButton> : null}
             </View>
           </View>
@@ -198,11 +209,14 @@ export function AuthSecret({ kind, login, onBack, onForgot, onCreatePin }) {
 
   return (
     <FormPage
+      layout="request"
+      gap={REQUEST.stepGap}
       onBack={onBack}
       title={pin ? 'Введите PIN' : 'Введите пароль'}
       subtitle={pin ? 'Тот, что вы придумали при первом входе.' : kind === 'email' ? 'Вход по почте' : 'Вход по телефону'}
     >
       <ValueCard
+        size="lg"
         label={pin ? 'Персональный код' : kind === 'email' ? 'Почта' : 'Телефон'}
         value={kind === 'phone' ? formatPhone(login) : login}
         code={pin}
@@ -213,6 +227,7 @@ export function AuthSecret({ kind, login, onBack, onForgot, onCreatePin }) {
         {pin ? (
           <>
             <PinField
+              size="lg"
               label="PIN"
               value={secret}
               onChangeText={change}
@@ -226,6 +241,7 @@ export function AuthSecret({ kind, login, onBack, onForgot, onCreatePin }) {
           </>
         ) : (
           <PasswordField
+            size="lg"
             label="Пароль"
             value={secret}
             onChangeText={change}
@@ -242,11 +258,14 @@ export function AuthSecret({ kind, login, onBack, onForgot, onCreatePin }) {
         {message ? <FormError>{message}</FormError> : null}
       </View>
 
-      <PrimaryButton disabled={!ready || loading} onPress={submit}>
+      <PrimaryButton size="lg" disabled={!ready || loading} onPress={submit}>
         {loading ? <ActivityIndicator color={c.heroInk} /> : 'Войти'}
       </PrimaryButton>
-      <TextButton onPress={onForgot}>{pin ? 'Забыли PIN?' : 'Забыли пароль?'}</TextButton>
-      {pin ? <TextButton onPress={onCreatePin}>Ещё нет PIN? Придумать</TextButton> : null}
+      {/* Ссылки — одной группой: шаг формы 24 между ними разводил бы их, как отдельные блоки. */}
+      <View>
+        <TextButton size="lg" onPress={onForgot}>{pin ? 'Забыли PIN?' : 'Забыли пароль?'}</TextButton>
+        {pin ? <TextButton size="lg" onPress={onCreatePin}>Ещё нет PIN? Придумать</TextButton> : null}
+      </View>
     </FormPage>
   );
 }

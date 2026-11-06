@@ -221,8 +221,9 @@ Push-регистрация и серверный выход пропускаю�
   `TextField`/`PasswordField`/`FieldLabel`/`ComboField`/`ChoiceCard`/`Banner`/`PrimaryButton`,
   `sunken` у поля внутри карточки, `optional` у подписи, `StatusMark`/`IconBadge large`,
   `FormSectionLabel`, `FormDivider`, `OutlineButton size="pill" icon`, `Banner tone="warning"`
-  (`warnInk`), значок `copy`. Умолчания не тронуты — экраны входа M1–M7 и статуса S1–S6 пока
-  на прежних размерах, их сверка с макетом — отдельные заходы.
+  (`warnInk`), значок `copy`. С 2026-11-06 на этом же слое и вход M1–M7 (`gap={REQUEST.stepGap}`,
+  `ValueCard`/`PinField size="lg"`, `TextButton size="lg"` / `tone="quiet"`). Умолчания не тронуты —
+  статус заявки S1–S6 и остальные экраны пока на прежних размерах.
 
 Контракт и отличия от макета — `.cursor/tasks/extended-auth/screens/MobileAccessRequest.md`.
 

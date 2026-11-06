@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-import { AUTH } from '../theme/tokens';
+import { AUTH, REQUEST } from '../theme/tokens';
 import { FieldLabel } from './ui';
 
 /**
@@ -17,6 +17,8 @@ import { FieldLabel } from './ui';
  * `secureTextEntry` не ставится: iOS стирает такое поле целиком при повторном вводе, а
  * точки в клетках и так не показывают цифр. `maxLength` у поля тоже нет: длину режет
  * `onChangeText` после того, как снял нецифры, — иначе вставка «48 26» потеряла бы цифру.
+ *
+ * `size="lg"` — клетки 54×62 на радиусе 16 с шагом 10 и подпись 14/600, как в M3 по макету.
  */
 export function PinField({
   label,
@@ -28,25 +30,29 @@ export function PinField({
   autoFocus = false,
   onSubmitEditing,
   accessibilityLabel = label || 'PIN',
+  size = 'md',
 }) {
   const { c } = useTheme();
+  const g = size === 'lg'
+    ? { width: REQUEST.pinCellWidth, height: REQUEST.pinCellHeight, radius: REQUEST.pinCellRadius, gap: REQUEST.pinGap, dot: REQUEST.pinDot, labelGap: 10 }
+    : { width: AUTH.pinCellWidth, height: AUTH.pinCellHeight, radius: AUTH.pinCellRadius, gap: AUTH.pinGap, dot: AUTH.pinDot, labelGap: 6 };
   const [focused, setFocused] = useState(false);
   const cells = Math.min(maxLength, Math.max(minLength, value.length));
   const active = focused && value.length < cells ? value.length : -1;
 
   return (
-    <View style={{ gap: 6 }}>
-      {label ? <FieldLabel>{label}</FieldLabel> : null}
-      <View style={{ flexDirection: 'row', gap: AUTH.pinGap }}>
+    <View style={{ gap: g.labelGap }}>
+      {label ? <FieldLabel size={size}>{label}</FieldLabel> : null}
+      <View style={{ flexDirection: 'row', gap: g.gap }}>
         {Array.from({ length: cells }, (_, index) => {
           const current = index === active;
           return (
             <View
               key={index}
               style={{
-                width: AUTH.pinCellWidth,
-                height: AUTH.pinCellHeight,
-                borderRadius: AUTH.pinCellRadius,
+                width: g.width,
+                height: g.height,
+                borderRadius: g.radius,
                 borderWidth: current ? 1.5 : 1,
                 borderColor: invalid ? c.red : current ? c.blue : c.border,
                 backgroundColor: c.surface,
@@ -56,7 +62,7 @@ export function PinField({
             >
               {index < value.length ? (
                 <View
-                  style={{ width: AUTH.pinDot, height: AUTH.pinDot, borderRadius: 999, backgroundColor: c.ink }}
+                  style={{ width: g.dot, height: g.dot, borderRadius: 999, backgroundColor: c.ink }}
                 />
               ) : null}
             </View>
