@@ -142,8 +142,18 @@ export function Pill({ children, color = 'gray', style }) {
 }
 
 // ─── Avatar (hexagonal, initials) ─────────────────────────────────────────────
-export function Avatar({ name = '', size = 40, color = 'green' }) {
+// `variant="soft"` — круг на бледно-синем с navy-инициалами (карточка ребёнка на S6); по умолчанию —
+// шестигранник с заливкой, как в остальном приложении.
+export function Avatar({ name = '', size = 40, color = 'green', variant = 'hex' }) {
   const { c } = useTheme();
+  if (variant === 'soft') {
+    const letters = name.split(' ').map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+    return (
+      <View style={{ width: size, height: size, borderRadius: 999, backgroundColor: c.blueSoft, alignItems: 'center', justifyContent: 'center' }}>
+        <Txt style={{ color: c.blueInk, fontWeight: '700', fontSize: REQUEST.rowTitleSize, lineHeight: REQUEST.rowTitleLine }}>{letters}</Txt>
+      </View>
+    );
+  }
   const fill = { green: c.green, blue: c.blue, red: c.red, gold: c.gold }[color] || c.green;
   const initials = name
     .split(' ')
@@ -210,6 +220,8 @@ const BTN_SIZES = {
   // Маленькая круглая кнопка под значением — «Скопировать» под номером заявки (A5): серая рамка,
   // navy-подпись, значок слева.
   pill: { height: REQUEST.pillHeight, paddingVertical: 0, paddingHorizontal: 16, radius: 999, fontSize: 14, weight: '600', border: 1, neutral: true },
+  // Главное действие без заливки — «Обновить статус» внизу S2: во всю ширину, 50, navy-контур.
+  cta: { height: REQUEST.outlineCtaHeight, paddingVertical: 0, paddingHorizontal: 24, radius: 999, fontSize: REQUEST.outlineCtaText, weight: '700', border: 1 },
 };
 
 export function OutlineButton({ children, onPress, disabled = false, size = 'sm', icon, style }) {
@@ -682,10 +694,11 @@ export function Banner({ icon, children, tone = 'soft', size = 'md', style }) {
   const danger = tone === 'danger';
   const warning = tone === 'warning';
   const quiet = info || danger || warning;
-  const fg = solid ? '#fff' : info ? c.ink2 : danger ? c.red : warning ? c.warnInk : c.green;
-  const iconColor = info ? c.blueInk : warning ? c.green : fg;
-  const bg = solid ? c.green : info ? c.blueSoft : danger ? c.redSoft : c.greenSoft;
   const lg = size === 'lg';
+  // У крупной плашки (формы заявки) причина отказа — тёмно-красным, значок остаётся ярким (S5).
+  const fg = solid ? '#fff' : info ? c.ink2 : danger ? (lg ? c.dangerInk : c.red) : warning ? c.warnInk : c.green;
+  const iconColor = info ? c.blueInk : warning ? c.green : danger ? c.red : fg;
+  const bg = solid ? c.green : info ? c.blueSoft : danger ? c.redSoft : c.greenSoft;
   return (
     <View
       style={[

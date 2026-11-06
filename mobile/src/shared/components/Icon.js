@@ -4,6 +4,14 @@ import { InkCtx } from './Txt';
 
 // Line icon set (24px grid) — direct port of the SVG paths from web `ds.jsx`.
 const ICONS = {
+  // Отклонённая заявка (S4): лист с крестом, как у lucide `file-x`.
+  fileX: (p) => (
+    <G>
+      <Path {...p} d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+      <Path {...p} d="M14 2v4a2 2 0 0 0 2 2h4" />
+      <Path {...p} d="M14.5 12.5l-5 5M9.5 12.5l5 5" />
+    </G>
+  ),
   // «Скопировать» (A5): два листа со смещением, как у lucide `copy`.
   copy: (p) => (
     <G>

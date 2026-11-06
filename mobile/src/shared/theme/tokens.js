@@ -106,6 +106,16 @@ export const REQUEST = {
   pinTextSize: 20, pinTextLine: 25, pinTracking: 6,
   linkSize: 15, linkLine: 19, quietLinkSize: 13, quietLinkLine: 17,
   rowTitleSize: 15, rowTitleLine: 19, rowTextSize: 14, rowTextLine: 20,
+  // Статус заявки S1–S6 (2460:1568 … 2460:1809): заголовок 26/33, шкала, сводка, шаги, итог.
+  statusTitleSize: 26, statusTitleLine: 33, statusTitleTracking: -0.4, statusLeadGap: 10,
+  timelineDot: 22, timelineRing: 6, timelineTodoBorder: 2, timelineLine: 2, timelineRowGap: 16,
+  summaryPadV: 15, summaryRowGap: 10, summarySize: 14, summaryLine: 18,
+  tableRowPadV: 14, tableSize: 15, tableLine: 19,
+  stepBadge: 28, stepGap: 16,
+  problemSize: 56, problemRadius: 18, problemIcon: 28,
+  reasonSize: 16, reasonLine: 24,
+  outlineCtaHeight: 50, outlineCtaText: 16,
+  avatarSize: 44, nameSize: 16, nameLine: 20,
 };
 
 // Запуск приложения (заметки дизайнера рядом с M1 и кадр «Повторный запуск» 2468:22): знак по

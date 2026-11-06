@@ -152,7 +152,8 @@ test('экран статуса — по этапу и следующему ша
   assert.equal(m.statusScreen({ ...base, stage: 'DRAFT' }).kind, 'draft');
   assert.equal(m.statusScreen({ ...base, stage: 'PENDING' }).title, 'Школа проверяет данные');
   const parentPending = m.statusScreen({ ...base, role: 'PARENT', fullName: 'Кабылова Амина Сериковна', stage: 'PENDING' });
-  assert.equal(parentPending.title, 'Амина, заявка ещё на проверке');
+  // «на проверке» не разрывается: предлог не остаётся в конце строки (S6).
+  assert.equal(parentPending.title, 'Амина, заявка ещё на\u00a0проверке');
 
   const byCode = m.statusScreen({ ...base, stage: 'APPROVED_PENDING_ACTIVATION', nextStep: 'SIGN_IN_WITH_CODE' });
   assert.equal(byCode.text, 'Вы ученик 5 «А». Осталось войти в первый раз.');

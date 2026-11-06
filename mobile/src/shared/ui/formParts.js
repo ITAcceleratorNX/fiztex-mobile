@@ -376,23 +376,171 @@ export function ChoiceCard({ icon, tone, title, children, onPress, size = 'md' }
  * Крупный круглый значок над заголовком экрана-итога (A5 «отправлена», S6 «на проверке»).
  * `large` — 72 со значком 34, как на A5.
  */
-export function StatusMark({ icon, tone, large = false }) {
+export function StatusMark({ icon, tone, large = false, square = false }) {
+  // `square` — значок 56 на радиусе 18 у левого края, над заголовком отказа (S4).
   const { c } = useTheme();
   const [bg, fg] = toneColors(c, tone);
-  const side = large ? REQUEST.markSize : AUTH.markSize;
+  const side = square ? REQUEST.problemSize : large ? REQUEST.markSize : AUTH.markSize;
   return (
     <View
       style={{
         width: side,
         height: side,
-        borderRadius: 999,
+        borderRadius: square ? REQUEST.problemRadius : 999,
         backgroundColor: bg,
         alignItems: 'center',
         justifyContent: 'center',
-        alignSelf: 'center',
+        alignSelf: square ? 'flex-start' : 'center',
       }}
     >
-      <Icon name={icon} size={large ? REQUEST.markIconSize : AUTH.markIconSize} color={fg} strokeWidth={2.2} />
+      <Icon
+        name={icon}
+        size={square ? REQUEST.problemIcon : large ? REQUEST.markIconSize : AUTH.markIconSize}
+        color={fg}
+        strokeWidth={2.2}
+      />
     </View>
   );
 }
+
+/**
+ * Шкала рассмотрения (S2): точка 22 — пройдено (зелёная с галочкой), сейчас (белая с оранжевым
+ * кольцом 6), впереди (белая с серой рамкой); между точками черта 2, зелёная за пройденным шагом.
+ * `steps` — `{ title, caption?, state: 'done' | 'current' | 'todo' }`.
+ */
+export function StatusTimeline({ steps }) {
+  const { c } = useTheme();
+  return (
+    <Card style={{ paddingVertical: REQUEST.choicePadV }}>
+      {steps.map((step, index) => {
+        const last = index === steps.length - 1;
+        const done = step.state === 'done';
+        const current = step.state === 'current';
+        return (
+          <View key={step.title} style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={{ alignItems: 'center', width: REQUEST.timelineDot }}>
+              <View
+                style={{
+                  width: REQUEST.timelineDot,
+                  height: REQUEST.timelineDot,
+                  borderRadius: 999,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: done ? c.success : c.surface,
+                  borderWidth: done ? 0 : current ? REQUEST.timelineRing : REQUEST.timelineTodoBorder,
+                  borderColor: current ? c.green : c.borderStrong,
+                }}
+              >
+                {done ? <Icon name="check" size={12} color={c.heroInk} strokeWidth={3} /> : null}
+              </View>
+              {!last ? (
+                <View style={{ width: REQUEST.timelineLine, flex: 1, minHeight: 12, backgroundColor: done ? c.success : c.border }} />
+              ) : null}
+            </View>
+            <View style={{ flex: 1, minHeight: REQUEST.timelineDot, paddingBottom: last ? 0 : REQUEST.timelineRowGap, justifyContent: last ? 'center' : 'flex-start' }}>
+              <Txt
+                style={{
+                  fontSize: REQUEST.rowTitleSize,
+                  lineHeight: REQUEST.rowTitleLine,
+                  fontWeight: '600',
+                  color: step.state === 'todo' ? c.ink3 : c.ink,
+                }}
+              >
+                {step.title}
+              </Txt>
+              {step.caption ? (
+                <Txt style={{ fontSize: REQUEST.hintSize, lineHeight: REQUEST.hintLine, color: c.inkMuted }}>{step.caption}</Txt>
+              ) : null}
+            </View>
+          </View>
+        );
+      })}
+    </Card>
+  );
+}
+
+/**
+ * Сводка заявки. `compact` — строки 14/18 без черт (S2, «что школа видит сейчас»); `table` — строки
+ * 15/19 с чертами (S4 «Что вы отправили»: таблица, которую сверяют с причиной отказа). `rows` —
+ * `{ label, value, muted? }`; `muted` — пустое значение серым («Не указан»).
+ */
+export function SummaryCard({ rows, variant = 'compact' }) {
+  const { c } = useTheme();
+  const table = variant === 'table';
+  if (!table) {
+    return (
+      <Card style={{ paddingVertical: REQUEST.summaryPadV, gap: REQUEST.summaryRowGap }}>
+        {rows.map((row) => (
+          <View key={row.label} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+            <Txt style={{ flex: 1, fontSize: REQUEST.summarySize, lineHeight: REQUEST.summaryLine, color: c.inkMuted }}>{row.label}</Txt>
+            <Txt style={{ flexShrink: 1, fontSize: REQUEST.summarySize, lineHeight: REQUEST.summaryLine, fontWeight: '600', textAlign: 'right' }}>
+              {row.value}
+            </Txt>
+          </View>
+        ))}
+      </Card>
+    );
+  }
+  return (
+    <Card padded={false}>
+      {rows.map((row, index) => (
+        <View
+          key={row.label}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            paddingHorizontal: REQUEST.fieldInset,
+            paddingVertical: REQUEST.tableRowPadV,
+            borderTopWidth: index === 0 ? 0 : 1,
+            borderTopColor: c.border,
+          }}
+        >
+          <Txt style={{ flex: 1, fontSize: REQUEST.tableSize, lineHeight: REQUEST.tableLine, color: c.inkMuted }}>{row.label}</Txt>
+          <Txt
+            style={{
+              flexShrink: 1,
+              fontSize: REQUEST.tableSize,
+              lineHeight: REQUEST.tableLine,
+              fontWeight: '600',
+              textAlign: 'right',
+              color: row.muted ? c.ink3 : c.ink,
+            }}
+          >
+            {row.value}
+          </Txt>
+        </View>
+      ))}
+    </Card>
+  );
+}
+
+/** Шаги первого входа (S3): navy-кружок 28 с номером, заголовок 15/19, пояснение 14/20. */
+export function NumberedSteps({ steps }) {
+  const { c } = useTheme();
+  return (
+    <Card style={{ gap: REQUEST.stepGap }}>
+      {steps.map((step, index) => (
+        <View key={step.title} style={{ flexDirection: 'row', gap: 12 }}>
+          <View
+            style={{
+              width: REQUEST.stepBadge,
+              height: REQUEST.stepBadge,
+              borderRadius: 999,
+              backgroundColor: c.blue,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Txt style={{ fontSize: REQUEST.labelSize, lineHeight: REQUEST.labelLine, fontWeight: '700', color: c.heroInk }}>{index + 1}</Txt>
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Txt style={{ fontSize: REQUEST.rowTitleSize, lineHeight: REQUEST.rowTitleLine, fontWeight: '700' }}>{step.title}</Txt>
+            <Txt style={{ marginTop: 2, fontSize: REQUEST.rowTextSize, lineHeight: REQUEST.rowTextLine, color: c.ink2 }}>{step.text}</Txt>
+          </View>
+        </View>
+      ))}
+    </Card>
+  );
+}
+

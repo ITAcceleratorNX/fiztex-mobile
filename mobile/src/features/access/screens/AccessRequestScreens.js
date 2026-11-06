@@ -12,7 +12,8 @@ import {
   Avatar, Banner, Card, FieldLabel, OutlineButton, PasswordField, PrimaryButton, TextField,
 } from '@shared/components/ui';
 import {
-  ChoiceCard, FormDivider, FormError, FormPage, FormSectionLabel, Hint, IconBadge, Rule, StatusMark,
+  ChoiceCard, FormDivider, FormError, FormPage, FormSectionLabel, Hint, NumberedSteps, Rule, StatusMark,
+  StatusTimeline, SummaryCard,
 } from '@shared/ui/formParts';
 import { accessRequestsApi } from '@shared/api/accessRequestsApi';
 import { registerDeviceForAccessRequest } from '@shared/push/registration';
@@ -29,15 +30,20 @@ const CLASS_KEYBOARD = Platform.select({ ios: 'numbers-and-punctuation', default
 
 const UNREACHABLE = 'Не удалось связаться со школой. Проверьте интернет и попробуйте ещё раз.';
 
-function Title({ children, center = false, done = false }) {
-  // `done` — заголовок экрана-итога A5: 28/36, 800, сжатие −0,5.
+// Заголовок экрана: `done` — итог A5 (28/36), `status` — экраны статуса S2–S6 (26/33); оба 800
+// со сжатием, как в макете.
+function Title({ children, center = false, done = false, status = false }) {
+  const size = status
+    ? { fontSize: REQUEST.statusTitleSize, lineHeight: REQUEST.statusTitleLine, letterSpacing: REQUEST.statusTitleTracking }
+    : done
+      ? { fontSize: REQUEST.doneTitleSize, lineHeight: REQUEST.doneTitleLine, letterSpacing: REQUEST.titleTracking }
+      : { fontSize: AUTH.titleSize, lineHeight: AUTH.titleLine, letterSpacing: 0 };
   return (
     <Txt
+      accessibilityRole="header"
       style={{
-        fontSize: done ? REQUEST.doneTitleSize : AUTH.titleSize,
-        lineHeight: done ? REQUEST.doneTitleLine : AUTH.titleLine,
-        fontWeight: done ? '800' : '700',
-        letterSpacing: done ? REQUEST.titleTracking : 0,
+        ...size,
+        fontWeight: done || status ? '800' : '700',
         textAlign: center ? 'center' : 'left',
       }}
     >
@@ -52,8 +58,8 @@ function Lead({ children, center = false, gap = 4 }) {
     <Txt
       style={{
         marginTop: gap,
-        fontSize: AUTH.bodySize,
-        lineHeight: AUTH.bodyLine,
+        fontSize: REQUEST.leadSize,
+        lineHeight: REQUEST.leadLine,
         color: c.ink2,
         textAlign: center ? 'center' : 'left',
       }}
@@ -456,102 +462,6 @@ export function AccessRequestSent({ requestId, onDone }) {
   );
 }
 
-function Timeline({ steps }) {
-  const { c } = useTheme();
-  return steps.map((step, index) => {
-    const last = index === steps.length - 1;
-    const done = step.state === 'done';
-    const current = step.state === 'current';
-    return (
-      <View key={step.title} style={{ flexDirection: 'row', gap: 12 }}>
-        <View style={{ alignItems: 'center' }}>
-          <View
-            style={{
-              width: AUTH.stepDot,
-              height: AUTH.stepDot,
-              borderRadius: 999,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: done ? c.success : c.surface,
-              borderWidth: done ? 0 : 2,
-              borderColor: current ? c.green : c.border,
-            }}
-          >
-            {done ? <Icon name="check" size={12} color={c.heroInk} strokeWidth={3} /> : null}
-            {current ? (
-              <View style={{ width: AUTH.stepDot / 3, height: AUTH.stepDot / 3, borderRadius: 999, backgroundColor: c.green }} />
-            ) : null}
-          </View>
-          {!last ? (
-            <View style={{ width: AUTH.stepLine, flex: 1, minHeight: 12, backgroundColor: done ? c.success : c.border }} />
-          ) : null}
-        </View>
-        <View style={{ flex: 1, paddingBottom: last ? 0 : AUTH.gap }}>
-          <Txt style={{ fontSize: AUTH.bodySize, fontWeight: '600', color: step.state === 'todo' ? c.ink3 : c.ink }}>
-            {step.title}
-          </Txt>
-          {step.caption ? (
-            <Txt style={{ fontSize: AUTH.captionSize, color: c.ink2, marginTop: 2 }}>{step.caption}</Txt>
-          ) : null}
-        </View>
-      </View>
-    );
-  });
-}
-
-function Summary({ rows }) {
-  const { c } = useTheme();
-  return (
-    <Card padded={false}>
-      {rows.map((row, index) => (
-        <View
-          key={row.label}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 12,
-            paddingHorizontal: AUTH.gutter,
-            paddingVertical: 12,
-            borderTopWidth: index === 0 ? 0 : 1,
-            borderTopColor: c.border,
-          }}
-        >
-          <Txt style={{ flex: 1, fontSize: AUTH.captionSize, color: c.ink2 }}>{row.label}</Txt>
-          <Txt style={{ flexShrink: 1, fontSize: AUTH.bodySize, fontWeight: '600', textAlign: 'right' }}>{row.value}</Txt>
-        </View>
-      ))}
-    </Card>
-  );
-}
-
-function NumberedSteps({ steps }) {
-  const { c } = useTheme();
-  return (
-    <Card style={{ gap: AUTH.gap }}>
-      {steps.map((step, index) => (
-        <View key={step.title} style={{ flexDirection: 'row', gap: 12 }}>
-          <View
-            style={{
-              width: AUTH.stepDot + 8,
-              height: AUTH.stepDot + 8,
-              borderRadius: 999,
-              backgroundColor: c.blue,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Txt style={{ fontSize: AUTH.captionSize, fontWeight: '700', color: c.heroInk }}>{index + 1}</Txt>
-          </View>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Txt style={{ fontSize: AUTH.bodySize, fontWeight: '700' }}>{step.title}</Txt>
-            <Txt style={{ marginTop: 2, fontSize: AUTH.bodySize, lineHeight: AUTH.bodyLine, color: c.ink2 }}>{step.text}</Txt>
-          </View>
-        </View>
-      ))}
-    </Card>
-  );
-}
-
 /**
  * S1–S6: статус заявки этого телефона.
  *
@@ -598,9 +508,12 @@ export function AccessRequestStatus({ onBack, onSignIn, onApply, onContinue, onR
     }, [load]),
   );
 
+  // Все экраны статуса — на макетной сетке заявки с шагом 24 (S1–S6).
+  const page = { layout: 'request', gap: REQUEST.stepGap, onBack };
+
   if (state.phase === 'loading') {
     return (
-      <FormPage onBack={onBack} large={false} title="Статус заявки">
+      <FormPage {...page} large={false} title="Статус заявки">
         <ActivityIndicator style={{ marginTop: AUTH.sectionGap }} />
       </FormPage>
     );
@@ -610,17 +523,17 @@ export function AccessRequestStatus({ onBack, onSignIn, onApply, onContinue, onR
     const gone = state.phase === 'gone';
     return (
       <FormPage
-        onBack={onBack}
+        {...page}
         title="Статус заявки"
         subtitle={gone ? 'Заявка больше не найдена.' : 'На этом телефоне заявок нет.'}
-        footer={<PrimaryButton onPress={onApply}>Отправить заявку</PrimaryButton>}
+        footer={<PrimaryButton size="lg" onPress={onApply}>Отправить заявку</PrimaryButton>}
       >
-        <Lead>
+        <Lead gap={0}>
           {gone
             ? 'После решения школы заявка видна 30 дней — этот срок прошёл. Если доступ одобрили, входите как обычно.'
             : 'Статус виден на телефоне, с которого заявку отправили: приложение запоминает её само. По номеру статус не узнать — так чужие данные никто не посмотрит.'}
         </Lead>
-        <Banner tone="info" icon="info">
+        <Banner tone="info" icon="info" size="lg">
           Указали в заявке телефон? Когда школа её одобрит, войдите по нему и паролю из заявки.
         </Banner>
       </FormPage>
@@ -629,7 +542,11 @@ export function AccessRequestStatus({ onBack, onSignIn, onApply, onContinue, onR
 
   if (state.phase === 'error') {
     return (
-      <FormPage onBack={onBack} title="Статус заявки" footer={<OutlineButton size="lg" onPress={() => load()}>Повторить</OutlineButton>}>
+      <FormPage
+        {...page}
+        title="Статус заявки"
+        footer={<OutlineButton size="cta" onPress={() => load()}>Повторить</OutlineButton>}
+      >
         <FormError>{state.message}</FormError>
       </FormPage>
     );
@@ -640,33 +557,48 @@ export function AccessRequestStatus({ onBack, onSignIn, onApply, onContinue, onR
   const note = validUntilNote(status);
   const header = requestId ? `Заявка № ${requestId}` : 'Статус заявки';
   const refresh = () => load({ quiet: true });
+  const heading = (
+    <View>
+      <Title status>{screen.title}</Title>
+      <Lead gap={REQUEST.statusLeadGap}>{screen.text}</Lead>
+    </View>
+  );
 
   if (screen.kind === 'pending' && screen.parent) {
+    // S6: в макете — родитель, который уже вошёл. До одобрения войти нельзя, поэтому это
+    // ожидание заявки родителя: та же раскладка, без «Выйти из аккаунта».
     return (
       <FormPage
-        onBack={onBack}
+        {...page}
         large={false}
         title={header}
         footer={
-          <PrimaryButton disabled={refreshing} onPress={refresh}>
+          <PrimaryButton size="lg" disabled={refreshing} onPress={refresh}>
             {refreshing ? <ActivityIndicator color={c.heroInk} /> : 'Обновить статус'}
           </PrimaryButton>
         }
       >
-        <View style={{ height: AUTH.gap }} />
-        <StatusMark icon="clock" tone="orange" />
-        <View>
-          <Title center>{screen.title}</Title>
-          <Lead center>{screen.text}</Lead>
+        <View style={{ alignItems: 'center', gap: AUTH.gap }}>
+          <StatusMark icon="clock" tone="orange" large />
+          <View>
+            <Title center status>{screen.title}</Title>
+            <Lead center gap={REQUEST.statusLeadGap}>{screen.text}</Lead>
+          </View>
         </View>
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <Avatar name={status.childFullName || ''} size={AUTH.avatarSize} color="blue" />
+          <Avatar name={status.childFullName || ''} size={REQUEST.avatarSize} variant="soft" />
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Txt style={{ fontSize: AUTH.bodySize, fontWeight: '700' }}>{shortName(status.childFullName)}</Txt>
-            <Hint>{[classNameLabel(status.childClassName), requestId ? `заявка № ${requestId}` : null].filter(Boolean).join(' · ')}</Hint>
+            <Txt style={{ fontSize: REQUEST.nameSize, lineHeight: REQUEST.nameLine, fontWeight: '700' }}>
+              {shortName(status.childFullName)}
+            </Txt>
+            <Txt style={{ fontSize: REQUEST.summarySize, lineHeight: REQUEST.summaryLine, color: c.inkMuted }}>
+              {[classNameLabel(status.childClassName), requestId ? `заявка № ${requestId}` : null].filter(Boolean).join(' · ')}
+            </Txt>
           </View>
         </Card>
-        <Hint center>Пришлём уведомление, когда школа примет решение, — если уведомления разрешены.</Hint>
+        <Txt style={{ textAlign: 'center', fontSize: REQUEST.rowTextSize, lineHeight: REQUEST.rowTextLine, color: c.inkMuted }}>
+          Пришлём уведомление, когда школа примет решение, — если уведомления разрешены.
+        </Txt>
       </FormPage>
     );
   }
@@ -674,23 +606,18 @@ export function AccessRequestStatus({ onBack, onSignIn, onApply, onContinue, onR
   if (screen.kind === 'pending') {
     return (
       <FormPage
-        onBack={onBack}
+        {...page}
         large={false}
         title={header}
         footer={
-          <OutlineButton size="lg" disabled={refreshing} onPress={refresh}>
+          <OutlineButton size="cta" disabled={refreshing} onPress={refresh}>
             {refreshing ? 'Обновляем…' : 'Обновить статус'}
           </OutlineButton>
         }
       >
-        <View>
-          <Title>{screen.title}</Title>
-          <Lead>{screen.text}</Lead>
-        </View>
-        <Card>
-          <Timeline steps={reviewTimeline(status)} />
-        </Card>
-        <Summary rows={summaryRows(status)} />
+        {heading}
+        <StatusTimeline steps={reviewTimeline(status)} />
+        <SummaryCard rows={summaryRows(status)} />
       </FormPage>
     );
   }
@@ -699,19 +626,16 @@ export function AccessRequestStatus({ onBack, onSignIn, onApply, onContinue, onR
     const byCode = status.nextStep === 'ACTIVATE_WITH_CODE';
     return (
       <FormPage
-        onBack={onBack}
+        {...page}
         large={false}
         title={header}
         footer={
-          <PrimaryButton onPress={byCode ? onRecovery : onSignIn}>
+          <PrimaryButton size="lg" onPress={byCode ? onRecovery : onSignIn}>
             {byCode ? 'Ввести код от школы' : 'Перейти ко входу'}
           </PrimaryButton>
         }
       >
-        <View>
-          <Title>{screen.title}</Title>
-          <Lead>{screen.text}</Lead>
-        </View>
+        {heading}
         {screen.steps.length ? <NumberedSteps steps={screen.steps} /> : null}
         {note ? <Hint>{note}</Hint> : null}
       </FormPage>
@@ -719,25 +643,35 @@ export function AccessRequestStatus({ onBack, onSignIn, onApply, onContinue, onR
   }
 
   if (screen.kind === 'rejected') {
+    // S4: причина отказа — главный текст экрана (16/24), а не подзаголовок: ради неё сюда и пришли.
     return (
       <FormPage
-        onBack={onBack}
+        {...page}
         large={false}
         title={header}
         footer={
           status.resubmitAllowed ? (
-            <PrimaryButton onPress={() => onContinue(status, 'resubmit')}>Исправить и отправить</PrimaryButton>
+            <PrimaryButton size="lg" onPress={() => onContinue(status, 'resubmit')}>Исправить и отправить</PrimaryButton>
           ) : null
         }
       >
-        <IconBadge icon="x" tone="danger" />
-        <View>
-          <Title>{screen.title}</Title>
-          <Lead>{screen.text}</Lead>
-          {screen.meta ? <Hint>{screen.meta}</Hint> : null}
+        <View style={{ gap: AUTH.gap }}>
+          <StatusMark icon="fileX" tone="danger" square />
+          <View style={{ gap: 8 }}>
+            <Title status>{screen.title}</Title>
+            <Txt style={{ fontSize: REQUEST.reasonSize, lineHeight: REQUEST.reasonLine }}>{screen.text}</Txt>
+            {screen.meta ? (
+              <Txt style={{ fontSize: REQUEST.hintSize, lineHeight: REQUEST.hintLine, color: c.ink3 }}>{screen.meta}</Txt>
+            ) : null}
+          </View>
         </View>
-        <FieldLabel>Что вы отправили</FieldLabel>
-        <Summary rows={summaryRows(status)} />
+        <View style={{ gap: 10 }}>
+          <FieldLabel size="lg">Что вы отправили</FieldLabel>
+          <SummaryCard
+            variant="table"
+            rows={summaryRows(status).map((row) => ({ ...row, muted: row.value === 'Не указан' || row.value === '—' }))}
+          />
+        </View>
         {note ? <Hint>{note}</Hint> : null}
       </FormPage>
     );
@@ -746,23 +680,20 @@ export function AccessRequestStatus({ onBack, onSignIn, onApply, onContinue, onR
   if (screen.kind === 'draft') {
     return (
       <FormPage
-        onBack={onBack}
+        {...page}
         large={false}
         title={header}
-        footer={<PrimaryButton onPress={() => onContinue(status, 'draft')}>Продолжить заполнение</PrimaryButton>}
+        footer={<PrimaryButton size="lg" onPress={() => onContinue(status, 'draft')}>Продолжить заполнение</PrimaryButton>}
       >
-        <View>
-          <Title>{screen.title}</Title>
-          <Lead>{screen.text}</Lead>
-        </View>
-        <Summary rows={summaryRows(status)} />
+        {heading}
+        <SummaryCard rows={summaryRows(status)} />
       </FormPage>
     );
   }
 
   return (
-    <FormPage onBack={onBack} title={screen.title}>
-      <Lead>{screen.text}</Lead>
+    <FormPage {...page} title={screen.title}>
+      <Lead gap={0}>{screen.text}</Lead>
     </FormPage>
   );
 }
