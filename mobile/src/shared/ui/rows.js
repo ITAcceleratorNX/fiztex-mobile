@@ -262,9 +262,20 @@ export function LessonRow({ lesson, onPress, teacherView = false, attendance = n
  * `onEdit` omitted means the viewer has no edit right — the pencil disappears
  * rather than being shown disabled, so the card stays honest about what it offers.
  */
-export function EditableField({ label, value, placeholder, addLabel, onEdit, footer }) {
+/**
+ * Подпись, значение и карандаш правки. `renderValue(value, style)` — своё представление
+ * заполненного значения (например, `RichText` с рисунками внутри комментария); без него
+ * значение — обычный текст.
+ */
+export function EditableField({ label, value, placeholder, addLabel, onEdit, footer, renderValue }) {
   const { c } = useTheme();
   const filled = Boolean(value && String(value).trim());
+  const valueStyle = {
+    fontSize: filled ? 14 : 13,
+    fontWeight: filled ? '500' : '400',
+    lineHeight: 19,
+    color: filled ? c.ink : c.ink3,
+  };
 
   return (
     <View style={{ gap: 4 }}>
@@ -281,16 +292,11 @@ export function EditableField({ label, value, placeholder, addLabel, onEdit, foo
           >
             {label}
           </Txt>
-          <Txt
-            style={{
-              fontSize: filled ? 14 : 13,
-              fontWeight: filled ? '500' : '400',
-              lineHeight: 19,
-              color: filled ? c.ink : c.ink3,
-            }}
-          >
-            {filled ? value : placeholder}
-          </Txt>
+          {filled && renderValue ? (
+            renderValue(value, valueStyle)
+          ) : (
+            <Txt style={valueStyle}>{filled ? value : placeholder}</Txt>
+          )}
         </View>
         {onEdit ? (
           <Pressable

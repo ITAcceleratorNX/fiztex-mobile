@@ -245,10 +245,18 @@ const scheduleWatermarkDark = {
 // должны подбирать собственную альфу, а в тёмной теме подложка нужна плотнее.
 const overlays = {
   modalBackdrop: 'rgba(15,23,42,0.38)',
+  // Полноэкранный просмотр рисунка: почти чёрная подложка и белые надписи в обеих темах —
+  // картинка должна читаться одинаково, какая бы тема ни стояла.
+  viewerBackdrop: 'rgba(0,0,0,0.94)',
+  viewerInk: '#FFFFFF',
+  viewerInkMuted: 'rgba(255,255,255,0.7)',
 };
 
 const overlaysDark = {
   modalBackdrop: 'rgba(2,6,23,0.66)',
+  viewerBackdrop: 'rgba(0,0,0,0.94)',
+  viewerInk: '#FFFFFF',
+  viewerInkMuted: 'rgba(255,255,255,0.7)',
 };
 
 const light = {

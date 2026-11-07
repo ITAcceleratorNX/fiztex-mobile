@@ -40,7 +40,8 @@ export function FormulaField({ value = '', onChangeText, profile = 'GENERAL', ed
   </View>;
 }
 
-function FormulaEditor({ editing, profile, onClose, onSave }) {
+/** Окно формулы (MathLive в WebView). Общее с `RichTextField`: формула в тексте со вставками — та же формула. */
+export function FormulaEditor({ editing, profile, onClose, onSave }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const web = useRef(null);

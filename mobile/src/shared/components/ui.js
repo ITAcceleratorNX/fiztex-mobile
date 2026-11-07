@@ -304,6 +304,9 @@ export function TextField({
         placeholderTextColor={c.ink3}
         editable={editable}
         multiline={multiline}
+        {...inputProps}
+        // После `inputProps`: свои `onFocus`/`onBlur` вызывающего не должны отключать
+        // подсветку поля — обёртки зовут их сами.
         onFocus={(event) => {
           setFocused(true);
           inputProps.onFocus?.(event);
@@ -312,7 +315,6 @@ export function TextField({
           setFocused(false);
           inputProps.onBlur?.(event);
         }}
-        {...inputProps}
         style={[
           {
             minHeight: multiline ? 92 : 46,

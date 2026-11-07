@@ -22,6 +22,7 @@ import {
 } from '@shared/api/lessonHomeworkState';
 import { useLessonGrades } from '@shared/hooks/useGrades';
 import { TextEditSheet } from '@shared/components/TextEditSheet';
+import { RichText } from '@shared/components/RichText';
 import { LessonCardFallback, LessonCardHeader } from './LessonCardStates';
 
 const TOPIC_MAX = 300;
@@ -312,6 +313,9 @@ export function LessonCardScreen({ nav, payload }) {
             placeholder="Комментария пока нет"
             addLabel="Добавить комментарий"
             onEdit={canEdit ? () => setSheet('comment') : undefined}
+            renderValue={(body, style) => (
+              <RichText text={body} embeds={lesson.comment?.embeds} onExpired={() => reload(true)} style={style} />
+            )}
             footer={
               lesson.comment
                 ? [lesson.comment.author, lesson.comment.stamp].filter(Boolean).join(' · ')
@@ -439,6 +443,8 @@ export function LessonCardScreen({ nav, payload }) {
         initialValue={lesson.comment?.body || ''}
         maxLength={COMMENT_MAX}
         multiline
+        embeds={lesson.comment?.embeds ?? []}
+        invalidEmbedId={editing.saveEmbedId}
         saving={editing.saving}
         error={editing.saveError}
         onSave={async (v) => {

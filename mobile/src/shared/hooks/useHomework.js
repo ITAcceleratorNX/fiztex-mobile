@@ -249,7 +249,11 @@ export function useChildHomework(homeworkId, childId) {
       const data = await homeworkApi.childOne(token, homeworkId, childId);
       setState({ loading: false, error: null, data });
     } catch (e) {
-      setState({ loading: false, error: errorKind(e), data: null });
+      // Тихое обновление (например, за свежими ссылками на рисунки) при сбое оставляет
+      // карточку как была, а не подменяет её экраном ошибки.
+      setState((prev) => (silent && prev.data
+        ? { ...prev, loading: false }
+        : { loading: false, error: errorKind(e), data: null }));
     }
   }, [token, homeworkId, childId]);
 
@@ -320,17 +324,23 @@ export function useHomeworkTest(homeworkId) {
   const clientToken = useRef(null);
   const sendingRef = useRef(false);
 
-  const load = useCallback(async () => {
+  // `silent === true` — перечитать вопросы за свежими ссылками на рисунки и файлы
+  // (CONTENT-EMBED-001), не убирая вопрос с экрана; сбой такого запроса вопросы не стирает.
+  // Строгое сравнение: `reload` отдают и в `onAction`, а там первым аргументом приходит событие.
+  const load = useCallback(async (silent) => {
+    const quiet = silent === true;
     if (!token || !homeworkId) {
       setState({ loading: false, error: null, questions: null });
       return;
     }
-    setState((prev) => ({ ...prev, loading: true, error: null }));
+    if (!quiet) setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
       const questions = await homeworkApi.myQuestions(token, homeworkId);
       setState({ loading: false, error: null, questions });
     } catch (e) {
-      setState({ loading: false, error: errorKind(e), questions: null });
+      setState((prev) => (quiet && prev.questions
+        ? { ...prev, loading: false }
+        : { loading: false, error: errorKind(e), questions: null }));
     }
   }, [token, homeworkId]);
 

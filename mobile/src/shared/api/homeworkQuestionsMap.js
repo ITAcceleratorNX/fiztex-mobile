@@ -52,6 +52,9 @@ export function toDraft(question) {
     id: question.id,
     imageId: question.imageId,
     imageUrl: question.imageUrl,
+    // Рисунки и файлы внутри текста вопроса (CONTENT-EMBED-001): только для показа в
+    // редакторе, на сервер не уходят — там их описывает сам текст.
+    embeds: Array.isArray(question.embeds) ? question.embeds : [],
     type: question.type ?? 'SINGLE_CHOICE',
     text: question.text ?? '',
     maxScore: Number(question.maxScore ?? 1),
