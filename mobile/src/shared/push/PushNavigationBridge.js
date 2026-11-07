@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { StackActions } from '@react-navigation/native';
 import { useAuth } from '@features/auth/AuthContext';
 import { requestChildSelection } from '@shared/state/SelectedChild';
 import { navigationArgs, readyToNavigate, resolvePushTarget, responseData } from './routes';
@@ -77,7 +78,11 @@ export function PushNavigationBridge({ navigationRef, rootRouteFor }) {
     const target = resolvePushTarget(pending.data, { role, accountId, rootRoute: expected });
     if (target.type !== 'open') return;
     if (target.childId != null) requestChildSelection(target.childId);
-    navigationRef.navigate(...navigationArgs(target));
+    // Вкладка — это возврат к уже открытым вкладкам, а не новый экран. В React Navigation 7
+    // `navigate` положил бы поверх стека роли второй `Tabs` (та же причина, что в `makeNav`),
+    // и «назад» с главной уводило бы на экран, с которого пуш застал человека.
+    if (target.tab) navigationRef.dispatch(StackActions.popTo('Tabs', { screen: target.tab }));
+    else navigationRef.navigate(...navigationArgs(target));
   }, [pending, isAuthenticated, role, accountId, isDemo, rootRoute, rootRouteFor, navigationRef]);
 
   return null;
