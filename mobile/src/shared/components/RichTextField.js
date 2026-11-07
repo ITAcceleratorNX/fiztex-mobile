@@ -226,8 +226,11 @@ export function RichTextField({
                 ? { block: row.block, offset: event.nativeEvent.selection.start }
                 : { slot: row.slot };
             }}
-            placeholder={only ? placeholder : row.type === 'slot' ? 'Текст' : undefined}
-            accessibilityLabel={only ? label || placeholder : row.type === 'slot' ? 'Текст рядом со вставкой' : undefined}
+            // Подсказка одна у текстовой строки и у пустого места: поле с тем же ключом меняет
+            // тип (вставка сдвигает строки, опустевший абзац становится пустым местом), а iOS не
+            // перерисовывает подсказку, если вместе со значением меняется и она сама.
+            placeholder={only ? placeholder : 'Текст'}
+            accessibilityLabel={only ? label || placeholder : 'Текст рядом со вставкой'}
             multiline
             editable={!locked}
             maxLength={budget}
@@ -471,7 +474,12 @@ const IMAGE_EXTENSION = {
 /**
  * Рисунок из галереи или с камеры. На iOS галерея по умолчанию отдаёт HEIC, который сервер
  * как рисунок не примет (A§3.2) — поэтому `Compatible`: система сама перекодирует его в JPEG.
- * Отказ в доступе — понятная фраза, а не исключение: текст поля при этом не меняется.
+ *
+ * Разрешение спрашивается только у камеры. Галерея — системный выбор фото (PHPicker на iOS 14+,
+ * Photo Picker на Android): приложение получает лишь выбранный снимок, и доступ ко всей медиатеке
+ * ему не нужен. Спрашивать его значило бы показать учителю «полный доступ к медиатеке», а после
+ * отказа не дать вставить фото вовсе, хотя выбор работал бы и так (проверено на симуляторе).
+ * Отказ камере — понятная фраза, а не исключение: текст поля при этом не меняется.
  */
 async function pickImage(source) {
   if (source === 'camera') {
@@ -479,10 +487,6 @@ async function pickImage(source) {
     if (!permission.granted) return { denied: 'Разрешите доступ к камере в настройках телефона. Текст не изменился.' };
     const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.85 });
     return result.canceled ? null : fromImageAsset(result.assets?.[0]);
-  }
-  if (Platform.OS === 'ios') {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return { denied: 'Разрешите доступ к фото в настройках телефона. Текст не изменился.' };
   }
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
