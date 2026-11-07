@@ -36,6 +36,36 @@ function notifySessionExpired() {
   }
 }
 
+/**
+ * Сервер требует сменить временный пароль (403 `PASSWORD_CHANGE_REQUIRED`, AUTH-BE-001 §9).
+ *
+ * Обычно приложение знает это ещё на входе — по `mustChangePassword` в ответе. Сигнал нужен
+ * для сессии, открытой без отметки (вход старой версией приложения через `/auth/login`):
+ * иначе человек остался бы в разделах, где на любой запрос «нет доступа», без пути к смене.
+ */
+export const PASSWORD_CHANGE_REQUIRED = 'PASSWORD_CHANGE_REQUIRED';
+
+const passwordChangeListeners = new Set();
+
+/** Subscribe to the server's "change the temporary password first" answer. Returns unsubscribe. */
+export function onPasswordChangeRequired(listener) {
+  passwordChangeListeners.add(listener);
+  return () => passwordChangeListeners.delete(listener);
+}
+
+function failed(error, token) {
+  if (token && error.status === 403 && error.code === PASSWORD_CHANGE_REQUIRED) {
+    for (const listener of passwordChangeListeners) {
+      try {
+        listener();
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  return error;
+}
+
 export class ApiError extends Error {
   constructor(status, message, code, details) {
     super(message);
@@ -166,7 +196,7 @@ export async function request(
 
   if (res.status === 204) return null;
 
-  if (!res.ok) throw await parseError(res);
+  if (!res.ok) throw failed(await parseError(res), token);
 
   const text = await res.text();
   return text ? JSON.parse(text) : null;
@@ -239,7 +269,7 @@ export async function requestMultipart(
       : new ApiError(401, 'Сессия истекла. Войдите снова.');
   }
 
-  if (!res.ok) throw await parseError(res);
+  if (!res.ok) throw failed(await parseError(res), token);
 
   const text = await res.text();
   return text ? JSON.parse(text) : null;

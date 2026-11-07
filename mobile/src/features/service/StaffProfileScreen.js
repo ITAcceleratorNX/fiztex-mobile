@@ -79,7 +79,7 @@ export function StaffProfileScreen({ nav, onSignOut }) {
         <Pressable onPress={toggleBio}>
           <ProfileRow
             icon="face"
-            title={biometricMeta.label || 'Face ID'}
+            title={biometricMeta.title || 'Face ID'}
             value={biometricsEnabled ? 'Вкл' : biometricMeta.available ? 'Выкл' : 'Нет'}
             last
           />

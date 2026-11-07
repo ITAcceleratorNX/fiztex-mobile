@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Pressable, Modal, ScrollView, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
-import { FONT } from '../theme/tokens';
+import { CODES, FONT, REQUEST } from '../theme/tokens';
 import { Txt, Ink, wrapStrings } from './Txt';
 import Icon from './Icon';
 import { Hex, HexBadge, PhysTechMark, PhysTechLogotype } from './Hex';
@@ -88,8 +88,10 @@ export function Card({ children, style, padded = true, onPress, elevated = false
     ...(elevated ? shadowCard : null),
   };
   if (onPress) {
+    // Роль кнопки — иначе VoiceOver читает карточку как текст и не говорит, что её можно нажать.
     return (
-      <Pressable onPress={onPress} style={({ pressed }) => [base, style, pressed && { opacity: 0.9 }]}>
+      <Pressable accessibilityRole="button" onPress={onPress}
+        style={({ pressed }) => [base, style, pressed && { opacity: 0.9 }]}>
         {children}
       </Pressable>
     );
@@ -140,8 +142,29 @@ export function Pill({ children, color = 'gray', style }) {
 }
 
 // ─── Avatar (hexagonal, initials) ─────────────────────────────────────────────
-export function Avatar({ name = '', size = 40, color = 'green' }) {
+// `variant="soft"` — круг на бледно-синем с navy-инициалами (карточка ребёнка на S6); по умолчанию —
+// шестигранник с заливкой, как в остальном приложении.
+// `variant="tile"` — скруглённый квадрат с инициалами (люди в кодах, 2460:4192): `radius` и
+// `label` (вместо инициалов — например, «7А» у класса) задаёт экран, цвет — `color`.
+export function Avatar({ name = '', size = 40, color = 'green', variant = 'hex', radius, label, textSize }) {
   const { c } = useTheme();
+  if (variant === 'tile') {
+    const fill = { green: c.green, blue: c.blue, red: c.red, gold: c.gold }[color] || c.blue;
+    const text = label ?? name.split(' ').map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+    return (
+      <View style={{ width: size, height: size, borderRadius: radius ?? CODES.rowRadius, backgroundColor: fill, alignItems: 'center', justifyContent: 'center' }}>
+        <Txt numberOfLines={1} style={{ color: '#fff', fontWeight: '700', fontSize: textSize ?? CODES.rowInitials }}>{text}</Txt>
+      </View>
+    );
+  }
+  if (variant === 'soft') {
+    const letters = name.split(' ').map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+    return (
+      <View style={{ width: size, height: size, borderRadius: 999, backgroundColor: c.blueSoft, alignItems: 'center', justifyContent: 'center' }}>
+        <Txt style={{ color: c.blueInk, fontWeight: '700', fontSize: REQUEST.rowTitleSize, lineHeight: REQUEST.rowTitleLine }}>{letters}</Txt>
+      </View>
+    );
+  }
   const fill = { green: c.green, blue: c.blue, red: c.red, gold: c.gold }[color] || c.green;
   const initials = name
     .split(' ')
@@ -157,7 +180,10 @@ export function Avatar({ name = '', size = 40, color = 'green' }) {
 }
 
 // ─── PrimaryButton ────────────────────────────────────────────────────────────
-export function PrimaryButton({ children, onPress, color = 'green', style, full = true, disabled }) {
+// `size="lg"` — подпись 17/700, как у кнопок форм заявки (Figma A2 «Отправить заявку»); по
+// умолчанию прежние 16/600, на них стоят остальные экраны.
+// `size="compact"` — таблетка 48 с подписью 15/700 (кнопки карточки кода, 2460:4371).
+export function PrimaryButton({ children, onPress, color = 'green', style, full = true, disabled, size = 'md' }) {
   const { c } = useTheme();
   const map = {
     green: [c.green, '#fff'],
@@ -173,7 +199,7 @@ export function PrimaryButton({ children, onPress, color = 'green', style, full 
       style={({ pressed }) => [
         {
           width: full ? '100%' : undefined,
-          height: 54,
+          height: size === 'compact' ? CODES.pillHeight : 54,
           borderRadius: 999,
           backgroundColor: bg,
           flexDirection: 'row',
@@ -186,7 +212,13 @@ export function PrimaryButton({ children, onPress, color = 'green', style, full 
         style,
       ]}
     >
-      <Ink color={fg}>{wrapStrings(children, { fontSize: 16, fontWeight: '600', color: fg })}</Ink>
+      <Ink color={fg}>
+        {wrapStrings(children, size === 'lg'
+          ? { fontSize: REQUEST.ctaTextSize, fontWeight: '700', color: fg }
+          : size === 'compact'
+            ? { fontSize: CODES.pillText, fontWeight: '700', color: fg }
+            : { fontSize: 16, fontWeight: '600', color: fg })}
+      </Ink>
     </Pressable>
   );
 }
@@ -199,9 +231,16 @@ export function PrimaryButton({ children, onPress, color = 'green', style, full 
 const BTN_SIZES = {
   sm: { height: undefined, paddingVertical: 8, paddingHorizontal: 12, radius: 8, fontSize: 13, weight: '600', border: 1 },
   lg: { height: 44, paddingVertical: 0, paddingHorizontal: 16, radius: 12, fontSize: 14, weight: '700', border: 1.5 },
+  // Маленькая круглая кнопка под значением — «Скопировать» под номером заявки (A5): серая рамка,
+  // navy-подпись, значок слева.
+  pill: { height: REQUEST.pillHeight, paddingVertical: 0, paddingHorizontal: 16, radius: 999, fontSize: 14, weight: '600', border: 1, neutral: true },
+  // Главное действие без заливки — «Обновить статус» внизу S2: во всю ширину, 50, navy-контур.
+  cta: { height: REQUEST.outlineCtaHeight, paddingVertical: 0, paddingHorizontal: 24, radius: 999, fontSize: REQUEST.outlineCtaText, weight: '700', border: 1 },
+  // Таблетка 48 рядом с `PrimaryButton size="compact"` — «Скрыть» и «Выдать новый код» (2460:4371).
+  'pill-lg': { height: CODES.pillHeight, paddingVertical: 0, paddingHorizontal: 20, radius: 999, fontSize: CODES.pillText, weight: '700', border: 1 },
 };
 
-export function OutlineButton({ children, onPress, disabled = false, size = 'sm', style }) {
+export function OutlineButton({ children, onPress, disabled = false, size = 'sm', icon, style }) {
   const { c } = useTheme();
   const s = BTN_SIZES[size] || BTN_SIZES.sm;
   return (
@@ -216,8 +255,11 @@ export function OutlineButton({ children, onPress, disabled = false, size = 'sm'
           paddingHorizontal: s.paddingHorizontal,
           borderRadius: s.radius,
           borderWidth: s.border,
-          borderColor: disabled ? c.border : c.blueInk,
+          borderColor: disabled || s.neutral ? c.border : c.blueInk,
           backgroundColor: c.surface,
+          // Строкой — только со значком: в строке текст RN не сжимается и длинная подпись вылезла
+          // бы за кнопку, а без значка она, как раньше, переносится.
+          ...(icon ? { flexDirection: 'row', gap: 8 } : null),
           alignItems: 'center',
           justifyContent: 'center',
           opacity: pressed ? 0.85 : 1,
@@ -225,6 +267,7 @@ export function OutlineButton({ children, onPress, disabled = false, size = 'sm'
         style,
       ]}
     >
+      {icon ? <Icon name={icon} size={16} color={disabled ? c.ink3 : c.blueInk} strokeWidth={2} /> : null}
       <Txt style={{ fontSize: s.fontSize, fontWeight: s.weight, color: disabled ? c.ink3 : c.blueInk }}>
         {children}
       </Txt>
@@ -269,14 +312,45 @@ export function FilledButton({ children, onPress, disabled = false, color = 'gre
   );
 }
 
+// Подпись поля формы — общая у `TextField` и полей, которые рисуются не им (`PinField`).
+// `optional` дописывает серое « · необязательно» обычным начертанием (A2 «Телефон»).
+export function FieldLabel({ children, required = false, optional = false, size = 'md' }) {
+  const { c } = useTheme();
+  const text = size === 'lg'
+    ? { fontSize: REQUEST.labelSize, lineHeight: REQUEST.labelLine, fontWeight: '600' }
+    : { fontSize: 13, fontWeight: '500' };
+  return (
+    <View style={{ flexDirection: 'row', gap: 2 }}>
+      <Txt style={{ ...text, color: c.ink }}>
+        {children}
+        {optional ? <Txt style={{ ...text, fontWeight: '400', color: c.ink3 }}> · необязательно</Txt> : null}
+      </Txt>
+      {required ? <Txt style={{ ...text, color: c.red }}>*</Txt> : null}
+    </View>
+  );
+}
+
 // ─── TextField ───────────────────────────────────────────────────────────────
 // Поле формы из мобильных макетов: подпись, обязательность, единая геометрия ввода и
 // место под ошибку. Экран передаёт только семантику поля; цвета, фокус и disabled живут
 // здесь, чтобы формы не собирали разные варианты одного и того же input по месту.
+//
+// `invalid` красит рамку без строки ошибки — для форм, где текст отказа один на несколько
+// полей и стоит под ними отдельно (вход, Figma M5). `right` — элемент внутри рамки справа
+// от ввода (глаз у пароля); без него поле рисуется ровно как раньше.
+//
+// `size="lg"` — поле форм заявки (Figma A2–A4): 52 в высоту, радиус 16, ввод 16/500, подпись
+// 14/600. `sunken` — поле внутри белой карточки (блок пароля на A3): пока не в фокусе, оно на
+// цвете фона экрана, иначе белое на белом не читалось бы полем.
 export function TextField({
+  size = 'md',
+  sunken = false,
+  optional = false,
   label,
   required = false,
   error,
+  invalid = false,
+  right,
   value,
   onChangeText,
   placeholder,
@@ -289,55 +363,133 @@ export function TextField({
   const { c } = useTheme();
   const [focused, setFocused] = React.useState(false);
 
+  const lg = size === 'lg';
+  const frame = {
+    minHeight: multiline ? 92 : lg ? REQUEST.fieldHeight : 46,
+    borderWidth: 1,
+    borderColor: error || invalid ? c.red : focused ? c.blue : c.border,
+    borderRadius: lg ? REQUEST.fieldRadius : 10,
+    backgroundColor: !editable ? c.bg2 : sunken && !focused ? c.bg : c.surface,
+  };
+  const text = {
+    color: c.ink,
+    paddingHorizontal: lg ? REQUEST.fieldInset : 14,
+    paddingVertical: multiline ? 12 : 10,
+    fontSize: lg ? REQUEST.fieldTextSize : 15,
+    fontFamily: lg ? FONT.medium : FONT.regular,
+    textAlignVertical: multiline ? 'top' : 'center',
+  };
+  const input = (
+    <TextInput
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor={c.ink3}
+      editable={editable}
+      multiline={multiline}
+      {...inputProps}
+      // После `inputProps`: свои `onFocus`/`onBlur` вызывающего не должны отключать
+      // подсветку поля — обёртки зовут их сами.
+      onFocus={(event) => {
+        setFocused(true);
+        inputProps.onFocus?.(event);
+      }}
+      onBlur={(event) => {
+        setFocused(false);
+        inputProps.onBlur?.(event);
+      }}
+      // Внутри составной рамки фокус показывает сама рамка; браузерная обводка (Expo web)
+      // легла бы только вокруг ввода и отрезала бы глаз.
+      style={right
+        // У большого поля рамка снаружи ввода: без вычета рамки поле с глазом было бы 54, а не 52.
+        ? [text, { flex: 1, minHeight: lg ? frame.minHeight - 2 : frame.minHeight, outlineStyle: 'none' }, inputStyle]
+        : [frame, text, lg && { outlineStyle: 'none' }, inputStyle]}
+    />
+  );
+
   return (
-    <View style={[{ width: '100%', gap: 6 }, style]}>
-      {label ? (
-        <View style={{ flexDirection: 'row', gap: 2 }}>
-          <Txt style={{ fontSize: 13, fontWeight: '500', color: c.ink }}>{label}</Txt>
-          {required ? <Txt style={{ fontSize: 13, fontWeight: '500', color: c.red }}>*</Txt> : null}
+    <View style={[{ width: '100%', gap: lg ? REQUEST.labelGap : 6 }, style]}>
+      {label ? <FieldLabel required={required} optional={optional} size={size}>{label}</FieldLabel> : null}
+      {right ? (
+        <View style={[frame, { flexDirection: 'row', alignItems: 'center', paddingRight: 12 }]}>
+          {input}
+          {right}
         </View>
-      ) : null}
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={c.ink3}
-        editable={editable}
-        multiline={multiline}
-        {...inputProps}
-        // После `inputProps`: свои `onFocus`/`onBlur` вызывающего не должны отключать
-        // подсветку поля — обёртки зовут их сами.
-        onFocus={(event) => {
-          setFocused(true);
-          inputProps.onFocus?.(event);
-        }}
-        onBlur={(event) => {
-          setFocused(false);
-          inputProps.onBlur?.(event);
-        }}
-        style={[
-          {
-            minHeight: multiline ? 92 : 46,
-            borderWidth: 1,
-            borderColor: error ? c.red : focused ? c.blue : c.border,
-            borderRadius: 10,
-            backgroundColor: editable ? c.surface : c.bg2,
-            color: c.ink,
-            paddingHorizontal: 14,
-            paddingVertical: multiline ? 12 : 10,
-            fontSize: 15,
-            fontFamily: FONT.regular,
-            textAlignVertical: multiline ? 'top' : 'center',
-          },
-          inputStyle,
-        ]}
-      />
+      ) : (
+        input
+      )}
       {error ? (
         <Txt accessibilityRole="alert" style={{ fontSize: 12, color: c.red }}>
           {error}
         </Txt>
       ) : null}
     </View>
+  );
+}
+
+// ─── SearchField (Figma 2460:4192 «Поиск ученика») ───────────────────────────
+// Поле поиска над списком: 48 на радиусе 14, лупа 16 слева. Отдельно от `TextField`: у поиска нет
+// подписи и ошибки, а лупа — часть рамки, а не наложение поверх ввода.
+export function SearchField({ value, onChangeText, placeholder, style, ...inputProps }) {
+  const { c } = useTheme();
+  const [focused, setFocused] = React.useState(false);
+  return (
+    <View
+      style={[{
+        height: CODES.searchHeight,
+        borderRadius: CODES.searchRadius,
+        borderWidth: 1,
+        borderColor: focused ? c.blue : c.border,
+        backgroundColor: c.surface,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingLeft: 15,
+        paddingRight: 12,
+      }, style]}
+    >
+      <Icon name="search" size={16} color={c.ink3} />
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={c.ink3}
+        returnKeyType="search"
+        autoCorrect={false}
+        accessibilityLabel={placeholder}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        {...inputProps}
+        style={{ flex: 1, height: '100%', color: c.ink, fontSize: CODES.searchText, fontFamily: FONT.regular, outlineStyle: 'none' }}
+      />
+    </View>
+  );
+}
+
+// ─── PasswordField (Figma `Admin_Admissions`, M2 и M7) ───────────────────────
+// Пароль с глазом: показ — по нажатию, а не по умолчанию, и переключается только в этом
+// поле. Автозамена и автокапитализация выключены всегда: первая буква пароля, исправленная
+// клавиатурой, — это неверный пароль, который человек не видит.
+export function PasswordField(props) {
+  const { c } = useTheme();
+  const [shown, setShown] = React.useState(false);
+  return (
+    <TextField
+      autoCapitalize="none"
+      autoCorrect={false}
+      {...props}
+      secureTextEntry={!shown}
+      right={
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={shown ? 'Скрыть' : 'Показать'}
+          hitSlop={12}
+          onPress={() => setShown((value) => !value)}
+        >
+          <Icon name={shown ? 'eyeOff' : 'eye'} size={20} color={c.ink2} />
+        </Pressable>
+      }
+    />
   );
 }
 
@@ -550,29 +702,51 @@ export function ScreenHeader({ title, back, right, large = false, sub }) {
 // the default":
 //   soft  → tinted background, coloured ink (substitution — informative)
 //   solid → filled background, white ink (closed period — restrictive)
-export function Banner({ icon, children, tone = 'soft', style }) {
+//   info  → navy tint without a border, body ink (Figma `Admin_Admissions`, A1/A4/S1):
+//           a side note to read, not a state of the screen, so it must not shout in orange
+//   danger → red tint, red ink (S5 «Причина отказа»): the reason something came back
+//   warning → orange tint without a border, brown ink, orange icon (A5 «Сохраните номер»):
+//           something to do now, not an error
+// `size="lg"` sets the body to 14/20 (forms of the access request, A1/A4/A5); default stays 13.
+export function Banner({ icon, children, tone = 'soft', size = 'md', style }) {
   const { c } = useTheme();
   const solid = tone === 'solid';
-  const fg = solid ? '#fff' : c.green;
+  const info = tone === 'info';
+  const danger = tone === 'danger';
+  const warning = tone === 'warning';
+  const quiet = info || danger || warning;
+  const lg = size === 'lg';
+  // У крупной плашки (формы заявки) причина отказа — тёмно-красным, значок остаётся ярким (S5).
+  const fg = solid ? '#fff' : info ? c.ink2 : danger ? (lg ? c.dangerInk : c.red) : warning ? c.warnInk : c.green;
+  const iconColor = info ? c.blueInk : warning ? c.green : danger ? c.red : fg;
+  const bg = solid ? c.green : info ? c.blueSoft : danger ? c.redSoft : c.greenSoft;
   return (
     <View
       style={[
         {
           flexDirection: 'row',
-          alignItems: 'center',
+          alignItems: quiet ? 'flex-start' : 'center',
           gap: 10,
           paddingVertical: 12,
           paddingHorizontal: 14,
           borderRadius: 16,
-          backgroundColor: solid ? c.green : c.greenSoft,
-          borderWidth: solid ? 0 : 1,
+          backgroundColor: bg,
+          borderWidth: solid || quiet ? 0 : 1,
           borderColor: c.green,
         },
         style,
       ]}
     >
-      {icon ? <Icon name={icon} size={18} color={fg} strokeWidth={2} /> : null}
-      <Txt style={{ flex: 1, fontSize: 13, fontWeight: '600', color: fg }}>
+      {icon ? <Icon name={icon} size={18} color={iconColor} strokeWidth={2} /> : null}
+      <Txt
+        style={{
+          flex: 1,
+          fontSize: lg ? REQUEST.bannerTextSize : 13,
+          lineHeight: lg ? REQUEST.bannerTextLine : quiet ? 19 : undefined,
+          fontWeight: lg ? '400' : quiet ? '500' : '600',
+          color: fg,
+        }}
+      >
         {children}
       </Txt>
     </View>

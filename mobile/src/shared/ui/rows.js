@@ -7,6 +7,7 @@ import { HexBadge } from '@shared/components/Hex';
 import Icon from '@shared/components/Icon';
 import { SUBJECT_COLORS } from '@shared/data/mock';
 import { shadowSm } from '@shared/components/Screen';
+import { CODES } from '@shared/theme/tokens';
 import { GradeChip } from '@shared/ui/grades';
 
 // Resolve a brand colour-name to a theme hex (falls back to muted ink).
@@ -541,3 +542,40 @@ export function QRMockup({ size = 180 }) {
     </View>
   );
 }
+
+/**
+ * Строка человека или класса в списке-карточке (Figma 2460:4192, 4109, 4539): квадратная
+ * аватарка 40/12, имя 16/600, статус 13 и шеврон; между строками — черта. `tone` статуса:
+ * `muted` — серый, `amber` — «ещё не входил», `success` — зелёный. `avatar` — пропсы `Avatar`
+ * (`label` вместо инициалов у класса, `color`).
+ */
+export function PersonRow({ name, status, tone = 'muted', avatar, onPress, first = false }) {
+  const { c } = useTheme();
+  const statusColor = tone === 'amber' ? c.amberInk : tone === 'success' ? c.success : c.ink3;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: CODES.rowGap,
+        paddingVertical: CODES.rowPadV,
+        paddingHorizontal: 16,
+        borderTopWidth: first ? 0 : 1,
+        borderTopColor: c.border,
+        backgroundColor: pressed ? c.surface2 : 'transparent',
+      })}
+    >
+      <Avatar name={name || ''} size={CODES.rowAvatar} variant="tile" color="blue" {...avatar} />
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <Txt numberOfLines={1} style={{ fontSize: CODES.rowNameSize, fontWeight: '600' }}>{name}</Txt>
+        {status ? (
+          <Txt numberOfLines={1} style={{ fontSize: CODES.rowStatusSize, color: statusColor }}>{status}</Txt>
+        ) : null}
+      </View>
+      <Icon name="chevronRight" size={16} color={c.ink3} />
+    </Pressable>
+  );
+}
+

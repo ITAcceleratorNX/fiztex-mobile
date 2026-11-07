@@ -1,7 +1,10 @@
 import React, { createContext, useContext, useMemo, useRef, useState, useEffect } from 'react';
-import { View, Animated } from 'react-native';
+import { View, Animated, Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '../components/Icon';
 import { Txt } from '../components/Txt';
+import { useTheme } from '../theme/ThemeContext';
+import { CODES } from '../theme/tokens';
 
 // Shared prototype state — homework done, club enrolment, event RSVPs, currency,
 // AI test progress, notifications, toast. Port of web `app-state.jsx`.
@@ -28,6 +31,7 @@ export function useAppState() {
       aiAnswers: {},
       setAiAnswer: () => {},
       toast: () => {},
+      notice: () => {},
       notifications: 3,
       clearNotifications: () => {},
     }
@@ -46,6 +50,8 @@ export function PhysTechAppStateProvider({ children }) {
   const [notifications, setNotifs] = useState(3);
   const [toastMsg, setToastMsg] = useState(null);
   const toastTimer = useRef(null);
+  const [noticeMsg, setNoticeMsg] = useState(null);
+  const noticeTimer = useRef(null);
 
   const api = useMemo(
     () => ({
@@ -72,6 +78,13 @@ export function PhysTechAppStateProvider({ children }) {
         if (toastTimer.current) clearTimeout(toastTimer.current);
         toastTimer.current = setTimeout(() => setToastMsg(null), 1600);
       },
+      // Карточка-уведомление сверху (2460:4371 «Код скопирован»): заголовок, пояснение, крестик.
+      // Отдельно от `toast`: та — короткая плашка внизу, эта говорит, что делать дальше.
+      notice: ({ title, text }) => {
+        setNoticeMsg({ title, text, at: Date.now() });
+        if (noticeTimer.current) clearTimeout(noticeTimer.current);
+        noticeTimer.current = setTimeout(() => setNoticeMsg(null), 3000);
+      },
     }),
     [homework, clubs, events, grades, feedbackSent, stars, coins, aiAnswers, notifications]
   );
@@ -80,6 +93,17 @@ export function PhysTechAppStateProvider({ children }) {
     <AppCtx.Provider value={api}>
       {children}
       {toastMsg ? <AppToast msg={toastMsg} /> : null}
+      {noticeMsg ? (
+        <AppNotice
+          key={noticeMsg.at}
+          title={noticeMsg.title}
+          text={noticeMsg.text}
+          onClose={() => {
+            if (noticeTimer.current) clearTimeout(noticeTimer.current);
+            setNoticeMsg(null);
+          }}
+        />
+      ) : null}
     </AppCtx.Provider>
   );
 }
@@ -119,3 +143,62 @@ function AppToast({ msg }) {
     </Animated.View>
   );
 }
+
+function AppNotice({ title, text, onClose }) {
+  const { c } = useTheme();
+  const insets = useSafeAreaInsets();
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(anim, { toValue: 1, duration: 220, useNativeDriver: true }).start();
+  }, [anim]);
+  return (
+    <Animated.View
+      accessibilityRole="alert"
+      accessibilityLiveRegion="polite"
+      style={{
+        position: 'absolute',
+        top: insets.top + 5,
+        left: 16,
+        right: 16,
+        opacity: anim,
+        transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] }) }],
+      }}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 14,
+          padding: 16,
+          borderRadius: CODES.noticeRadius,
+          borderWidth: 1,
+          borderColor: c.border,
+          backgroundColor: c.surface,
+          shadowColor: '#1B2333',
+          shadowOpacity: 0.12,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 8 },
+          elevation: 6,
+        }}
+      >
+        <View style={{ width: CODES.noticeIcon, height: CODES.noticeIcon, borderRadius: 999, backgroundColor: c.successSoft, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="check" size={20} color={c.success} strokeWidth={2.4} />
+        </View>
+        <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+          <Txt style={{ fontSize: 16, fontWeight: '700' }}>{title}</Txt>
+          {text ? <Txt style={{ fontSize: 14, color: c.ink2 }}>{text}</Txt> : null}
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Закрыть уведомление"
+          hitSlop={8}
+          onPress={onClose}
+          style={{ width: CODES.noticeClose, height: CODES.noticeClose, borderRadius: 999, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface2, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Icon name="x" size={12} color={c.ink2} strokeWidth={2.4} />
+        </Pressable>
+      </View>
+    </Animated.View>
+  );
+}
+

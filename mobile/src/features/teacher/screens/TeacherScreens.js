@@ -14,6 +14,7 @@ import { TEACHER, CLASS_ROSTER, AI_QUESTIONS } from '@shared/data/mock';
 import { LessonRow, ProfileRow, QuickAction, brandColor } from '@shared/ui/rows';
 import { useMyProfile } from '@shared/hooks/useProfile';
 import { useMySchedule } from '@shared/hooks/useSchedule';
+import { HomeroomSection } from '@features/access';
 
 const chunk = (arr, n) => arr.reduce((rows, item, i) => {
   if (i % n === 0) rows.push([]);
@@ -481,6 +482,10 @@ export function TeacherProfile({ nav, onSignOut }) {
         ) : null}
       </View>
 
+      {/* Коды входа учеников — над «Моими классами», как в макете (Figma 2460:4109): это
+          классное руководство, а не нагрузка по предметам. */}
+      <HomeroomSection nav={nav} />
+
       <SectionTitle title="Мои классы" />
       <Card style={{ marginHorizontal: 16, marginBottom: 12, padding: 0 }}>
         {classes.length === 0 ? (
@@ -523,7 +528,7 @@ export function TeacherProfile({ nav, onSignOut }) {
         <Pressable onPress={toggleBio}>
           <ProfileRow
             icon="face"
-            title={biometricMeta.label || 'Face ID'}
+            title={biometricMeta.title || 'Face ID'}
             value={biometricsEnabled ? 'Вкл' : biometricMeta.available ? 'Выкл' : 'Нет'}
             last
           />

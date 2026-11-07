@@ -15,12 +15,23 @@ export function makeNav(navigation) {
     if (navigation.canGoBack()) navigation.goBack();
     else navigation.navigate('home');
   };
-  nav.reset = (screen) => navigation.navigate(screen);
-  /** Open a concrete tab from a stack step (issue/transfer/form) and discard its form UI. */
-  nav.tabs = (screen, payload) => navigation.navigate('Tabs', {
+  /**
+   * Вернуться к вкладкам из экрана стека (центр уведомлений, шаг формы) и открыть нужную.
+   *
+   * `popTo`, а не `navigate`: в React Navigation 7 `navigate` больше **не** возвращается к
+   * экрану, который уже лежит в стеке, — он кладёт сверху второй (в 6 возвращался, и код
+   * написан был под него). Из центра уведомлений переход на «Главную» поэтому оставлял под
+   * ней и сам центр: «назад» вело обратно в уведомления, а стек рос с каждым нажатием.
+   *
+   * `popTo` разбирает все три случая сам: вкладки ниже в стеке — вернуться к ним и закрыть
+   * всё над ними; вкладки и есть текущий экран — остаться, сменив вкладку; вкладок в стеке
+   * нет — заменить текущий экран, а не добавить. Со вкладки действие не обрабатывается её
+   * навигатором и всплывает в стек, где `Tabs` и живёт.
+   */
+  nav.tabs = (screen, payload) => navigation.dispatch(StackActions.popTo('Tabs', {
     screen,
     params: payload !== undefined ? { payload } : undefined,
-  });
+  }));
   /**
    * Уйти на экран, не оставляя текущий в стеке.
    *
@@ -42,7 +53,7 @@ export function withNav(Component) {
     const onSignOut = useCallback(async () => {
       await signOut();
       rootOf(navigation).dispatch(
-        CommonActions.reset({ index: 0, routes: [{ name: 'Welcome' }] }),
+        CommonActions.reset({ index: 0, routes: [{ name: 'SignIn' }] }),
       );
     }, [navigation, signOut]);
     return <Component {...props} nav={nav} payload={route.params?.payload} onSignOut={onSignOut} />;

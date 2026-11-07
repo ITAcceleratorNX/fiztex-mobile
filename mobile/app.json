@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "backgroundColor": "#2A8847",
+      "backgroundColor": "#274185",
       "resizeMode": "contain"
     },
     "ios": {
@@ -73,7 +73,12 @@
       ],
       "expo-asset",
       "expo-font",
-      "expo-splash-screen",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#274185"
+        }
+      ],
       "expo-status-bar"
     ],
     "web": {

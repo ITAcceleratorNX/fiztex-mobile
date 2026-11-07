@@ -6,6 +6,10 @@ const STUDENTS = [
   { studentProfileId: 103, fullName: 'Тимур Примеров', classId: 11, className: '7А' },
 ];
 const SUBJECTS = [{ id: 21, name: 'Математика' }, { id: 22, name: 'Физика' }];
+// Алфавит персонального кода — как у сервера (`CredentialService`): без I, L, O, U, 0 и 1.
+const CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTVWXYZ';
+// Марина Демо — классный руководитель 7А, и администратор открыл ей выдачу кода всему классу.
+const HOMEROOM_CLASS_ID = 11;
 const WEEKDAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 let state;
 const copy = (value) => JSON.parse(JSON.stringify(value));
@@ -56,7 +60,15 @@ function data() {
   state = { sessionId: demoSessionId(), today, year, period, lessons, nextId: 1000,
     homework: [assignment(301, 201, 'Проценты: самостоятельная работа'), assignment(302, 202, 'Скорость и расстояние'),
       assignment(303, 203, 'Дроби: закрепление'), assignment(304, 204, 'Пропорции: проверенная работа', 'COMPLETED')],
-    submissions: {}, attendance: {}, grades: [], completed: {}, notifications: [], gradeHistory: {} };
+    submissions: {}, attendance: {}, grades: [], completed: {}, notifications: [], gradeHistory: {},
+    // Коды входа: Данияр уже входил по коду, Амина ещё нет, Тимуру код не выдавали — в демо видны
+    // все состояния карточки кода. Самого кода нет нигде: сервер тоже хранит только хэш.
+    codes: {
+      101: { codeIssuedAt: `${dateOffset(today, -40)}T09:00:00+05:00`, pinSet: true },
+      102: { codeIssuedAt: `${dateOffset(today, -3)}T10:00:00+05:00`, pinSet: false },
+      103: { codeIssuedAt: null, pinSet: false },
+    },
+    codeGrantExpiresAt: `${dateOffset(today, 30)}T18:00:00+05:00` };
   for (const [homeworkId, studentId, body, status] of [[302, 101, 'Скорость равна расстоянию, делённому на время: 120 / 2 = 60 км/ч.', 'SUBMITTED'], [304, 101, 'Ответ: 12. Использовал основное свойство пропорции.', 'DONE'], [301, 103, '20% от 150 = 30. Искомое число = 120.', 'SUBMITTED']]) {
     const attempt = { id: state.nextId++, attemptNumber: 1, body, submittedAt: now(), photos: [], files: [], reviews: status === 'DONE' ? [{ id: state.nextId++, decision: 'DONE', comment: 'Верное решение. Молодец!', createdAt: now(), photos: [], teacherProfileId: 31 }] : [] };
     state.submissions[`${homeworkId}:${studentId}`] = { id: state.nextId++, homeworkId, studentProfileId: studentId,
@@ -97,6 +109,22 @@ function sheet(lesson) {
   const markedCount = stored.entries.filter((item) => item.draft.status !== 'NOT_MARKED').length;
   return { ...stored, lessonId: lesson.id, totalCount: stored.entries.length, markedCount, canFill: true, canPublish: markedCount === stored.entries.length,
     hasUnpublishedChanges: stored.state === 'DRAFT', reminder: stored.state !== 'PUBLISHED' };
+}
+/** Строка доступа ученика — одна у родителя и учителя, как `StudentCodeAccessViews` на сервере. */
+function codeAccess(item) {
+  const code = data().codes[item.studentProfileId];
+  return { studentProfileId: item.studentProfileId, fullName: item.fullName, className: item.className,
+    codeIssuedAt: code.codeIssuedAt, pinSet: code.pinSet, canIssueCode: true };
+}
+/** Выпуск: поверх действующего кода — только с `confirmReissue`; значение уходит одним ответом. */
+function issueCode(studentId, confirm) {
+  const code = data().codes[studentId];
+  if (code.codeIssuedAt && !confirm) {
+    fail('У ученика уже есть код, и прежний перестанет работать. Подтвердите перевыпуск.', 409,
+      'STUDENT_CODE_REISSUE_CONFIRM', { codeIssuedAt: code.codeIssuedAt, pinSet: code.pinSet });
+  }
+  code.codeIssuedAt = now();
+  return { issuedCode: Array.from({ length: 8 }, () => CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]).join('') };
 }
 function notify(title, body, roles = ['STUDENT', 'PARENT']) {
   data().notifications.unshift({ id: String(data().nextId++), title, body, roles, read: false, kind: 'DEMO', createdAt: now(), route: 'home', params: {} });
@@ -297,6 +325,41 @@ export async function demoRequest(path, { method = 'GET', body, token, multipart
   else if (/^\/api\/monthly-feedback\/children\/\d+\/months$/.test(pathname) && get) result = [];
   else if (/^\/api\/monthly-feedback\/children\/\d+\/months\/\d{4}-\d{2}$/.test(pathname) && get) result = { childId: student.studentProfileId, month: pathname.split('/').pop(), subjects: [], coverage: { expectedSubjects: 2, publishedSubjects: 0, partial: true, pendingSubjectNames: SUBJECTS.map((item) => item.name) }, analysis: null };
   else if (/^\/api\/parent-comments\/children\/\d+$/.test(pathname) && get) result = { comments: [], subjects: [], hasMore: false, unreadCount: 0, page: 0 };
+  // Коды входа (AUTH-FE-001): «Мой класс» Марины Демо, разрешения на код и выпуск у учителя и родителя.
+  else if (pathname === '/api/my-class/context' && get) {
+    teacher(role);
+    result = { state: 'READY', schoolDate: d.today, academicYearId: d.year.id, yearStartDate: d.year.startDate, yearEndDate: d.year.endDate,
+      classes: [{ id: HOMEROOM_CLASS_ID, name: '7А', homeroomAssignmentId: 1 }], defaultClassId: HOMEROOM_CLASS_ID,
+      periods: [{ id: d.period.id, name: d.period.name, type: 'QUARTER', status: 'ACTIVE', startDate: d.period.startDate, endDate: d.period.endDate, sortOrder: 1 }], defaultPeriodId: d.period.id };
+  }
+  else if (/^\/api\/my-class\/classes\/\d+\/students$/.test(pathname) && get) {
+    teacher(role);
+    if (Number(pathname.split('/')[4]) !== HOMEROOM_CLASS_ID) fail('Класс недоступен', 403, 'MY_CLASS_NOT_ACCESSIBLE');
+    // Имена демо пишутся «Имя Фамилия», поэтому только `displayName`: разложенные поля дали бы «Демо Данияр».
+    const items = page(STUDENTS.filter((item) => item.classId === HOMEROOM_CLASS_ID).map((item) => ({ studentProfileId: item.studentProfileId, displayName: item.fullName })), params);
+    result = { academicYearId: d.year.id, classId: HOMEROOM_CLASS_ID, items: items.content, page: items.number, size: items.size,
+      totalItems: items.totalElements, totalPages: items.totalPages, hasMore: !items.last };
+  }
+  else if (pathname === '/api/teacher/students/access-codes' && get) {
+    teacher(role);
+    result = STUDENTS.filter((item) => item.classId === HOMEROOM_CLASS_ID).map((item) => ({ ...codeAccess(item), grantExpiresAt: d.codeGrantExpiresAt }));
+  }
+  else if (/^\/api\/teacher\/students\/\d+\/access-code$/.test(pathname) && method === 'POST') {
+    teacher(role);
+    const id = Number(pathname.split('/')[4]);
+    if (!STUDENTS.some((item) => item.studentProfileId === id && item.classId === HOMEROOM_CLASS_ID)) fail('Нет разрешения на этого ученика. Его выдаёт администратор.', 403, 'STUDENT_CODE_NOT_PERMITTED');
+    result = issueCode(id, params.get('confirmReissue') === 'true');
+  }
+  else if (pathname === '/api/me/children/access' && get) {
+    if (role !== 'PARENT') fail('Это действие доступно родителю', 403);
+    result = STUDENTS.filter((item) => item.studentProfileId !== 103).map((item) => ({ ...codeAccess(item), accountId: 900000 + item.studentProfileId,
+      accountStatus: d.codes[item.studentProfileId].pinSet ? 'ACTIVE' : 'NOT_ACTIVATED', loginMethods: ['CODE_PIN'] }));
+  }
+  else if (/^\/api\/me\/children\/\d+\/access-code$/.test(pathname) && method === 'POST') {
+    // Чужого ребёнка здесь уже отсекла `studentFor` — тем же 404, что и на остальных путях детей.
+    if (role !== 'PARENT') fail('Это действие доступно родителю', 403);
+    result = issueCode(student.studentProfileId, params.get('confirmReissue') === 'true');
+  }
   if (result === undefined) fail('Это действие пока недоступно в демо. Попробуйте расписание, задания, посещаемость или оценки.', 422, 'DEMO_UNSUPPORTED');
   return copy(result);
 }

@@ -56,3 +56,80 @@ export const HISTORY = {
   bodySize: 14, captionSize: 12, titleSize: 18, buttonSize: 44,
   maxWidth: 560, maxHeight: '85%', borderWidth: 1,
 };
+
+// Вход и заявка на доступ (Figma `Admin_Admissions`: M1–M7, A1–A5, S1–S6, коды у учителя и
+// родителя). Своё у блоков — шапка со знаком и лист поверх неё, клетки PIN, значки ролей и
+// итогов, шкала статуса, выданный код; поля, кнопки и заголовки берутся из `TextField`,
+// `PrimaryButton` и `ScreenHeader`. Поля стоят на отступе 16, как заголовок `ScreenHeader`:
+// макетные 20 развели бы их по вертикали.
+//
+// Выданный код и маска вместо него стоят в строке одной высоты (`codeLine`): иначе карточка
+// прыгала бы на «Выдать код» и «Скрыть».
+//
+// Шапка M1 — как в кадре 2460:1002 и в конце видео первого запуска: под статус-баром видно
+// 163 pt синего (`heroHeight − sheetOverlap`), знак высотой 48 pt по её центру. Анимация
+// запуска приводит знак и лист ровно сюда, так что расхождение было бы видно скачком.
+export const AUTH = {
+  gutter: 16, gap: 16, sectionGap: 24, captionGap: 6,
+  heroHeight: 191, logoHeight: 48, sheetRadius: 28, sheetOverlap: 28,
+  titleSize: 30, titleLine: 36, bodySize: 15, bodyLine: 22,
+  captionSize: 13, captionLine: 18, valueSize: 17, codeSpacing: 1.5, iconSize: 16,
+  pinCellWidth: 52, pinCellHeight: 60, pinCellRadius: 14, pinGap: 12, pinDot: 12,
+  badgeSize: 36, badgeRadius: 10, markSize: 64, markIconSize: 30,
+  numberSize: 34, stepDot: 20, stepLine: 2, avatarSize: 40,
+};
+
+// Заявка на доступ, вёрстка по макету (Figma `phyztex` A1 2460:1302 … A5 2460:1528). Опциональный
+// слой поверх `AUTH`: формы заявки стоят на макетных 20 и с полями 52, а экраны входа M1–M7 пока
+// на прежних 16 / 46 — их сверка с макетом идёт отдельным заходом. Включается `layout="request"`
+// у `FormPage` и `size="lg"` у полей, карточек, плашек и кнопок.
+export const REQUEST = {
+  gutter: 20, gap: 18, sectionGap: 22, labelGap: 8,
+  backSize: 42, headerTitleSize: 16, headerTitleLine: 20,
+  titleSize: 30, titleLine: 38, titleTracking: -0.5, leadSize: 15, leadLine: 22,
+  fieldHeight: 52, fieldRadius: 16, fieldInset: 16, fieldTextSize: 16, fieldTextLine: 20,
+  labelSize: 14, labelLine: 18, hintSize: 13, hintLine: 17,
+  choicePadV: 18, choicePadH: 16, choiceGap: 14, choiceRadius: 20,
+  badgeSize: 48, badgeRadius: 14, badgeIcon: 24, choiceTitleSize: 17, choiceTitleLine: 22,
+  choiceTextSize: 14, choiceTextLine: 20, chevron: 18,
+  bannerTextSize: 14, bannerTextLine: 20, blockTitleSize: 15, blockTitleLine: 19,
+  ctaTextSize: 17, pillHeight: 38,
+  menuInset: 7, menuRowHeight: 44, menuRowRadius: 10,
+  markSize: 72, markIconSize: 34, doneTitleSize: 28, doneTitleLine: 36, numberTracking: 1, numberLine: 43,
+  sectionLabelSize: 13, sectionLabelTracking: 0.6,
+  // Вход M1–M7 (2460:1002 … 2460:1269): тот же язык, шаг между блоками крупнее — 24.
+  stepGap: 24, sheetPadTop: 32, sheetGap: 20, signInTitleSize: 28, signInTitleLine: 36, leadGap: 12,
+  valuePadV: 13, valuePadH: 16, valueRadius: 16, valueLabelSize: 12, valueLabelLine: 15,
+  valueSize: 16, valueLine: 20, valueTracking: 1,
+  pinCellWidth: 54, pinCellHeight: 62, pinCellRadius: 16, pinGap: 10, pinDot: 12,
+  pinTextSize: 20, pinTextLine: 25, pinTracking: 6,
+  linkSize: 15, linkLine: 19, quietLinkSize: 13, quietLinkLine: 17,
+  rowTitleSize: 15, rowTitleLine: 19, rowTextSize: 14, rowTextLine: 20,
+  // Статус заявки S1–S6 (2460:1568 … 2460:1809): заголовок 26/33, шкала, сводка, шаги, итог.
+  statusTitleSize: 26, statusTitleLine: 33, statusTitleTracking: -0.4, statusLeadGap: 10,
+  timelineDot: 22, timelineRing: 6, timelineTodoBorder: 2, timelineLine: 2, timelineRowGap: 16,
+  summaryPadV: 15, summaryRowGap: 10, summarySize: 14, summaryLine: 18,
+  tableRowPadV: 14, tableSize: 15, tableLine: 19,
+  stepBadge: 28, stepGap: 16,
+  problemSize: 56, problemRadius: 18, problemIcon: 28,
+  reasonSize: 16, reasonLine: 24,
+  outlineCtaHeight: 50, outlineCtaText: 16,
+  avatarSize: 44, nameSize: 16, nameLine: 20,
+};
+
+// Коды у классного руководителя и родителя (Figma `phyztex` 2460:4109 … 2460:4612): строки людей
+// с квадратной аватаркой 40/12, герой экрана 56/18, карточка кода с полями 21 и кнопками-таблетками 48.
+export const CODES = {
+  backSize: 40,
+  rowAvatar: 40, rowRadius: 12, rowInitials: 13, rowPadV: 14, rowGap: 14, rowNameSize: 16, rowStatusSize: 13,
+  heroAvatar: 56, heroRadius: 18, heroInitials: 18, heroNameSize: 18, heroGap: 14,
+  searchHeight: 48, searchRadius: 14, searchText: 15,
+  cardPad: 21, cardGap: 14, codeSize: 28, codeLine: 34, codeTracking: 2,
+  pillHeight: 48, pillText: 15,
+  noticeRadius: 18, noticeIcon: 40, noticeClose: 32,
+};
+
+// Запуск приложения (заметки дизайнера рядом с M1 и кадр «Повторный запуск» 2468:22): знак по
+// центру тёмно-синего экрана, 279×72 pt — как в видео дизайнера на экране 390 pt. В конце
+// первого запуска он уезжает в шапку M1 и становится `AUTH.logoHeight`.
+export const LAUNCH = { logoHeight: 72 };
