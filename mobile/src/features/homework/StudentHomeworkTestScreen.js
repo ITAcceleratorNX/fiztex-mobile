@@ -14,7 +14,7 @@ import {
 } from '@shared/components/ui';
 import { QuestionFigure } from '@shared/components/QuestionFigure';
 import { QuestionBody } from '@shared/components/QuestionBody';
-import { MathText } from '@shared/math/MathText';
+import { RichText } from '@shared/components/RichText';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { useHomeworkTest } from '@shared/hooks/useHomework';
 import { AnswerPhotos } from './AnswerPhotos';
@@ -220,16 +220,17 @@ export function StudentHomeworkTestScreen({ nav, payload }) {
         <Card key={question.id}>
           <QuestionHeader index={index} total={list.length} maxScore={question.maxScore} />
 
-          <MathText
-            text={question.text}
-            style={{
-              fontSize: 17,
-              lineHeight: 24,
-              fontWeight: '600',
-              color: c.ink,
-              marginBottom: 14,
-            }}
-          />
+          {/* Рисунки и файлы условия стоят там, где их поставил учитель (CONTENT-EMBED-001).
+              С античитом файл, который открывается другим приложением, сначала спрашивает. */}
+          <View style={{ marginBottom: 14 }}>
+            <RichText
+              text={question.text}
+              embeds={question.embeds}
+              antiCheat={antiCheatEnabled}
+              onExpired={() => reload(true)}
+              style={{ fontSize: 17, lineHeight: 24, fontWeight: '600', color: c.ink }}
+            />
+          </View>
 
           <QuestionFigure imageUrl={question.imageUrl} />
 

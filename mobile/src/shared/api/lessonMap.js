@@ -159,6 +159,8 @@ export function mapLessonCard(lesson, { highlight = null } = {}) {
     comment: comment
       ? {
           body: comment.body,
+          // Рисунки и файлы внутри комментария (CONTENT-EMBED-001) — только в карточке урока.
+          embeds: Array.isArray(comment.embeds) ? comment.embeds : [],
           author: abbreviateTeacherName(comment.createdByName) || comment.createdByName || '',
           stamp: formatStamp(comment.updatedAt || comment.createdAt),
         }

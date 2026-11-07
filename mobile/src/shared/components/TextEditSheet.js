@@ -1,9 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Pressable, View, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  Modal,
+  Pressable,
+  View,
+  ScrollView,
+  TextInput,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  useWindowDimensions,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { Txt } from './Txt';
 import { PrimaryButton } from './ui';
+import { RichTextField } from './RichTextField';
 
 /**
  * Bottom sheet для правки одного текстового поля: тема урока, комментарий для учеников,
@@ -22,6 +33,11 @@ import { PrimaryButton } from './ui';
  * `readOnly` — тот же шит без права правки: комментарий в листе посещаемости виден и
  * тому, кто заполнять уже не может (бывший заместитель, закрытый период). Отдельный
  * компонент под просмотр разошёлся бы с этим по вёрстке при первой же правке.
+ *
+ * `embeds` — поле учебного текста с рисунками и файлами внутри (CONTENT-EMBED-001,
+ * комментарий для учеников): вместо строки ввода — `RichTextField`, описания уже стоящих
+ * вставок приходят этим пропом. Пока файл грузится, шит не сохраняет и не закрывается —
+ * иначе загруженный файл не попал бы в текст. `invalidEmbedId` — файл, который отклонил сервер.
  */
 export function TextEditSheet({
   visible,
@@ -38,13 +54,18 @@ export function TextEditSheet({
   submitOnReturn = false,
   saving = false,
   error = null,
+  embeds,
+  invalidEmbedId = null,
   onSave,
   onDelete,
   onClose,
 }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
   const [value, setValue] = useState(initialValue);
+  const [uploading, setUploading] = useState(false);
+  const rich = embeds !== undefined && !readOnly;
 
   // Каждое открытие начинается с актуального значения: шит переиспользуется
   // разными полями, а состояние в нём одно.
@@ -53,18 +74,19 @@ export function TextEditSheet({
   }, [visible, initialValue]);
 
   const trimmed = value.trim();
-  const canSave = trimmed.length > 0 && !saving;
+  const canSave = trimmed.length > 0 && !saving && !uploading;
   const hadValue = Boolean((initialValue || '').trim());
+  const close = saving || uploading ? undefined : onClose;
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={close ?? (() => {})}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
         <Pressable
           style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.35)', justifyContent: 'flex-end' }}
-          onPress={saving ? undefined : onClose}
+          onPress={close}
         >
           <Pressable
             onPress={(e) => e.stopPropagation?.()}
@@ -96,30 +118,51 @@ export function TextEditSheet({
               >
                 {label}
               </Txt>
-              <TextInput
-                value={value}
-                onChangeText={setValue}
-                placeholder={placeholder}
-                placeholderTextColor={c.ink3}
-                editable={!saving && !readOnly}
-                multiline={multiline}
-                keyboardType={keyboardType}
-                autoFocus={autoFocus}
-                onSubmitEditing={submitOnReturn && !multiline ? () => canSave && onSave(trimmed) : undefined}
-                maxLength={maxLength}
-                textAlignVertical={multiline ? 'top' : 'center'}
-                style={{
-                  minHeight: multiline ? 120 : 48,
-                  borderRadius: 14,
-                  borderWidth: 1,
-                  borderColor: c.border,
-                  backgroundColor: c.surface2,
-                  paddingHorizontal: 14,
-                  paddingVertical: 12,
-                  fontSize: 14,
-                  color: readOnly ? c.ink2 : c.ink,
-                }}
-              />
+              {rich ? (
+                <ScrollView
+                  style={{ maxHeight: Math.max(240, height * 0.5) }}
+                  keyboardShouldPersistTaps="handled"
+                  contentContainerStyle={{ gap: 6 }}
+                >
+                  <RichTextField
+                    value={value}
+                    onChangeText={setValue}
+                    embeds={embeds}
+                    placeholder={placeholder}
+                    maxLength={maxLength}
+                    editable={!saving}
+                    minHeight={120}
+                    inputStyle={{ borderRadius: 14, backgroundColor: c.surface2, fontSize: 14 }}
+                    onBusyChange={setUploading}
+                    invalidEmbedId={invalidEmbedId}
+                  />
+                </ScrollView>
+              ) : (
+                <TextInput
+                  value={value}
+                  onChangeText={setValue}
+                  placeholder={placeholder}
+                  placeholderTextColor={c.ink3}
+                  editable={!saving && !readOnly}
+                  multiline={multiline}
+                  keyboardType={keyboardType}
+                  autoFocus={autoFocus}
+                  onSubmitEditing={submitOnReturn && !multiline ? () => canSave && onSave(trimmed) : undefined}
+                  maxLength={maxLength}
+                  textAlignVertical={multiline ? 'top' : 'center'}
+                  style={{
+                    minHeight: multiline ? 120 : 48,
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: c.border,
+                    backgroundColor: c.surface2,
+                    paddingHorizontal: 14,
+                    paddingVertical: 12,
+                    fontSize: 14,
+                    color: readOnly ? c.ink2 : c.ink,
+                  }}
+                />
+              )}
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 {error ? (
                   <Txt style={{ flex: 1, fontSize: 12, color: c.red }}>{error}</Txt>

@@ -174,7 +174,7 @@ async function test(name, run) {
       '@shared/components/Screen': { Screen: 'Screen' }, '@shared/components/Txt': { Txt: 'Txt' },
       '@shared/components/Icon': { default: 'Icon', __esModule: true },
       '@shared/components/ui': { ConfirmDialog: 'ConfirmDialog' },
-      '@shared/math/MathText': { MathText: 'MathText' },
+      '@shared/components/RichText': { RichText: 'RichText' },
       '@shared/components/HomeworkResultCard': { HomeworkResultCard },
       '@features/auth/AuthContext': { useAuth: () => ({ token: authToken() }) },
       '@shared/api/homeworkApi': { authHeaders: () => ({}) },

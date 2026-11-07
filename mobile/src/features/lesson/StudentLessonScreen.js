@@ -6,6 +6,7 @@ import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { Card, Banner, PickerSheet } from '@shared/components/ui';
+import { RichText } from '@shared/components/RichText';
 import { ModuleRow } from '@shared/ui/rows';
 import { useLesson, useLessonHomework, useLessonTextbooks } from '@shared/hooks/useLesson';
 import { useLessonAssignments } from '@shared/hooks/useHomework';
@@ -43,7 +44,7 @@ function CardLabel({ icon, children }) {
  * Тема и комментарий у ученика живут одной карточкой, а не двумя полями с подписями, как
  * у учителя: ученик их не правит, ему важно прочитать сообщение целиком.
  */
-function TopicCard({ topic, comment }) {
+function TopicCard({ topic, comment, commentEmbeds, onExpired }) {
   const { c } = useTheme();
   return (
     <Card elevated style={{ gap: 12 }}>
@@ -60,9 +61,12 @@ function TopicCard({ topic, comment }) {
           {topic || 'Тема не указана'}
         </Txt>
         {comment ? (
-          <Txt style={{ fontSize: 13, fontWeight: '400', lineHeight: 20, color: c.inkMuted }}>
-            {comment}
-          </Txt>
+          <RichText
+            text={comment}
+            embeds={commentEmbeds}
+            onExpired={onExpired}
+            style={{ fontSize: 13, fontWeight: '400', lineHeight: 20, color: c.inkMuted }}
+          />
         ) : null}
       </View>
     </Card>
@@ -462,7 +466,12 @@ export function StudentLessonScreen({ nav, payload }) {
 
         <LessonHero lesson={lesson} variant={isParent ? 'parent' : 'student'} />
 
-        <TopicCard topic={lesson.topic} comment={lesson.comment?.body} />
+        <TopicCard
+          topic={lesson.topic}
+          comment={lesson.comment?.body}
+          commentEmbeds={lesson.comment?.embeds}
+          onExpired={() => reload(true)}
+        />
 
         <HomeworkCard
           homework={lesson.homework}

@@ -3,7 +3,7 @@ import { View, ScrollView, Pressable, Linking } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
-import { MathText } from '@shared/math/MathText';
+import { RichText } from '@shared/components/RichText';
 import Icon from '@shared/components/Icon';
 import { useAuth } from '@features/auth/AuthContext';
 import { homeworkFiles, authHeaders } from '@shared/api/homeworkApi';
@@ -103,7 +103,9 @@ export function ParentHomeworkDetailScreen({ nav, payload }) {
 
         <View style={{ paddingHorizontal: 16, paddingBottom: 12, gap: 6 }}>
           <DueLine homework={data} />
-          {data.description ? <Description text={data.description} /> : null}
+          {data.description ? (
+            <Description text={data.description} embeds={data.embeds} onExpired={() => reload(true)} />
+          ) : null}
         </View>
 
         {(data.materials ?? []).length > 0 ? (
@@ -200,15 +202,18 @@ function DueLine({ homework }) {
 }
 
 /**
- * Описание задания. Через MathText, а не Txt: конспект от модели приходит с формулами
- * в $…$ (так велит промпт генерации), и родителю незачем видеть \frac вместо дроби.
- * Для текста без формул MathText отдаёт тот же обычный Txt.
+ * Описание задания. Через RichText, а не Txt: конспект от модели приходит с формулами
+ * в $…$ (так велит промпт генерации), а учитель вставляет в текст рисунки и файлы
+ * (CONTENT-EMBED-001) — родителю незачем видеть \frac или маркер вместо них. Для текста
+ * без вставок и формул это тот же обычный Txt.
  */
-function Description({ text }) {
+function Description({ text, embeds, onExpired }) {
   const { c } = useTheme();
   return (
-    <MathText
+    <RichText
       text={text}
+      embeds={embeds}
+      onExpired={onExpired}
       style={{ fontSize: 14, fontWeight: '400', lineHeight: 20, color: c.inkMuted }}
     />
   );

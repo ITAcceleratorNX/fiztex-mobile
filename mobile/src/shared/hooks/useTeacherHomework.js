@@ -228,11 +228,15 @@ export function useHomeworkSave() {
   const { token } = useAuth();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  // Отказ сервера по вставке (CONTENT-EMBED-001): какое поле и какой файл — чтобы форма
+  // подсветила именно эту карточку, а не только показала фразу.
+  const [embedError, setEmbedError] = useState(null);
 
   const save = useCallback(async ({ homeworkId, body }) => {
     if (!token || saving) return null;
     setSaving(true);
     setError(null);
+    setEmbedError(null);
     try {
       const saved = homeworkId
         ? await homeworkApi.update(token, homeworkId, body)
@@ -240,13 +244,29 @@ export function useHomeworkSave() {
       return saved;
     } catch (e) {
       setError(e?.message || 'Не удалось сохранить задание');
+      setEmbedError(embedErrorOf(e));
       return null;
     } finally {
       setSaving(false);
     }
   }, [token, saving]);
 
-  return { save, saving, error, clearError: () => setError(null) };
+  return {
+    save,
+    saving,
+    error,
+    embedError,
+    clearError: () => {
+      setError(null);
+      setEmbedError(null);
+    },
+  };
+}
+
+/** `{field, id}` из отказа `CONTENT_EMBED_*`; остальные отказы — `null`. */
+export function embedErrorOf(e) {
+  if (typeof e?.code !== 'string' || !e.code.startsWith('CONTENT_EMBED')) return null;
+  return { field: e.details?.field ?? null, id: e.details?.id ?? null };
 }
 
 /**
@@ -261,6 +281,7 @@ export function useHomeworkQuestions(homeworkId) {
   const [state, setState] = useState({ loading: true, error: null, questions: null, homework: null });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [saveEmbedError, setSaveEmbedError] = useState(null);
 
   const load = useCallback(async () => {
     if (!token || !homeworkId) {
@@ -284,12 +305,14 @@ export function useHomeworkQuestions(homeworkId) {
     if (!token || !homeworkId || saving) return null;
     setSaving(true);
     setSaveError(null);
+    setSaveEmbedError(null);
     try {
       const saved = await homeworkApi.saveQuestions(token, homeworkId, body);
       setState({ loading: false, error: null, questions: saved });
       return saved;
     } catch (e) {
       setSaveError(e?.message || 'Не удалось сохранить вопросы');
+      setSaveEmbedError(embedErrorOf(e));
       return null;
     } finally {
       setSaving(false);
@@ -302,7 +325,12 @@ export function useHomeworkQuestions(homeworkId) {
     save,
     saving,
     saveError,
-    clearSaveError: () => setSaveError(null),
+    // `{field: 'questions[2].text', id}` — какой вопрос и какой файл отклонил сервер.
+    saveEmbedError,
+    clearSaveError: () => {
+      setSaveError(null);
+      setSaveEmbedError(null);
+    },
   };
 }
 

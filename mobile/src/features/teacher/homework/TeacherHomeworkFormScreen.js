@@ -22,6 +22,7 @@ import {
   useTeacherTeachingContext,
 } from '@shared/hooks/useTeacherHomework';
 import { HomeworkCardSkeleton } from '@features/homework/HomeworkStates';
+import { RichTextField } from '@shared/components/RichTextField';
 import { teachingPairs } from './context';
 
 const ANSWER_FORMATS = [
@@ -60,7 +61,9 @@ export function TeacherHomeworkFormScreen({ nav, payload }) {
 
   const card = useTeacherHomeworkCard(editing ? editId : null);
   const context = useTeacherTeachingContext({ enabled: !editing });
-  const { save, saving, error, clearError } = useHomeworkSave();
+  const { save, saving, error, embedError, clearError } = useHomeworkSave();
+  // Файл для вставки в описание ещё грузится — сохранять рано: маркера в тексте пока нет.
+  const [uploading, setUploading] = useState(false);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -314,23 +317,22 @@ export function TeacherHomeworkFormScreen({ nav, payload }) {
             <FieldLabel>
               {answerFormat === 'TEST' ? 'Инструкция к тесту' : 'Описание и инструкция'}
             </FieldLabel>
-            <TextInput
+            {/* Рисунки и файлы встают прямо между абзацами (CONTENT-EMBED-001): «Фото»,
+                «Камера», «Документ» под полем, вставка — туда, где стоял курсор. */}
+            <RichTextField
               value={description}
               onChangeText={setDescription}
+              embeds={card.homework?.embeds}
               placeholder={
                 answerFormat === 'TEST'
                   ? 'Что за тест и чем можно пользоваться'
                   : 'Что нужно сделать и как сдать'
               }
-              placeholderTextColor={c.ink3}
               maxLength={4000}
-              multiline
-              style={{
-                ...inputStyle(c),
-                minHeight: answerFormat === 'TEST' ? 80 : 120,
-                textAlignVertical: 'top',
-                paddingTop: 12,
-              }}
+              minHeight={answerFormat === 'TEST' ? 80 : 120}
+              inputStyle={{ borderRadius: 12, backgroundColor: c.bg }}
+              onBusyChange={setUploading}
+              invalidEmbedId={embedError?.field === 'description' ? embedError.id : null}
             />
             {answerFormat === 'TEST' ? (
               <Txt style={{ fontSize: 12, lineHeight: 17, color: c.inkMuted }}>
@@ -410,8 +412,8 @@ export function TeacherHomeworkFormScreen({ nav, payload }) {
             карточки. Раньше главной кнопкой формы была «Опубликовать», и задание уходило
             классу до того, как учитель увидел его целиком.
           */}
-          <FilledButton disabled={!valid || saving} onPress={() => onSave()}>
-            {saving ? 'Сохраняем…' : editing ? 'Сохранить' : 'Создать черновик'}
+          <FilledButton disabled={!valid || saving || uploading} onPress={() => onSave()}>
+            {saving ? 'Сохраняем…' : uploading ? 'Загружаем файл…' : editing ? 'Сохранить' : 'Создать черновик'}
           </FilledButton>
         </View>
       </KeyboardAvoidingView>

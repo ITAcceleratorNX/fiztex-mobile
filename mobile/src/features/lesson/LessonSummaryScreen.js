@@ -37,7 +37,7 @@ export function LessonSummaryScreen({ nav, payload }) {
               {' '}Редактировать и публиковать конспект можно в веб-версии.
             </Banner> : null}
             {data?.content ? <Card style={{ padding: d.inset }}>
-              <SummaryDocument content={data.content} />
+              <SummaryDocument content={data.content} embeds={data.embeds} onExpired={() => reload(true)} />
             </Card> : <Card>
               <Txt style={{ color: c.ink, fontSize: d.headingSize, lineHeight: d.headingLine, fontWeight: '700' }}>
                 {staff ? 'Конспект ещё не создан' : 'Конспект пока не опубликован'}

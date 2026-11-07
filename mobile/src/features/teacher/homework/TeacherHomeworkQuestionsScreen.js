@@ -18,6 +18,8 @@ import { HomeworkCardSkeleton } from '@features/homework/HomeworkStates';
 import { FormulaField } from '@shared/components/FormulaField';
 import { QuestionFigure } from '@shared/components/QuestionFigure';
 import { MathText } from '@shared/math/MathText';
+import { hasEmbeds, mergeEmbeds, stripEmbeds } from '@shared/content/embedMarkup';
+import { RichTextField } from '@shared/components/RichTextField';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { useHomeworkQuestions } from '@shared/hooks/useTeacherHomework';
 import {
@@ -57,11 +59,14 @@ export function TeacherHomeworkQuestionsScreen({ nav, payload }) {
   const insets = useSafeAreaInsets();
   const homeworkId = payload?.homeworkId;
 
-  const { questions, homework, loading, error, reload, save, saving, saveError, clearSaveError } =
+  const { questions, homework, loading, error, reload, save, saving, saveError, saveEmbedError, clearSaveError } =
     useHomeworkQuestions(homeworkId);
 
   const [drafts, setDrafts] = useState(null);
   const [openKey, setOpenKey] = useState(null);
+  // Сколько файлов для вставок ещё грузится: пока маркера нет в тексте, сохранять рано.
+  const [uploading, setUploading] = useState(0);
+  const onBusyChange = useCallback((busy) => setUploading((count) => Math.max(0, count + (busy ? 1 : -1))), []);
 
   // Черновик поднимается один раз на загрузку: перечитывание поверх правок стёрло бы их.
   useEffect(() => {
@@ -146,6 +151,8 @@ export function TeacherHomeworkQuestionsScreen({ nav, payload }) {
               expanded={openKey === question.key}
               onToggle={() => setOpenKey((prev) => (prev === question.key ? null : question.key))}
               onChange={(next) => patch(question.key, next)}
+              onBusyChange={onBusyChange}
+              invalidEmbedId={saveEmbedError?.field === `questions[${index}].text` ? saveEmbedError.id : null}
               onDrop={() => {
                 setDrafts((prev) => prev.filter((item) => item.key !== question.key));
                 setOpenKey(null);
@@ -185,8 +192,8 @@ export function TeacherHomeworkQuestionsScreen({ nav, payload }) {
               {readOnly ? 'Вопросы закрыты для изменений: есть ответы или задание завершено.' : 'Раскройте вопросы с пометками — там сказано, чего не хватает.'}
             </Txt>
           ) : null}
-          <FilledButton disabled={blocked || saving} onPress={onSave}>
-            {saving ? 'Сохраняем…' : 'Сохранить вопросы'}
+          <FilledButton disabled={blocked || saving || uploading > 0} onPress={onSave}>
+            {saving ? 'Сохраняем…' : uploading > 0 ? 'Загружаем файл…' : 'Сохранить вопросы'}
           </FilledButton>
         </View>
       </KeyboardAvoidingView>
@@ -198,7 +205,9 @@ export function TeacherHomeworkQuestionsScreen({ nav, payload }) {
  * Вопрос сложён в строку, пока его не открыли: тест из десяти вопросов, развёрнутых
  * целиком, — это экран, по которому невозможно перемещаться.
  */
-function QuestionCard({ question, profile, editable, index, problems, expanded, onToggle, onChange, onDrop }) {
+function QuestionCard({
+  question, profile, editable, index, problems, expanded, onToggle, onChange, onDrop, onBusyChange, invalidEmbedId,
+}) {
   const { c } = useTheme();
   const choice = isChoice(question.type);
 
@@ -212,10 +221,14 @@ function QuestionCard({ question, profile, editable, index, problems, expanded, 
       >
         <Txt style={{ fontSize: 13, fontWeight: '700', color: c.inkMuted }}>{index}</Txt>
         <View style={{ flex: 1 }}>
-          {question.text.trim() ? (
-            <MathText text={question.text} style={{ fontSize: 15, color: c.ink }} numberOfLines={2} />
+          {/* В свёрнутой строке — только слова условия: маркер рисунка или файла
+              (CONTENT-EMBED-001) превью не помогает, а сырым читался бы как мусор. */}
+          {stripEmbeds(question.text).trim() ? (
+            <MathText text={stripEmbeds(question.text).trim()} style={{ fontSize: 15, color: c.ink }} numberOfLines={2} />
           ) : (
-            <Txt style={{ fontSize: 15, color: c.ink3 }}>Новый вопрос</Txt>
+            <Txt style={{ fontSize: 15, color: c.ink3 }}>
+              {hasEmbeds(question.text) ? 'Вопрос без текста — только рисунок или файл' : 'Новый вопрос'}
+            </Txt>
           )}
           <Txt style={{ fontSize: 12, color: c.inkMuted, marginTop: 2 }}>
             {QUESTION_TYPES.find((item) => item.value === question.type)?.label} · {question.maxScore}
@@ -243,13 +256,27 @@ function QuestionCard({ question, profile, editable, index, problems, expanded, 
             onChange={(type) => onChange(withType(question, type))}
           />
 
-          <FormulaField profile={profile} editable={editable}
+          {/* Условие — текст с формулами, рисунками и файлами (CONTENT-EMBED-001). Варианты,
+              эталон и критерии остаются без вставок: туда их не ставит и веб. */}
+          <RichTextField
+            label="Текст вопроса"
             value={question.text}
-            onChangeText={(text) => onChange({ ...question, text })}
-            label="Текст вопроса" placeholder="Введите условие и добавьте формулы"
-            multiline
+            onChangeText={(text, extra) =>
+              onChange({
+                ...question,
+                text,
+                embeds: extra?.uploaded ? mergeEmbeds(question.embeds, [extra.uploaded]) : question.embeds,
+              })
+            }
+            embeds={question.embeds}
+            placeholder="Введите условие и добавьте формулы"
             maxLength={4000}
-
+            minHeight={92}
+            formulas
+            profile={profile}
+            editable={editable}
+            onBusyChange={onBusyChange}
+            invalidEmbedId={invalidEmbedId}
           />
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>

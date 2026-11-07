@@ -128,17 +128,21 @@ export function useLessonEditing(lessonId, reload) {
   const { token } = useAuth();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  // Отказ сервера по вставке в комментарии (CONTENT-EMBED-001): id файла, который он не нашёл.
+  const [saveEmbedId, setSaveEmbedId] = useState(null);
 
   const run = useCallback(async (action) => {
     if (!token || !lessonId) return false;
     setSaving(true);
     setSaveError(null);
+    setSaveEmbedId(null);
     try {
       await action();
       await reload?.(true);
       return true;
     } catch (e) {
       setSaveError(e?.message || 'Не удалось сохранить');
+      setSaveEmbedId(typeof e?.code === 'string' && e.code.startsWith('CONTENT_EMBED') ? e.details?.id ?? null : null);
       return false;
     } finally {
       setSaving(false);
@@ -148,7 +152,11 @@ export function useLessonEditing(lessonId, reload) {
   return {
     saving,
     saveError,
-    clearSaveError: () => setSaveError(null),
+    saveEmbedId,
+    clearSaveError: () => {
+      setSaveError(null);
+      setSaveEmbedId(null);
+    },
     saveTopic: (topic) => run(() => lessonApi.updateTopic(token, lessonId, topic)),
     clearTopic: () => run(() => lessonApi.clearTopic(token, lessonId)),
     saveComment: (body) => run(() => lessonApi.upsertComment(token, lessonId, body)),

@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
-import { MathText } from '@shared/math/MathText';
+import { RichText } from '@shared/components/RichText';
 import { HomeworkResultCard } from '@shared/components/HomeworkResultCard';
 import { DOCUMENT } from '@shared/theme/tokens';
 import Icon from '@shared/components/Icon';
@@ -208,7 +208,7 @@ export function StudentHomeworkDetailScreen({ nav, payload }) {
             </View>
           ) : null}
 
-          <Assignment homework={data} />
+          <Assignment homework={data} onExpired={() => reload(true)} />
 
           <Divider style={{ marginHorizontal: 16 }} />
 
@@ -349,7 +349,7 @@ function CardHeader({ homework, submission }) {
 }
 
 /** Условие задания: срок, текст и материалы учителя. */
-function Assignment({ homework }) {
+function Assignment({ homework, onExpired }) {
   const { c } = useTheme();
   const materials = homework?.materials ?? [];
 
@@ -357,13 +357,14 @@ function Assignment({ homework }) {
     <View>
       <View style={{ paddingHorizontal: 16, paddingBottom: 12, gap: 6 }}>
         <Txt style={{ fontSize: 13, fontWeight: '400', color: c.ink3 }}>{dueLong(homework)}</Txt>
-        {/* Описание — поле с формулами: конспект от модели приходит с $…$ по прямой
-            инструкции промпта, да и учитель набирает формулы руками. Без MathText
-            ученик увидел бы \frac вместо дроби. Текста без формул это не касается —
-            MathText отдаёт для него обычный Txt. */}
+        {/* Описание — поле с формулами ($…$) и вставками: рисунки и файлы стоят там, где их
+            поставил учитель (CONTENT-EMBED-001). Текст без них RichText отдаёт обычным
+            MathText, а тот без формул — обычным Txt. */}
         {homework?.description ? (
-          <MathText
+          <RichText
             text={homework.description}
+            embeds={homework.embeds}
+            onExpired={onExpired}
             style={{ fontSize: 14, fontWeight: '400', lineHeight: 20, color: c.inkMuted }}
           />
         ) : null}

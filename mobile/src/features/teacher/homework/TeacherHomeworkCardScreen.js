@@ -23,7 +23,7 @@ import {
   useRunningAiJob,
   useTeacherHomeworkCard,
 } from '@shared/hooks/useTeacherHomework';
-import { MathText } from '@shared/math/MathText';
+import { RichText } from '@shared/components/RichText';
 import { phaseLabel } from '@shared/api/homeworkAiMap';
 import { HomeworkAiSheet } from './HomeworkAiSheet';
 import { pickFiles } from '@features/homework/attachments';
@@ -174,13 +174,14 @@ export function TeacherHomeworkCardScreen({ nav, payload }) {
             </Txt>
           </View>
 
-          {/* Описание — поле с формулами: модель пишет в него $…$ по прямой инструкции
-              промпта, да и учитель набирает их руками. Сырым текстом здесь стоял бы
-              \frac вместо дроби. Текста без формул это не касается — MathText отдаёт
-              для него обычный Txt. */}
+          {/* Описание — поле с формулами ($…$) и вставками (CONTENT-EMBED-001): сырым текстом
+              здесь стояли бы \frac и маркеры вместо дроби и рисунка. Текст без них RichText
+              отдаёт обычным MathText, а тот без формул — обычным Txt. */}
           {homework.description ? (
-            <MathText
+            <RichText
               text={homework.description}
+              embeds={homework.embeds}
+              onExpired={() => reload(true)}
               style={{ fontSize: 14, lineHeight: 21, color: c.ink }}
             />
           ) : (
