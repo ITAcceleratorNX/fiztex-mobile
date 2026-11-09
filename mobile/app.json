@@ -19,7 +19,7 @@
         "aps-environment": "production"
       },
       "infoPlist": {
-        "NSFaceIDUsageDescription": "Вход в Fiztex с помощью Face ID",
+        "NSFaceIDUsageDescription": "Вход в PhysTech с помощью Face ID",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -68,7 +68,7 @@
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Вход в Fiztex с помощью Face ID"
+          "faceIDPermission": "Вход в PhysTech с помощью Face ID"
         }
       ],
       "expo-asset",

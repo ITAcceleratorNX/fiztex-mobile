@@ -281,7 +281,7 @@ export function AuthProvider({ children }) {
       return { success: false, error: 'no_session' };
     }
     const result = await authenticateWithBiometrics({
-      promptMessage: `Вход в Fiztex (${biometricMeta.label})`,
+      promptMessage: `Вход в PhysTech (${biometricMeta.label})`,
     });
     if (result.success) {
       setUnlocked(true);

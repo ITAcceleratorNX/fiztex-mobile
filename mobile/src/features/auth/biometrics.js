@@ -52,7 +52,7 @@ export async function authenticateWithBiometrics({ promptMessage, cancelLabel } 
     return { success: false, error: 'unavailable' };
   }
   const result = await LocalAuthentication.authenticateAsync({
-    promptMessage: promptMessage || 'Вход в Fiztex',
+    promptMessage: promptMessage || 'Вход в PhysTech',
     cancelLabel: cancelLabel || 'Отмена',
     fallbackLabel: 'Использовать пароль',
     disableDeviceFallback: false,
