@@ -43,10 +43,10 @@ export function TeacherRequestsScreen({ navigation }) {
         <PrimaryButton onPress={() => navigation.navigate('teacher-request-form')}>
           <Icon name="plus" size={18} color="#fff" /> Создать заявку
         </PrimaryButton>
-        <View style={{ flexDirection: 'row', backgroundColor: c.surface2, borderRadius: 14, padding: 4 }}>
+        <View accessibilityRole="tablist" style={{ flexDirection: 'row', backgroundColor: c.bg2, borderRadius: 10, padding: 3 }}>
           {[['ACTIVE', 'Мои заявки'], ['HISTORY', 'История']].map(([key, label]) => (
-            <Pressable key={key} onPress={() => setTab(key)} style={{ flex: 1, alignItems: 'center', paddingVertical: 11, borderRadius: 11, backgroundColor: tab === key ? c.surface : 'transparent' }}>
-              <Txt style={{ fontSize: 14, fontWeight: tab === key ? '700' : '500', color: tab === key ? c.ink : c.ink2 }}>{label}</Txt>
+            <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: tab === key }} onPress={() => setTab(key)} style={({ pressed, hovered }) => ({ flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 8, backgroundColor: tab === key ? c.green : hovered || pressed ? c.greenSoft : 'transparent' })}>
+              <Txt style={{ fontSize: 13, fontWeight: tab === key ? '700' : '500', color: tab === key ? '#fff' : c.ink2 }}>{label}</Txt>
             </Pressable>
           ))}
         </View>
