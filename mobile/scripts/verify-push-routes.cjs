@@ -111,6 +111,12 @@ section('Родитель и ребёнок');
 
   const studentWithChild = open('STUDENT', push('lesson', { lessonId: 1 }, { childProfileId: 604 }));
   check('ученику ребёнок из данных не подставляется', studentWithChild.childId === null && !studentWithChild.payload.childId);
+
+  const teacherRequest = open('TEACHER', push('my-teacher-requests', { requestId: 58 }));
+  check('решение по заявке учителя открывает её карточку',
+    teacherRequest.screen === 'teacher-request' && teacherRequest.payload.requestId === 58);
+  check('переход к заявке без id безопасно возвращает на вкладку учителя',
+    open('TEACHER', push('teacher-requests', {})).tab === 'home');
 }
 
 section('Незнакомое и чужое');

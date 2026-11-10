@@ -97,6 +97,15 @@ const ROUTES = {
   'survey-take': { STUDENT: surveyTake, PARENT: surveyTake },
   feedback: { PARENT: () => tab('home') },
   'lesson-grades': { TEACHER: ignoringChild(lessonCard) },
+  // Решение администратора и новая заявка ведут в одну teacher detail-карточку.
+  'teacher-requests': { TEACHER: (params) => {
+    const requestId = positiveId(params.requestId);
+    return requestId ? screen('teacher-request', { requestId }) : null;
+  } },
+  'my-teacher-requests': { TEACHER: (params) => {
+    const requestId = positiveId(params.requestId);
+    return requestId ? screen('teacher-request', { requestId }) : null;
+  } },
 };
 
 /** Вкладка, куда вести, когда точнее нельзя. У служебных ролей вкладки «Главная» нет — просто открыть раздел. */
