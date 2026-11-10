@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@features/auth/AuthContext';
 import { teacherRequestsApi } from '@shared/api/teacherRequestsApi';
 import { Screen } from '@shared/components/Screen';
@@ -9,9 +10,85 @@ import Icon from '@shared/components/Icon';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { ACTIVE_STATUSES, HISTORY_STATUSES, periodLabel, REQUEST_STATUS, REQUEST_TYPES, daysInPeriod } from './model';
 
+const TABS = [
+  { value: 'ACTIVE', label: 'Мои заявки' },
+  { value: 'HISTORY', label: 'История' },
+];
+
+function pluralDays(days) {
+  if (days % 10 === 1 && days % 100 !== 11) return 'день';
+  if ([2, 3, 4].includes(days % 10) && ![12, 13, 14].includes(days % 100)) return 'дня';
+  return 'дней';
+}
+
+function pluralDocuments(count) {
+  if (count % 10 === 1 && count % 100 !== 11) return 'документ';
+  if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) return 'документа';
+  return 'документов';
+}
+
+function submittedDate(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function RequestEmptyState({ history }) {
+  const { c } = useTheme();
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28, paddingBottom: 48, gap: 16 }}>
+      <View style={{ width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: c.blueSoft }}>
+        <Icon name={history ? 'history' : 'calendar'} size={42} color={c.blue} strokeWidth={1.7} />
+      </View>
+      <View style={{ alignItems: 'center', gap: 8 }}>
+        <Txt style={{ fontSize: 20, fontWeight: '700', textAlign: 'center' }}>{history ? 'История пуста' : 'Заявок пока нет'}</Txt>
+        <Txt style={{ color: c.ink3, fontSize: 14, lineHeight: 20, textAlign: 'center' }}>
+          {history ? 'Здесь появятся отклонённые и отменённые заявки.' : 'Создайте заявку, если не сможете провести уроки.'}
+        </Txt>
+      </View>
+    </View>
+  );
+}
+
+function RequestCard({ request, onPress }) {
+  const { c } = useTheme();
+  const status = REQUEST_STATUS[request.status] || REQUEST_STATUS.PENDING;
+  const days = daysInPeriod(request.dateFrom, request.dateTo);
+  const documents = request.documentCount ?? 0;
+
+  return (
+    <Card onPress={onPress} style={{ gap: 14, padding: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+        <View style={{ flex: 1, gap: 5 }}>
+          <Txt style={{ fontSize: 16, lineHeight: 21, fontWeight: '700' }}>{REQUEST_TYPES[request.type] || request.type}</Txt>
+          <Txt style={{ color: c.ink2, fontSize: 14 }}>{periodLabel(request.dateFrom, request.dateTo)}</Txt>
+        </View>
+        <Pill color={status.tone}>{status.label}</Pill>
+      </View>
+
+      <View style={{ height: 1, backgroundColor: c.border }} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', columnGap: 12, rowGap: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <Icon name="calendar" size={15} color={c.ink3} />
+            <Txt style={{ fontSize: 12, color: c.ink3 }}>{days} {pluralDays(days)}</Txt>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <Icon name="fileText" size={15} color={c.ink3} />
+            <Txt style={{ fontSize: 12, color: c.ink3 }}>{documents} {pluralDocuments(documents)}</Txt>
+          </View>
+          <Txt style={{ fontSize: 12, color: c.ink3 }}>Подана {submittedDate(request.createdAt)}</Txt>
+        </View>
+        <Icon name="chevronRight" size={18} color={c.ink3} />
+      </View>
+    </Card>
+  );
+}
+
 export function TeacherRequestsScreen({ navigation }) {
   const { token } = useAuth();
   const { c } = useTheme();
+  const insets = useSafeAreaInsets();
   const [tab, setTab] = useState('ACTIVE');
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,46 +111,63 @@ export function TeacherRequestsScreen({ navigation }) {
 
   useEffect(() => { load(); return () => { sequence.current += 1; }; }, [load]);
 
-  const subtitle = useMemo(() => tab === 'ACTIVE' ? 'Текущие заявки и решения' : 'Заявки, по которым принято решение', [tab]);
+  const createRequest = () => navigation.navigate('teacher-request-form');
 
   return (
-    <Screen onRefresh={load} refreshing={loading} contentStyle={{ paddingBottom: 20 }}>
-      <ScreenHeader title="Освобождения" large sub={subtitle} />
-      <View style={{ paddingHorizontal: 16, gap: 16 }}>
-        <PrimaryButton onPress={() => navigation.navigate('teacher-request-form')}>
-          <Icon name="plus" size={18} color="#fff" /> Создать заявку
-        </PrimaryButton>
-        <View accessibilityRole="tablist" style={{ flexDirection: 'row', backgroundColor: c.bg2, borderRadius: 10, padding: 3 }}>
-          {[['ACTIVE', 'Мои заявки'], ['HISTORY', 'История']].map(([key, label]) => (
-            <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: tab === key }} onPress={() => setTab(key)} style={({ pressed, hovered }) => ({ flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 8, backgroundColor: tab === key ? c.green : hovered || pressed ? c.greenSoft : 'transparent' })}>
-              <Txt style={{ fontSize: 13, fontWeight: tab === key ? '700' : '500', color: tab === key ? '#fff' : c.ink2 }}>{label}</Txt>
-            </Pressable>
-          ))}
+    <Screen scroll={false}>
+      <View style={{ flex: 1 }}>
+        <ScreenHeader title="Освобождения" large />
+
+        <View accessibilityRole="tablist" style={{ flexDirection: 'row', marginHorizontal: 20, padding: 3, gap: 3, borderRadius: 12, backgroundColor: c.bg2 }}>
+          {TABS.map(({ value, label }) => {
+            const selected = tab === value;
+            return (
+              <Pressable
+                key={value}
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}
+                onPress={() => setTab(value)}
+                style={({ pressed }) => ({
+                  flex: 1,
+                  height: 40,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 9,
+                  backgroundColor: selected ? c.green : 'transparent',
+                  opacity: pressed ? 0.86 : 1,
+                })}
+              >
+                <Txt style={{ fontSize: 14, fontWeight: selected ? '700' : '500', color: selected ? c.surface : c.ink2 }}>{label}</Txt>
+              </Pressable>
+            );
+          })}
         </View>
-        {loading ? <ActivityIndicator color={c.blue} style={{ marginTop: 24 }} /> : error ? (
-          <Card><Txt style={{ color: c.red, textAlign: 'center' }}>Не удалось загрузить заявки</Txt><Pressable onPress={load} style={{ padding: 12 }}><Txt style={{ color: c.blue, textAlign: 'center', fontWeight: '700' }}>Повторить</Txt></Pressable></Card>
-        ) : rows.length ? rows.map((row) => {
-          const status = REQUEST_STATUS[row.status] || REQUEST_STATUS.PENDING;
-          const days = daysInPeriod(row.dateFrom, row.dateTo);
-          return (
-            <Card key={row.id} onPress={() => navigation.navigate('teacher-request', { requestId: row.id })} style={{ gap: 12 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                <View style={{ flex: 1 }}><Txt style={{ fontSize: 16, fontWeight: '700' }}>{REQUEST_TYPES[row.type] || row.type}</Txt><Txt style={{ color: c.ink2, marginTop: 4 }}>{periodLabel(row.dateFrom, row.dateTo)}</Txt></View>
-                <Pill color={status.tone}>{status.label}</Pill>
-              </View>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View style={{ flex: 1 }}><Txt style={{ fontSize: 13, color: c.ink3 }}>{days} {days === 1 ? 'день' : days < 5 ? 'дня' : 'дней'} · {row.documentCount || 0} док.</Txt><Txt style={{ fontSize: 11, color: c.ink3, marginTop: 3 }}>Подана {row.createdAt ? new Date(row.createdAt).toLocaleDateString('ru-RU') : '—'}</Txt></View>
-                <Icon name="chevronRight" size={18} color={c.ink3} />
-              </View>
+
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 18, paddingBottom: insets.bottom + (tab === 'ACTIVE' ? 92 : 24), gap: 12 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={c.blue} colors={[c.blue]} />}
+        >
+          {loading ? <ActivityIndicator color={c.blue} style={{ marginTop: 32 }} /> : error ? (
+            <Card style={{ alignItems: 'center', gap: 10, marginTop: 12 }}>
+              <Icon name="alertTriangle" size={28} color={c.red} />
+              <Txt style={{ color: c.red, textAlign: 'center' }}>Не удалось загрузить заявки</Txt>
+              <Pressable accessibilityRole="button" onPress={load} style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
+                <Txt style={{ color: c.blue, fontWeight: '700' }}>Повторить</Txt>
+              </Pressable>
             </Card>
-          );
-        }) : (
-          <Card style={{ alignItems: 'center', paddingVertical: 28, gap: 8 }}>
-            <Icon name="calendar" size={28} color={c.ink3} />
-            <Txt style={{ fontSize: 16, fontWeight: '700' }}>{tab === 'ACTIVE' ? 'Заявок пока нет' : 'История пуста'}</Txt>
-            <Txt style={{ color: c.ink2, textAlign: 'center' }}>{tab === 'ACTIVE' ? 'Создайте заявку, если не сможете провести уроки.' : 'Здесь появятся отклонённые и отменённые заявки.'}</Txt>
-          </Card>
-        )}
+          ) : rows.length ? rows.map((row) => (
+            <RequestCard key={row.id} request={row} onPress={() => navigation.navigate('teacher-request', { requestId: row.id })} />
+          )) : <RequestEmptyState history={tab === 'HISTORY'} />}
+        </ScrollView>
+
+        {tab === 'ACTIVE' ? (
+          <View style={{ position: 'absolute', right: 20, bottom: insets.bottom + 18 }}>
+            <PrimaryButton full={false} onPress={createRequest} style={{ paddingHorizontal: 20 }}>
+              <Icon name="plus" size={18} color={c.surface} /> Создать заявку
+            </PrimaryButton>
+          </View>
+        ) : null}
       </View>
     </Screen>
   );

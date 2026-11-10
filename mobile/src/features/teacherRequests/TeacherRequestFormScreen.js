@@ -9,8 +9,8 @@ import { Card, FieldLabel, PrimaryButton, ScreenHeader, TextField } from '@share
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { useTheme } from '@shared/theme/ThemeContext';
-import { ACTIVE_STATUSES, fileError, REQUEST_TYPES } from './model';
-import { DatePickerModal } from '@shared/components/DatePickerModal';
+import { ACTIVE_STATUSES, fileError, periodLabel, REQUEST_TYPES } from './model';
+import { TeacherRequestCalendarModal } from './TeacherRequestCalendarModal';
 
 const TYPES = Object.keys(REQUEST_TYPES);
 
@@ -25,7 +25,7 @@ export function TeacherRequestFormScreen({ navigation, route }) {
   const [busy, setBusy] = useState(false);
   const [dateError, setDateError] = useState('');
   const [reasonError, setReasonError] = useState('');
-  const [datePicker, setDatePicker] = useState(null);
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [occupiedRanges, setOccupiedRanges] = useState([]);
   const requestId = route.params?.requestId;
 
@@ -103,41 +103,88 @@ export function TeacherRequestFormScreen({ navigation, route }) {
   return (
     <Screen contentStyle={{ paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
       <ScreenHeader title={requestId ? 'Изменить заявку' : 'Новая заявка'} back={() => navigation.goBack()} />
-      <View style={{ paddingHorizontal: 16, gap: 20 }}>
-        <View style={{ gap: 10 }}><FieldLabel required>Тип заявки</FieldLabel><View style={{ flexDirection: 'row', gap: 10 }}>{TYPES.map((value) => (
-          <Pressable key={value} onPress={() => setType(value)} style={{ flex: 1, minHeight: 72, justifyContent: 'center', padding: 14, borderRadius: 16, borderWidth: 1, borderColor: type === value ? c.blue : c.border, backgroundColor: type === value ? c.blueSoft : c.surface }}>
-            <Txt style={{ fontWeight: '700', color: type === value ? c.blueInk : c.ink }}>{REQUEST_TYPES[value]}</Txt>
-          </Pressable>
-        ))}</View></View>
+      <View style={{ paddingHorizontal: 20, gap: 20 }}>
+        <View style={{ gap: 10 }}>
+          <FieldLabel required>Тип заявки</FieldLabel>
+          <View style={{ gap: 10 }}>
+            {TYPES.map((value) => {
+              const selected = type === value;
+              return (
+                <Pressable
+                  key={value}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  onPress={() => setType(value)}
+                  style={({ pressed }) => ({
+                    minHeight: 58,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    paddingHorizontal: 16,
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: selected ? c.blue : c.border,
+                    backgroundColor: selected ? c.blueSoft : c.surface,
+                    opacity: pressed ? 0.88 : 1,
+                  })}
+                >
+                  <Icon name={value === 'RELEASE' ? 'calendar' : 'fileText'} size={20} color={selected ? c.blue : c.ink3} />
+                  <Txt style={{ flex: 1, fontSize: 15, fontWeight: selected ? '700' : '500', color: selected ? c.blueInk : c.ink }}>{REQUEST_TYPES[value]}</Txt>
+                  <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: selected ? 6 : 1.5, borderColor: selected ? c.blue : c.border }} />
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
         <View style={{ gap: 8 }}>
           <FieldLabel required>Даты отсутствия</FieldLabel>
-          <Card style={{ gap: 12 }}>
-            <Pressable onPress={() => setDatePicker('from')}><TextField label="С даты" value={dateFrom ? dateFrom.split('-').reverse().join('.') : ''} editable={false} placeholder="Выберите дату" right={<Icon name="calendar" size={18} color={c.blue} />} /></Pressable>
-            <Pressable onPress={() => setDatePicker('to')}><TextField label="По дату" value={dateTo ? dateTo.split('-').reverse().join('.') : ''} editable={false} placeholder="Выберите дату" right={<Icon name="calendar" size={18} color={c.blue} />} /></Pressable>
-            {dateError ? <Txt style={{ color: c.red, fontSize: 12 }}>{dateError}</Txt> : <Txt style={{ color: c.ink3, fontSize: 12 }}>Укажите один день или непрерывный период. Прошедшие даты доступны.</Txt>}
-          </Card>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setDatePickerVisible(true)}
+            style={{
+              minHeight: 54,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              paddingHorizontal: 16,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: dateError ? c.red : c.border,
+              backgroundColor: c.surface,
+            }}
+          >
+            <Icon name="calendar" size={20} color={c.blue} />
+            <Txt style={{ flex: 1, fontSize: 15, color: dateFrom && dateTo ? c.ink : c.ink3 }}>
+              {dateFrom && dateTo ? periodLabel(dateFrom, dateTo) : 'Выберите один день или период'}
+            </Txt>
+            <Icon name="chevronRight" size={18} color={c.ink3} />
+          </Pressable>
+          {dateError ? <Txt style={{ color: c.red, fontSize: 12 }}>{dateError}</Txt> : null}
         </View>
-        <TextField label="Причина" required error={reasonError} value={reason} onChangeText={(value) => { setReason(value); if (value.trim()) setReasonError(''); }} placeholder="Расскажите, почему вы не сможете провести уроки" multiline maxLength={1000} />
+
+        <TextField size="lg" label="Причина" required error={reasonError} value={reason} onChangeText={(value) => { setReason(value); if (value.trim()) setReasonError(''); }} placeholder="Расскажите, почему вы не сможете провести уроки" multiline maxLength={1000} />
+
         <View style={{ gap: 8 }}>
-          <FieldLabel optional>Документ</FieldLabel>
-          <Card style={{ gap: 10 }}>
-            <Txt style={{ color: c.ink2, fontSize: 13 }}>PDF, JPG, PNG или HEIC · до 10 МБ</Txt>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Pressable onPress={pickFile} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: c.border }}>
-                <Icon name="upload" size={18} color={c.blue} /><Txt style={{ color: c.blue, fontWeight: '700' }}>Файл</Txt>
+          <FieldLabel optional>Документы</FieldLabel>
+          <Card style={{ gap: 12 }}>
+            <Txt style={{ color: c.ink3, fontSize: 13 }}>PDF, JPG, PNG или HEIC · до 10 МБ</Txt>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <Pressable onPress={pickFile} style={{ flex: 1, minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface }}>
+                <Icon name="upload" size={17} color={c.blue} /><Txt style={{ color: c.blue, fontWeight: '700' }}>Файл</Txt>
               </Pressable>
-              <Pressable onPress={pickPhotos} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: c.border }}>
-                <Icon name="camera" size={18} color={c.blue} /><Txt style={{ color: c.blue, fontWeight: '700' }}>Фото</Txt>
+              <Pressable onPress={pickPhotos} style={{ flex: 1, minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface }}>
+                <Icon name="camera" size={17} color={c.blue} /><Txt style={{ color: c.blue, fontWeight: '700' }}>Фото</Txt>
               </Pressable>
             </View>
-            {files.map((file, index) => <View key={`${file.name}-${index}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Txt numberOfLines={1} style={{ flex: 1, fontSize: 13 }}>{file.name}</Txt><Pressable onPress={() => setFiles((current) => current.filter((_, i) => i !== index))}><Icon name="x" size={17} color={c.red} /></Pressable></View>)}
+            {files.map((file, index) => <View key={`${file.name}-${index}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 8, borderTopWidth: 1, borderColor: c.border }}><Icon name="fileText" size={18} color={c.ink3} /><Txt numberOfLines={1} style={{ flex: 1, fontSize: 13 }}>{file.name}</Txt><Pressable accessibilityRole="button" accessibilityLabel={`Удалить ${file.name}`} onPress={() => setFiles((current) => current.filter((_, i) => i !== index))}><Icon name="x" size={17} color={c.red} /></Pressable></View>)}
           </Card>
         </View>
-        <PrimaryButton onPress={save} disabled={busy}>{busy ? 'Сохраняем…' : requestId ? 'Сохранить изменения' : 'Отправить заявку'}</PrimaryButton>
+        <PrimaryButton size="lg" onPress={save} disabled={busy}>{busy ? 'Сохраняем…' : requestId ? 'Сохранить изменения' : 'Отправить заявку'}</PrimaryButton>
       </View>
-      <DatePickerModal visible={!!datePicker} value={datePicker === 'from' ? dateFrom : dateTo} occupiedRanges={occupiedRanges} title={datePicker === 'from' ? 'Дата начала' : 'Дата окончания'} onClose={() => setDatePicker(null)} onSelect={(value) => {
-        if (datePicker === 'from') { setDateFrom(value); if (!dateTo || value > dateTo) setDateTo(value); }
-        else setDateTo(value);
+      <TeacherRequestCalendarModal visible={datePickerVisible} from={dateFrom} to={dateTo} occupiedRanges={occupiedRanges} onClose={() => setDatePickerVisible(false)} onSelect={(from, to) => {
+        setDateFrom(from);
+        setDateTo(to);
         setDateError('');
       }} />
     </Screen>
