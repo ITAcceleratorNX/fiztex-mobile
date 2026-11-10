@@ -73,6 +73,7 @@ import {
 // Персональный код ученика у классного руководителя и родителя (AUTH-FE-001): вход — из
 // профиля, выдача — по разрешению администратора или по подтверждённой связи с ребёнком.
 import { HomeroomClassScreen, HomeroomStudentScreen, ChildCodeScreen } from '@features/access';
+import { TeacherRequestsScreen, TeacherRequestDetailScreen, TeacherRequestFormScreen } from '@features/teacherRequests';
 
 const tabScreenOptions = { headerShown: false };
 
@@ -302,6 +303,9 @@ export function TeacherApp() {
         { name: 'scanner', comp: TeacherScanner },
         { name: 'ai-upload', comp: TeacherAIUpload },
         { name: 'feedback-write', comp: TeacherFeedbackWrite },
+        { name: 'teacher-requests', comp: TeacherRequestsScreen },
+        { name: 'teacher-request', comp: TeacherRequestDetailScreen },
+        { name: 'teacher-request-form', comp: TeacherRequestFormScreen },
         { name: 'notifications', comp: NotificationsScreen },
         { name: 'homeroom-class', comp: HomeroomClassScreen },
         { name: 'homeroom-student', comp: HomeroomStudentScreen },
