@@ -511,12 +511,18 @@ export function TeacherProfile({ nav, onSignOut }) {
         ))}
       </Card>
 
-      {/* Вход в сервисные заявки — с профиля, как в макете (Figma «Учитель - профиль»,
-          1112:6611): раздел не учебный, и вкладки в нижней панели ему не досталось. */}
+      {/* Вход в сервисные и кадровые заявки — из профиля учителя. */}
       <SectionTitle title="Сервис" />
       <Card style={{ marginHorizontal: 16, marginBottom: 12, padding: 0 }}>
         <Pressable onPress={() => nav('service-requests')}>
           <ProfileRow icon="wrench" title="Сервисные заявки" last />
+        </Pressable>
+      </Card>
+
+      <SectionTitle title="Кадровые заявки" />
+      <Card style={{ marginHorizontal: 16, marginBottom: 12, padding: 0 }}>
+        <Pressable onPress={() => nav('teacher-requests')}>
+          <ProfileRow icon="calendar" title="Освобождения от уроков" last />
         </Pressable>
       </Card>
 
