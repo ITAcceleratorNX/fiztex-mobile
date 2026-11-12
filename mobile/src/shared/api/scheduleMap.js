@@ -1,3 +1,5 @@
+import { mapScheduleWorks } from './assessmentMap';
+
 /**
  * Map RoleScheduleLessonView → UI row used by LessonRow / home previews.
  * @param {object} lesson
@@ -28,6 +30,8 @@ export function mapLessonToRow(lesson, now = new Date()) {
     // Отмена и замена — свойства фактического урока: у слота за горизонтом
     // генерации их нет и быть не может, поэтому дефолт «обычный урок».
     cancelled: Boolean(lesson.cancelled),
+    // СОР/СОЧ урока: плашка «СОР 1» в строке. Пусто, если работ нет или урок ещё не сгенерирован.
+    assessmentWorks: mapScheduleWorks(lesson.assessmentWorks),
     substituteTeacher: lesson.substituteTeacherName || null,
     substituteTeacherShort: lesson.substituteTeacherName
       ? abbreviateTeacherName(lesson.substituteTeacherName)

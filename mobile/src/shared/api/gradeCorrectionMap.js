@@ -53,3 +53,68 @@ export function homeCorrectionLine(list) {
   const more = subjects.length - 1;
   return `Требуется исправление · ${subjects[0]}${more > 0 ? ` и ещё ${more}` : ''}`;
 }
+
+// ─── Учитель: лист оценок урока ────────────────────────────────────────────────
+
+/**
+ * Исправление строки ученика: открытое (`REQUIRED`/`OVERDUE`) — одно на ученика и урок. Статус и
+ * просрочка приходят с сервера, экран их не вычисляет.
+ */
+export function openCorrection(corrections, studentProfileId) {
+  return (corrections ?? []).find(
+    (item) => item.studentProfileId === studentProfileId && (item.status === 'REQUIRED' || item.status === 'OVERDUE'),
+  ) ?? null;
+}
+
+/** Подпись под фамилией: «Исправить до 21 октября» или «Срок исправления истёк». */
+export function correctionBadgeLabel(correction) {
+  if (!correction) return null;
+  if (correction.overdue || correction.status === 'OVERDUE') return 'Срок исправления истёк';
+  return correction.deadline ? `Исправить до ${correctionDateLabel(correction.deadline)}` : 'Требуется исправление';
+}
+
+/** Значения временной оценки: 1–10 в периоде по политике, иначе шкала с сервера. */
+export function temporaryOptions({ pointsMode, scale }) {
+  if (pointsMode) return Array.from({ length: 10 }, (_, index) => String(index + 1));
+  return (scale ?? []).map((item) => item.code).filter(Boolean);
+}
+
+/** Выбранное значение в тело запроса: баллы — `{ score, gradeType }`, шкала — `{ scaleCode }`. */
+export function temporaryValue(value, { pointsMode, defaultWorkType }) {
+  return pointsMode ? { score: Number(value), gradeType: defaultWorkType } : { scaleCode: value };
+}
+
+/** Текущая временная оценка исправления — в виде строки выбора. */
+export function initialTemporary(correction, { pointsMode }) {
+  const grade = correction?.temporaryGrade;
+  if (!grade) return null;
+  if (!pointsMode) return grade.scaleCode ?? null;
+  return grade.score != null ? String(Number(grade.score)) : null;
+}
+
+const pad = (n) => String(n).padStart(2, '0');
+
+/** Локальная дата в ISO — не UTC: иначе ночью день уезжал бы назад. */
+export function isoDay(date) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+const WEEKDAYS = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+
+/** Ближайшие дни для выбора своего срока: с сегодняшнего, раньше сервер не примет. */
+export function deadlineDays(now = new Date(), count = 21) {
+  return Array.from({ length: count }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + index, 12);
+    return { iso: isoDay(date), label: `${WEEKDAYS[date.getDay()]} ${date.getDate()}`, long: correctionDateLabel(isoDay(date)) };
+  });
+}
+
+/**
+ * Что мешает сохранить исправление, словами; `null` — можно. Комментарий обязателен, срок тоже;
+ * допустимость срока окончательно проверяет сервер.
+ */
+export function correctionProblem({ comment, deadline }) {
+  if (!String(comment ?? '').trim()) return 'Опишите, что нужно исправить';
+  if (!deadline) return 'Выберите срок исправления';
+  return null;
+}

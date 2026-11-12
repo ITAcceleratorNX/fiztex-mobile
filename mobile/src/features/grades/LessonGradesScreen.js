@@ -15,6 +15,9 @@ import { ParentCommentEditor } from './ParentCommentEditor';
 import { gradeValueBody, sheetBadge, writeStateBanner } from '@shared/api/gradesMap';
 import { LessonGradeRow } from './LessonGradeRow';
 import { LessonGradeSheet } from './LessonGradeSheet';
+import { CorrectionExpiredSheet, CorrectionFormSheet } from './CorrectionSheets';
+import { useLessonCorrections } from '@shared/hooks/useGradeCorrections';
+import { openCorrection } from '@shared/api/gradeCorrectionMap';
 import {
   EmptyRosterState,
   GradesSkeleton,
@@ -115,6 +118,11 @@ export function LessonGradesScreen({ nav, payload }) {
     createGrade, updateGrade, removeGrade,
   } = useLessonGrades(lessonId);
 
+  // Исправление работы (веб — «Отметить исправление»): форма, «Срок истёк» и итоговая оценка в клетке.
+  const corrections = useLessonCorrections(lessonId, { enabled: Boolean(lessonId) });
+  const [correctionDialog, setCorrectionDialog] = useState(null); // { kind: 'form'|'expired', studentProfileId }
+  const [dialogError, setDialogError] = useState(null);
+
   // Какая клетка открыта: ученик плюс место в его строке. Один слот на весь экран —
   // открыть два шита сразу нельзя, а два независимых состояния разошлись бы.
   const [picker, setPicker] = useState(null); // { studentProfileId, slot, gradeId }
@@ -126,6 +134,8 @@ export function LessonGradesScreen({ nav, payload }) {
     () => rows.find((row) => row.studentProfileId === picker?.studentProfileId) || null,
     [rows, picker],
   );
+  const dialogRow = rows.find((row) => row.studentProfileId === correctionDialog?.studentProfileId) || null;
+  const dialogCorrection = dialogRow ? openCorrection(corrections.corrections, dialogRow.studentProfileId) : null;
   const pickedGrade = useMemo(
     () => (picked?.grades || []).find((grade) => grade.id === picker?.gradeId) || null,
     [picked, picker],
@@ -139,11 +149,11 @@ export function LessonGradesScreen({ nav, payload }) {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([reload({ silent: true }), comments.reload(true)]);
+      await Promise.all([reload({ silent: true }), comments.reload(true), corrections.reload()]);
     } finally {
       setRefreshing(false);
     }
-  }, [reload, comments.reload]);
+  }, [reload, comments.reload, corrections.reload]);
 
   const onBack = useCallback(() => nav?.back?.(), [nav]);
 
@@ -184,7 +194,10 @@ export function LessonGradesScreen({ nav, payload }) {
 
   const cancelled = lesson?.status === 'CANCELLED' || sheet?.writeState === 'LESSON_CANCELLED';
   const canManage = Boolean(sheet?.canManageGrades);
-  const maxGrades = sheet?.maxGradesPerStudent ?? 1;
+  // На уроке с СОЧ новую обычную оценку сервер не принимает (`GRADE_LESSON_HAS_SOCH`): мест под неё
+  // нет вовсе, чтобы не предлагать нажатие, которое кончится отказом. Стоящие оценки остаются.
+  const hasSoch = (lesson?.assessmentWorks ?? []).some((work) => work.kind === 'SOCH' && work.status !== 'CANCELLED');
+  const maxGrades = hasSoch ? 0 : (sheet?.maxGradesPerStudent ?? 1);
   // GRADES-003: шкала или баллы — решает сервер по четверти урока.
   const pointsMode = sheet?.valueMode === 'POINTS';
   /**
@@ -215,11 +228,19 @@ export function LessonGradesScreen({ nav, payload }) {
   async function pickValue(value, gradeType) {
     setSheetError(null);
     const type = sheetPointsMode ? gradeType : pickedGrade ? pickedGrade.gradeType ?? null : gradeType;
-    const message = pickedGrade
-      ? await updateGrade(pickedGrade.id, value, type ?? null)
-      : await createGrade(picker.studentProfileId, value, type ?? null);
+    // У ученика с открытым исправлением выбор значения в клетке — итоговая оценка: сервер закрывает
+    // исправление и пишет обычную оценку урока.
+    const open = pickedGrade ? null : openCorrection(corrections.corrections, picker.studentProfileId);
+    const message = open
+      ? await corrections.complete(open.id, { ...value, gradeType: type ?? undefined })
+      : pickedGrade
+        ? await updateGrade(pickedGrade.id, value, type ?? null)
+        : await createGrade(picker.studentProfileId, value, type ?? null);
     if (message) setSheetError(message);
-    else closePicker();
+    else {
+      closePicker();
+      if (open) reload({ silent: true });
+    }
   }
 
   /** Тип у существующей оценки сохраняется сразу — отдельной кнопки в макете нет. */
@@ -338,6 +359,21 @@ export function LessonGradesScreen({ nav, payload }) {
                 })()}
                 maxGrades={maxGrades}
                 canManage={canManage}
+                correction={openCorrection(corrections.corrections, row.studentProfileId)}
+                onFlag={() => {
+                  closePicker();
+                  setDialogError(null);
+                  corrections.loadNext();
+                  const open = openCorrection(corrections.corrections, row.studentProfileId);
+                  setCorrectionDialog({
+                    kind: open && (open.overdue || open.status === 'OVERDUE') ? 'expired' : 'form',
+                    studentProfileId: row.studentProfileId,
+                  });
+                }}
+                onCorrectionGrade={() => {
+                  setSheetError(null);
+                  setPicker({ studentProfileId: row.studentProfileId, slot: 0, gradeId: null });
+                }}
                 openSlot={picker?.studentProfileId === row.studentProfileId ? picker.slot : null}
                 onShowHistory={(grade) => {
                   closePicker();
@@ -362,6 +398,60 @@ export function LessonGradesScreen({ nav, payload }) {
       {commentRow ? <ParentCommentEditor key={`${lessonId}:${commentStudentId}`} lessonId={lessonId} row={commentRow}
         lesson={lesson} onClose={() => setCommentStudentId(null)} onSaved={() => comments.reload(true)} /> : null}
 
+      <CorrectionFormSheet
+        visible={correctionDialog?.kind === 'form' && Boolean(dialogRow)}
+        studentName={dialogRow?.fullName || ''}
+        correction={dialogCorrection}
+        options={{ pointsMode, scale, defaultWorkType: sheet?.defaultWorkType }}
+        nextDate={corrections.nextDate}
+        noNext={corrections.noNext}
+        busy={corrections.busy}
+        error={dialogError}
+        onClose={() => setCorrectionDialog(null)}
+        onSubmit={async (values) => {
+          setDialogError(null);
+          let message;
+          if (!dialogCorrection) {
+            message = await corrections.create({ studentProfileId: dialogRow.studentProfileId, ...values });
+          } else {
+            // Правка шлёт только изменённое: каждое поле на сервере — своё событие истории.
+            const patch = {};
+            if (values.comment !== dialogCorrection.comment) patch.comment = values.comment;
+            if (values.deadline !== dialogCorrection.deadline) patch.deadline = values.deadline;
+            const before = temporaryGradeKey(dialogCorrection.temporaryGrade);
+            const after = temporaryGradeKey(values.temporaryGrade);
+            if (before !== after) {
+              if (values.temporaryGrade) patch.temporaryGrade = values.temporaryGrade;
+              else patch.removeTemporaryGrade = true;
+            }
+            message = Object.keys(patch).length > 0 ? await corrections.update(dialogCorrection.id, patch) : null;
+          }
+          if (message) setDialogError(message);
+          else setCorrectionDialog(null);
+        }}
+      />
+      <CorrectionExpiredSheet
+        visible={correctionDialog?.kind === 'expired' && Boolean(dialogCorrection)}
+        correction={dialogCorrection}
+        nextDate={corrections.nextDate}
+        noNext={corrections.noNext}
+        busy={corrections.busy}
+        error={dialogError}
+        onClose={() => setCorrectionDialog(null)}
+        onExtend={async (deadline) => {
+          setDialogError(null);
+          const message = await corrections.update(dialogCorrection.id, { deadline });
+          if (message) setDialogError(message);
+          else setCorrectionDialog(null);
+        }}
+        onGrade={() => {
+          const studentProfileId = dialogCorrection.studentProfileId;
+          setCorrectionDialog(null);
+          setSheetError(null);
+          setPicker({ studentProfileId, slot: 0, gradeId: null });
+        }}
+      />
+
       <LessonGradeSheet
         visible={Boolean(picker)}
         studentName={picked?.fullName || ''}
@@ -381,4 +471,10 @@ export function LessonGradesScreen({ nav, payload }) {
       />
     </Screen>
   );
+}
+
+/** Значение временной оценки как строка — чтобы сравнить «было / стало» и не слать неизменённое. */
+function temporaryGradeKey(grade) {
+  if (!grade) return '';
+  return grade.scaleCode ? `S:${grade.scaleCode}` : grade.score != null ? `P:${Number(grade.score)}` : '';
 }

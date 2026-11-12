@@ -100,6 +100,11 @@ const ICONS = {
   TEACHER_SUBSTITUTION_CANCELLED: { icon: 'calendar', tone: 'blue' },
   TEACHER_REVIEW_PENDING: { icon: 'clipboardCheck', tone: 'orange' },
   TEACHER_PENDING_ACTIONS: { icon: 'alertTriangle', tone: 'orange' },
+  // СОР/СОЧ (ТЗ «СОР/СОЧ»): назначение, перенос, напоминание, отмена. Переход — карточка урока (`lesson`).
+  ASSESSMENT_WORK_ASSIGNED: { icon: 'clipboardCheck', tone: 'blue' },
+  ASSESSMENT_WORK_RESCHEDULED: { icon: 'calendar', tone: 'blue' },
+  ASSESSMENT_WORK_SOON: { icon: 'clock', tone: 'orange' },
+  ASSESSMENT_WORK_CANCELLED: { icon: 'alertTriangle', tone: 'red' },
 };
 
 /** «Незавершённые действия» учителя: карточка не ведёт сама, а разворачивается списком действий. */

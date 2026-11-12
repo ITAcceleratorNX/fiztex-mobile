@@ -99,6 +99,36 @@ export function AttendanceBadge({ status }) {
 
 // Figma `class-badge` (node 2022:14002) — the class a teacher's lesson belongs to.
 // Square-ish (r6) and tinted, unlike the outlined pill used for lesson status.
+/**
+ * Плашка «СОР 1» / «✓ СОР 1» в строке расписания (Figma M1, S1, P2): запланированная работа — navy-заливка,
+ * проведённая — светлая с галочкой. Статус приходит с сервера и от даты урока не зависит.
+ */
+function AssessmentChip({ work }) {
+  const { c } = useTheme();
+  const conducted = work.status === 'CONDUCTED';
+  return (
+    <View
+      accessibilityLabel={`${work.title}: ${conducted ? 'проведена' : 'запланирована'}`}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
+        backgroundColor: conducted ? c.blueSoft : c.blue,
+        borderWidth: work.needsReschedule ? 1 : 0,
+        borderColor: c.green,
+      }}
+    >
+      {conducted ? <Icon name="check" size={10} color={c.blue} strokeWidth={3} /> : null}
+      <Txt style={{ fontSize: 11, fontWeight: '800', color: conducted ? c.blue : '#fff' }} numberOfLines={1}>
+        {work.title}
+      </Txt>
+    </View>
+  );
+}
+
 function ClassBadge({ label }) {
   const { c } = useTheme();
   return (
@@ -217,6 +247,9 @@ export function LessonRow({ lesson, onPress, teacherView = false, attendance = n
               {lesson.subject}
             </Txt>
             {teacherView && lesson.className ? <ClassBadge label={lesson.className} /> : null}
+            {!cancelled && (lesson.assessmentWorks ?? []).map((work) => (
+              <AssessmentChip key={work.workId} work={work} />
+            ))}
           </View>
           {cancelled ? (
             <StatusBadge label="Отменён" color={c.red} tint="rgba(220,38,38,0.08)" />
