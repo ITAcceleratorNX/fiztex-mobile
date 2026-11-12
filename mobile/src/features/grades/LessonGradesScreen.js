@@ -198,6 +198,8 @@ export function LessonGradesScreen({ nav, payload }) {
   // нет вовсе, чтобы не предлагать нажатие, которое кончится отказом. Стоящие оценки остаются.
   const hasSoch = (lesson?.assessmentWorks ?? []).some((work) => work.kind === 'SOCH' && work.status !== 'CANCELLED');
   const maxGrades = hasSoch ? 0 : (sheet?.maxGradesPerStudent ?? 1);
+  // Урок с СОЧ без обычных оценок: экран — только комментарии родителям (без оценок и флажка исправления).
+  const commentsOnly = hasSoch && rows.every((row) => (row.grades || []).length === 0);
   // GRADES-003: шкала или баллы — решает сервер по четверти урока.
   const pointsMode = sheet?.valueMode === 'POINTS';
   /**
@@ -279,8 +281,8 @@ export function LessonGradesScreen({ nav, payload }) {
         {/* Шапка — Figma `step-1-info` */}
         <View style={{ backgroundColor: c.blueSoft, borderRadius: 16, padding: 16, gap: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Txt style={{ flex: 1, fontSize: 22, fontWeight: '700', color: c.blue }}>Оценки</Txt>
-            {cancelled ? null : (
+            <Txt style={{ flex: 1, fontSize: 22, fontWeight: '700', color: c.blue }}>{commentsOnly ? 'Комментарии' : 'Оценки'}</Txt>
+            {cancelled || commentsOnly ? null : (
               <View
                 style={{
                   backgroundColor: c.bg2,
@@ -359,6 +361,7 @@ export function LessonGradesScreen({ nav, payload }) {
                 })()}
                 maxGrades={maxGrades}
                 canManage={canManage}
+                commentsOnly={commentsOnly}
                 correction={openCorrection(corrections.corrections, row.studentProfileId)}
                 onFlag={() => {
                   closePicker();

@@ -23,18 +23,18 @@ import { correctionBadgeLabel, temporaryGradeLabel } from '@shared/api/gradeCorr
  */
 export function LessonGradeRow({
   row, maxGrades = 1, canManage = false, openSlot = null, onOpen, trailingAction, onShowHistory,
-  correction = null, onFlag, onCorrectionGrade,
+  correction = null, onFlag, onCorrectionGrade, commentsOnly = false,
 }) {
   const { c } = useTheme();
   const grades = row.grades || [];
   const free = canManage ? Math.max(0, maxGrades - grades.length) : 0;
-  const placeholders = canManage ? 0 : Math.max(0, maxGrades - grades.length);
+  const placeholders = canManage || commentsOnly ? 0 : Math.max(0, maxGrades - grades.length);
   // Пока работа на исправлении, её место в строке — клетка временной оценки: выбор значения в ней и
   // есть итоговая оценка (веб, Figma 1956:1399). Свободных мест под обычную оценку у такой строки нет.
   const slots = correction ? [...grades] : [...grades, ...Array.from({ length: free }, () => null)];
   const badge = correctionBadgeLabel(correction);
   // Флажок исправления — у ученика без оценки либо с уже открытым исправлением; у оценённого его нет.
-  const flagVisible = canManage && Boolean(onFlag) && (grades.length === 0 || Boolean(correction));
+  const flagVisible = !commentsOnly && canManage && Boolean(onFlag) && (grades.length === 0 || Boolean(correction));
 
   return (
     <View
