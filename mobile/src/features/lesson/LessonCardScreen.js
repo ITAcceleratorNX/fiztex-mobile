@@ -24,6 +24,8 @@ import { useLessonGrades } from '@shared/hooks/useGrades';
 import { TextEditSheet } from '@shared/components/TextEditSheet';
 import { RichText } from '@shared/components/RichText';
 import { LessonCardFallback, LessonCardHeader } from './LessonCardStates';
+import { AssessmentWorkBlock } from './AssessmentWorkBlock';
+import { useAssessmentActions } from '@shared/hooks/useAssessmentWork';
 
 const TOPIC_MAX = 300;
 const COMMENT_MAX = 2000;
@@ -159,6 +161,8 @@ export function LessonCardScreen({ nav, payload }) {
     highlight,
   });
   const editing = useLessonEditing(lessonId, reload);
+  // СОР/СОЧ урока: назначение, проведение, перенос, отмена. Баллы — в журнале на компьютере.
+  const assessment = useAssessmentActions(lessonId, reload);
   // Лист посещаемости — отдельный запрос и только при праве на него: без
   // VIEW_ATTENDANCE бэк ответит 403, и ходить туда ради выключенной плитки незачем.
   const {
@@ -330,6 +334,9 @@ export function LessonCardScreen({ nav, payload }) {
             onClear={editing.clearHomeworkNotAssigned}
           />
         </View>
+
+        {/* Суммативная работа урока (Figma Mobile M2, M4–M11). Решает сервер; без права — только чтение. */}
+        <AssessmentWorkBlock lesson={lesson} canEdit={canEdit} actions={assessment} nav={nav} />
 
         <LessonSummaryEntry lessonId={lessonId} childId={childId} nav={nav} staff refreshing={refreshing} />
         {/* Разделы урока. Все четыре плитки читают бэк; каждая ведёт на свой экран,

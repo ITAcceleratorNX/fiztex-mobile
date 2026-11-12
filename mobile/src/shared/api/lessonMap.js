@@ -1,5 +1,6 @@
 import { abbreviateTeacherName, formatRoom } from './scheduleMap';
 import { sizeLabel } from './files';
+import { mapAssessmentWorks } from './assessmentMap';
 
 const MONTHS_GENITIVE = [
   'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
@@ -150,6 +151,16 @@ export function mapLessonCard(lesson, { highlight = null } = {}) {
     materialCount: typeof lesson.materialCount === 'number' ? lesson.materialCount : 0,
 
     topic: lesson.topic || null,
+
+    // СОР/СОЧ урока: учителю — со статусом и числом баллов, ученику и родителю — со своим
+    // результатом (`myResult`, только у проведённой работы). Охват нужен учителю для лимитов и переноса.
+    assessmentWorks: mapAssessmentWorks(lesson.assessmentWorks),
+    scope: {
+      classId: lesson.classId ?? null,
+      subjectId: lesson.subjectId ?? null,
+      academicPeriodId: lesson.academicPeriodId ?? null,
+      subgroupId: lesson.subgroupId ?? null,
+    },
     homework: mapHomework(lesson.homework),
 
     // Состояние блока ДЗ целиком: задано / не задано / черновик / пока не указано.

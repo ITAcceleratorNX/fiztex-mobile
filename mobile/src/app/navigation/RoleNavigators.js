@@ -14,6 +14,7 @@ import {
   LessonSummaryScreen,
   LessonTextbookViewerScreen,
   StudentLessonScreen,
+  AssessmentScoresScreen,
 } from '@features/lesson';
 import {
   AttendanceScreen, QrScanScreen, AttendanceMonthScreen, AttendanceStudentScreen,
@@ -289,6 +290,8 @@ export function TeacherApp() {
         // Оценки урока открываются с его карточки и в неё же возвращаются: это часть
         // урока. Журнал живёт отдельной вкладкой — у него другой вход и другой контекст.
         { name: 'lesson-grades', comp: LessonGradesScreen },
+        // Баллы СОР/СОЧ урока: вход из блока работы на карточке урока, возврат туда же.
+        { name: 'assessment-scores', comp: AssessmentScoresScreen },
         { name: 'journal-student', comp: JournalStudentScreen },
         // Карточка задания и форма создания — этапы HOMEWORK-001/002/004; список уже ведёт на них.
         { name: 'homework-card', comp: TeacherHomeworkCardScreen },

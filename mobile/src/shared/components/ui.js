@@ -1072,8 +1072,8 @@ export function SegmentedSwitch({ value, options = [], onChange, style }) {
           <Pressable
             key={String(option.value)}
             accessibilityRole="tab"
-            accessibilityState={{ selected: active }}
-            onPress={() => onChange?.(option.value)}
+            accessibilityState={{ selected: active, disabled: Boolean(option.disabled) }}
+            onPress={option.disabled ? undefined : () => onChange?.(option.value)}
             style={({ pressed }) => ({
               flex: 1,
               height: 29,
@@ -1081,7 +1081,8 @@ export function SegmentedSwitch({ value, options = [], onChange, style }) {
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: active ? c.surface : 'transparent',
-              opacity: pressed ? 0.8 : 1,
+              // Недоступный вариант виден, но не нажимается — причина написана рядом с переключателем.
+              opacity: option.disabled ? 0.4 : pressed ? 0.8 : 1,
             })}
           >
             <Txt

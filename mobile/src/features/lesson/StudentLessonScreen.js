@@ -1,3 +1,4 @@
+import { AssessmentResultCard } from './AssessmentResultCard';
 import React, { useCallback, useState } from 'react';
 import { View, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -472,6 +473,9 @@ export function StudentLessonScreen({ nav, payload }) {
           commentEmbeds={lesson.comment?.embeds}
           onExpired={() => reload(true)}
         />
+
+        {/* СОР/СОЧ урока: статус, максимум и — после проведения — только собственный результат. */}
+        <AssessmentResultCard works={lesson.assessmentWorks} />
 
         <HomeworkCard
           homework={lesson.homework}
