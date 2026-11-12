@@ -239,6 +239,10 @@ export function LessonCardScreen({ nav, payload }) {
 
   // ─── Карточка ───────────────────────────────────────────────────────────────
   const canEdit = lesson.can.editTeaching;
+  const hasSoch = (lesson.assessmentWorks ?? []).some((work) => work.kind === 'SOCH' && work.status !== 'CANCELLED');
+  // На уроке с СОЧ без обычных оценок плитка ведёт только к комментариям родителям.
+  const commentsOnly = hasSoch && Boolean(gradesSheet)
+    && (gradesSheet.students ?? []).every((row) => (row.grades ?? []).length === 0);
   const audience = [lesson.className, lesson.subgroupName].filter(Boolean).join(' · ');
 
   return (
@@ -391,11 +395,13 @@ export function LessonCardScreen({ nav, payload }) {
                 canManage: canEdit,
               })}
             />
+            {/* На уроке с СОЧ обычных оценок нет и новой не поставить: плитка называется «Комментарии» и
+                ведёт к комментариям родителям. Баллы СОЧ — в блоке работы. */}
             <LessonActionTile
-              icon="award"
+              icon={commentsOnly ? 'chat' : 'award'}
               tint="red"
-              label="Оценки и комментарии"
-              value={gradesTileValue(lesson, gradesSheet, gradesLoading)}
+              label={commentsOnly ? 'Комментарии' : 'Оценки и комментарии'}
+              value={commentsOnly ? 'Родителям' : gradesTileValue(lesson, gradesSheet, gradesLoading)}
               onPress={lesson.can.viewGrades
                 ? () => nav?.('lesson-grades', { lessonInstanceId: lessonId })
                 : undefined}
