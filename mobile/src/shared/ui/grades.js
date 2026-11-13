@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Pressable } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Txt } from '@shared/components/Txt';
+import { finalFullLabel, finalShortLabel } from '@shared/api/gradesMap';
 
 /**
  * Клетка оценки (Figma `mobile-grades-list`, 32×32).
@@ -59,16 +60,23 @@ export function GradeChip({ value, onPress, disabled = false, active = false, si
 /**
  * Итоговая оценка за четверть: та же клетка, но без знаков шкалы и с прочерком вместо
  * пустоты — «итога пока нет» это состояние, а не приглашение (final-grades-contract §3).
+ *
+ * `label` — подпись вместо числа: «ВНА», «НА», «Зачёт» (ATTESTATION-001). Клетка тогда
+ * растёт по ширине, а `fullLabel` уходит в подпись для экранного диктора.
  */
-export function FinalChip({ value, onPress, disabled = false, tone = 'final' }) {
+export function FinalChip({ value, label, fullLabel, onPress, disabled = false, tone = 'final' }) {
   const { c } = useTheme();
-  const has = value !== null && value !== undefined;
+  const text = label ?? (value !== null && value !== undefined ? String(value) : null);
+  const has = text != null;
   const interactive = Boolean(onPress) && !disabled;
 
   const body = (
     <View
+      accessible={!interactive}
+      accessibilityLabel={has ? `Итог: ${fullLabel ?? text}` : 'Итога нет'}
       style={{
-        width: 32,
+        minWidth: 32,
+        paddingHorizontal: 4,
         height: 32,
         borderRadius: 10,
         alignItems: 'center',
@@ -83,7 +91,7 @@ export function FinalChip({ value, onPress, disabled = false, tone = 'final' }) 
           color: has ? (tone === 'final' ? '#fff' : c.ink2) : c.ink3,
         }}
       >
-        {has ? String(value) : '—'}
+        {has ? text : '—'}
       </Txt>
     </View>
   );
@@ -93,12 +101,56 @@ export function FinalChip({ value, onPress, disabled = false, tone = 'final' }) 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={has ? `Итоговая оценка ${value}` : 'Выставить итоговую оценку'}
+      accessibilityLabel={has ? `Итоговая оценка ${fullLabel ?? text}` : 'Выставить итоговую оценку'}
       onPress={onPress}
       hitSlop={4}
       style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
     >
       {body}
     </Pressable>
+  );
+}
+
+/**
+ * Опубликованный итог у ученика и родителя (ATTESTATION-001, ТЗ-2 §7): число — как раньше,
+ * «Временно не аттестован» и «Не аттестован» — плашкой своего цвета вместо числа, зачёт и
+ * «не изучался» — словом. Прочерк — только когда итога нет: это другое состояние, и
+ * путать его со статусом нельзя.
+ *
+ * @param result `{resultKind, value}` либо `null`
+ * @param compact клетка списка (рядом с другими четвертями) вместо крупного значения
+ */
+export function FinalResultValue({ result, compact = false }) {
+  const { c } = useTheme();
+  const label = finalShortLabel(result);
+  const kind = result?.resultKind || 'NUMERIC';
+  if (label == null) {
+    return compact
+      ? <GradeChip value={null} size={28} />
+      : <Txt style={{ fontSize: 22, fontWeight: '700', color: c.ink3 }}>—</Txt>;
+  }
+  if (kind === 'NUMERIC') {
+    return compact
+      ? <GradeChip value={label} size={28} />
+      : <Txt style={{ fontSize: 22, fontWeight: '700', color: c.ink }}>{label}</Txt>;
+  }
+  const tone = kind === 'NOT_ATTESTED'
+    ? { bg: c.redSoft, fg: c.red }
+    : kind === 'TEMP_UNATTESTED'
+      ? { bg: c.greenSoft, fg: c.amberInk }
+      : { bg: c.bg2, fg: c.ink2 };
+  return (
+    <View
+      accessible
+      accessibilityLabel={finalFullLabel(result)}
+      style={{
+        backgroundColor: tone.bg,
+        borderRadius: 999,
+        paddingHorizontal: compact ? 10 : 12,
+        paddingVertical: compact ? 4 : 6,
+      }}
+    >
+      <Txt style={{ fontSize: compact ? 13 : 15, fontWeight: '700', color: tone.fg }}>{label}</Txt>
+    </View>
   );
 }

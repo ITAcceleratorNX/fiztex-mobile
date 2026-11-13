@@ -355,11 +355,75 @@ const myFinals = {
   ],
 };
 check('итоги берутся по своему предмету',
-  m.myFinalsForSubject(myFinals, 3).periodValues[7] === 4);
-check('годовая читается отдельно', m.myFinalsForSubject(myFinals, 4).yearValue === 5);
+  m.periodResultOf(m.myFinalsForSubject(myFinals, 3), 7)?.value === 4);
+check('годовая читается отдельно', m.myFinalsForSubject(myFinals, 4).yearResult?.value === 5);
 check('предмета нет — пустые итоги, а не падение',
-  m.myFinalsForSubject(myFinals, 99).yearValue === null
-  && Object.keys(m.myFinalsForSubject(myFinals, 99).periodValues).length === 0);
+  m.myFinalsForSubject(myFinals, 99).yearResult === null
+  && Object.keys(m.myFinalsForSubject(myFinals, 99).periodResults).length === 0);
+
+// ── Статусы ВНА/НА (ATTESTATION-001) ─────────────────────────────────────────
+section('Статусы аттестации у ученика и родителя');
+
+const withStatuses = {
+  subjects: [{
+    subjectId: 3,
+    // Новый сервер: особые результаты в periodResults, в старом periodValues — только числа.
+    periodValues: { 8: 6 },
+    periodResults: {
+      7: { resultKind: 'TEMP_UNATTESTED', value: null },
+      8: { resultKind: 'NUMERIC', value: 6 },
+      9: { resultKind: 'NOT_ATTESTED', value: null },
+    },
+    yearResult: { resultKind: 'PASS', value: null },
+  }],
+};
+const statusFinals = m.myFinalsForSubject(withStatuses, 3);
+check('опубликованный ВНА виден вместо числа',
+  m.finalShortLabel(m.periodResultOf(statusFinals, 7)) === 'ВНА'
+  && m.finalFullLabel(m.periodResultOf(statusFinals, 7)) === 'Временно не аттестован');
+check('НА — своя подпись', m.finalShortLabel(m.periodResultOf(statusFinals, '9')) === 'НА');
+check('у статуса есть пояснение, у числа — нет',
+  m.finalHint(m.periodResultOf(statusFinals, 7)) != null && m.finalHint(m.periodResultOf(statusFinals, 8)) === null);
+check('число по-прежнему число', m.finalShortLabel(m.periodResultOf(statusFinals, 8)) === '6');
+check('строка «Оценки»: опубликованный ВНА — в карточке предмета',
+  m.subjectRowFinal({ finalResult: { resultKind: 'TEMP_UNATTESTED', value: null } })?.resultKind === 'TEMP_UNATTESTED');
+check('строка «Оценки»: число — число',
+  m.finalShortLabel(m.subjectRowFinal({ finalResult: { resultKind: 'NUMERIC', value: 4 } })) === '4');
+check('строка «Оценки»: итога нет — значка нет (старый ответ без поля, null, число без значения)',
+  m.subjectRowFinal({}) === null && m.subjectRowFinal({ finalResult: null }) === null
+  && m.subjectRowFinal({ finalResult: { resultKind: 'NUMERIC', value: null } }) === null);
+check('зачёт годовой — словом', m.finalShortLabel(statusFinals.yearResult) === 'Зачёт');
+check('итога нет — null, а не прочерк-статус', m.finalShortLabel(null) === null);
+check('«не изучался» — словом, не прочерком',
+  m.finalShortLabel({ resultKind: 'NOT_STUDIED', value: null }) === 'Не изучался');
+
+section('Статусы аттестации в журнале учителя');
+
+const statusSet = {
+  rows: [
+    { studentProfileId: 1, finalGrade: { status: 'DRAFT', resultKind: 'TEMP_UNATTESTED', value: null } },
+    { studentProfileId: 2, finalGrade: { status: 'DRAFT', resultKind: 'NUMERIC', value: 7 } },
+  ],
+};
+check('строка со статусом — выставленный итог для публикации',
+  m.finalsProgress(statusSet).filled === 2 && m.finalsProgress(statusSet).allFilled === true);
+
+const draftNumber = m.teacherFinalCell({ canEditResult: true, finalGrade: { status: 'DRAFT', resultKind: 'NUMERIC', value: 7 } });
+check('черновое число открывает выбор', draftNumber.editable === true && draftNumber.label === '7' && draftNumber.note === null);
+const statusCell = m.teacherFinalCell({ canEditResult: true, canChangeAttestation: true,
+  finalGrade: { status: 'PUBLISHED', resultKind: 'NOT_ATTESTED', value: null } });
+check('статус в мобилке не правится — без причины сервер откажет',
+  statusCell.editable === false && statusCell.label === 'НА' && statusCell.note === 'ВНА и НА меняются в веб-журнале');
+const publishedNumber = m.teacherFinalCell({ canEditResult: false, canChangeAttestation: true,
+  finalGrade: { status: 'PUBLISHED', resultKind: 'NUMERIC', value: 6 } });
+check('опубликованное число — по признаку сервера', publishedNumber.editable === false && publishedNumber.note === null);
+const pendingCell = m.teacherFinalCell({ canEditResult: false, canConfirmPublication: true,
+  finalGrade: { status: 'PUBLISHED', resultKind: 'TEMP_UNATTESTED', value: null,
+    pendingChange: { resultKind: 'NUMERIC', value: 7 } } });
+check('ожидающее изменение: показано решённое, подтверждение — в вебе',
+  pendingCell.label === '7' && pendingCell.editable === false && pendingCell.note.includes('веб-журнале'));
+const empty = m.teacherFinalCell({ canEditResult: true, finalGrade: null });
+check('итога нет — выбор открывается, подписи нет', empty.editable === true && empty.label === null);
 
 // ── Чипы оценок в расписании ─────────────────────────────────────────────────
 section('Оценки на карточке расписания');

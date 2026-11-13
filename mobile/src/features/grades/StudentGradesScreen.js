@@ -6,9 +6,9 @@ import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { PickerSheet, StateView } from '@shared/components/ui';
-import { GradeChip } from '@shared/ui/grades';
+import { FinalResultValue, GradeChip } from '@shared/ui/grades';
 import { useMySubjectGrades } from '@shared/hooks/useGrades';
-import { formatAverage, gradeValueLabel } from '@shared/api/gradesMap';
+import { formatAverage, gradeValueLabel, subjectRowFinal } from '@shared/api/gradesMap';
 import { GradesSkeleton, NoGradesState, NoPeriodDataState } from './GradeStates';
 
 /**
@@ -199,10 +199,14 @@ export function StudentGradesScreen({
  *
  * Оценки не сворачиваются в «последние три»: их за четверть немного, а обрезанный ряд
  * заставил бы открывать предмет ради того, что помещается на экране.
+ *
+ * Опубликованная итоговая за четверть стоит в той же строке справа — числом или ВНА/НА
+ * (ATTESTATION-001). Неопубликованной здесь нет и не бывает: сервер её не присылает.
  */
 function SubjectCard({ subject, onPress }) {
   const { c } = useTheme();
   const grades = subject.grades || [];
+  const final = subjectRowFinal(subject);
 
   return (
     <Pressable
@@ -225,17 +229,27 @@ function SubjectCard({ subject, onPress }) {
         <Txt style={{ fontSize: 16, fontWeight: '700', color: c.ink }} numberOfLines={1}>
           {subject.subjectName}
         </Txt>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-          {grades.map((grade) => (
-            <GradeChip key={grade.id} value={gradeValueLabel(grade)} size={28} />
-          ))}
+        {grades.length > 0 && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {grades.map((grade) => (
+              <GradeChip key={grade.id} value={gradeValueLabel(grade)} size={28} />
+            ))}
+          </View>
+        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 28 }}>
+          <Txt style={{ flex: 1, fontSize: 13, fontWeight: '500', color: c.ink3 }}>
+            {/* GRADES-003: по политике — процент четверти, иначе средний балл. */}
+            {subject.result
+              ? `Итог: ${subject.result.roundedPercent != null ? `${subject.result.roundedPercent}%` : '—'}`
+              : `Ср. балл: ${formatAverage(subject.average?.average)}`}
+          </Txt>
+          {final && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Txt style={{ fontSize: 13, fontWeight: '500', color: c.ink3 }}>Итоговая</Txt>
+              <FinalResultValue result={final} compact />
+            </View>
+          )}
         </View>
-        <Txt style={{ fontSize: 13, fontWeight: '500', color: c.ink3 }}>
-          {/* GRADES-003: по политике — процент четверти, иначе средний балл. */}
-          {subject.result
-            ? `Итог: ${subject.result.roundedPercent != null ? `${subject.result.roundedPercent}%` : '—'}`
-            : `Ср. балл: ${formatAverage(subject.average?.average)}`}
-        </Txt>
       </View>
       <Icon name="chevronRight" size={20} color={c.ink3} strokeWidth={2} />
     </Pressable>
