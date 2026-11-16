@@ -155,7 +155,9 @@ export function finalsByStudent(classFinals) {
  */
 export function finalsProgress(classFinals) {
   const rows = classFinals?.rows || [];
-  const filled = rows.filter((row) => row.finalGrade?.value != null).length;
+  // Итог выставлен — это строка итога, а не число: ВНА/НА и зачёт числа не имеют, но тоже
+  // решение учителя (ATTESTATION-001). Раньше такие строки считались пустыми.
+  const filled = rows.filter((row) => row.finalGrade != null).length;
   return {
     filled,
     total: rows.length,
@@ -204,21 +206,130 @@ export function lessonGradesSummary(codes) {
 }
 
 /**
- * Итог за период и годовая из «моих итоговых» (final-grades-contract §7).
+ * Особые итоги — не числа (ATTESTATION-001, GRADES-003): короткая подпись в клетку, полная —
+ * в текст, пояснение — под итогом. Слова совпадают с вебом (`lib/attestationModel.ts`).
+ */
+export const FINAL_RESULT_LABELS = {
+  TEMP_UNATTESTED: {
+    short: 'ВНА',
+    full: 'Временно не аттестован',
+    hint: 'Итог отложен: обязательные работы ещё не сданы',
+  },
+  NOT_ATTESTED: {
+    short: 'НА',
+    full: 'Не аттестован',
+    hint: 'Решение школы: за четверть итога нет',
+  },
+  PASS: { short: 'Зачёт', full: 'Зачёт', hint: null },
+  FAIL: { short: 'Незачёт', full: 'Незачёт', hint: null },
+  // Не прочерк: «—» здесь значит «итога нет», а «не изучался» — решение учителя.
+  NOT_STUDIED: { short: 'Не изучался', full: 'Не изучался', hint: 'Предмет в этой четверти не изучался' },
+};
+
+export function isAttestationStatus(kind) {
+  return kind === 'TEMP_UNATTESTED' || kind === 'NOT_ATTESTED';
+}
+
+/** Итог `{resultKind, value}` или `null` — коротко: «7», «ВНА», «Зачёт». */
+export function finalShortLabel(result) {
+  if (!result) return null;
+  const kind = result.resultKind || 'NUMERIC';
+  if (kind === 'NUMERIC') return result.value != null ? String(result.value) : null;
+  return FINAL_RESULT_LABELS[kind]?.short ?? null;
+}
+
+/** Полностью: «7», «Временно не аттестован». */
+export function finalFullLabel(result) {
+  if (!result) return null;
+  const kind = result.resultKind || 'NUMERIC';
+  if (kind === 'NUMERIC') return result.value != null ? String(result.value) : null;
+  return FINAL_RESULT_LABELS[kind]?.full ?? null;
+}
+
+/** Пояснение под итогом — только у особых результатов. */
+export function finalHint(result) {
+  const kind = result?.resultKind;
+  return kind && kind !== 'NUMERIC' ? FINAL_RESULT_LABELS[kind]?.hint ?? null : null;
+}
+
+/**
+ * Опубликованный итог за период в строке раздела «Оценки» (`/api/grades/my/subjects`,
+ * поле `finalResult`) — или `null`, если показывать нечего. Сервер держит в списке и
+ * предмет без оценок, когда по нему опубликован ВНА: иначе до статуса было не добраться.
+ */
+export function subjectRowFinal(subject) {
+  const result = subject?.finalResult ?? null;
+  return finalShortLabel(result) != null ? result : null;
+}
+
+/** Число из старого поля → тот же вид, что новое `*Result`. */
+function numeric(value) {
+  return value == null ? null : { resultKind: 'NUMERIC', value };
+}
+
+/**
+ * Итоги предмета из «моих итоговых» (final-grades-contract §7, §12.6).
  *
  * В этой выборке нет черновиков вовсе, поэтому фильтровать статусы не нужно: всё, что
- * пришло, ученику показывать можно.
+ * пришло, ученику показывать можно. Новые поля `periodResults`, `yearResult`… несут и
+ * особые результаты (ВНА, НА, зачёт); старые `periodValues`, `yearValue`… — только числа и
+ * берутся, лишь когда сервер ещё не знает новых полей.
  *
- * @returns {{periodValues: Record<string, number>, yearValue: number|null, examValue: number|null, finalValue: number|null}}
+ * @returns {{periodResults: Record<string, {resultKind: string, value: number|null}>,
+ *   yearResult: object|null, examResult: object|null, finalResult: object|null}}
  */
 export function myFinalsForSubject(myFinals, subjectId) {
   const subject = (myFinals?.subjects || []).find((item) => item.subjectId === subjectId);
+  const periodResults = {};
+  if (subject?.periodResults) {
+    Object.assign(periodResults, subject.periodResults);
+  } else {
+    for (const [periodId, value] of Object.entries(subject?.periodValues || {})) {
+      periodResults[periodId] = numeric(value);
+    }
+  }
   return {
-    periodValues: subject?.periodValues || {},
-    yearValue: subject?.yearValue ?? null,
+    periodResults,
+    yearResult: subject?.yearResult ?? numeric(subject?.yearValue),
     // GRADES-003: экзаменационная и итоговая — тоже только опубликованные.
-    examValue: subject?.examValue ?? null,
-    finalValue: subject?.finalValue ?? null,
+    examResult: subject?.examResult ?? numeric(subject?.examValue),
+    finalResult: subject?.finalResult ?? numeric(subject?.finalValue),
+  };
+}
+
+/** Итог за период по идентификатору — ключи приходят строками, а период бывает числом. */
+export function periodResultOf(subjectFinals, periodId) {
+  const results = subjectFinals?.periodResults || {};
+  return results[String(periodId)] ?? results[periodId] ?? null;
+}
+
+/**
+ * Клетка итога в журнале учителя: что показать и можно ли открыть выбор числа.
+ *
+ * Выбор открывается по признаку сервера `canEditResult`, кроме строк со статусом ВНА/НА и
+ * изменением, ждущим подтверждения: всё это требует причины и повторного подтверждения, а
+ * мобилка их не ведёт — это делается в веб-журнале. Иначе выбор числа отправил бы правку
+ * без причины, и сервер ответил бы отказом.
+ *
+ * @returns {{label: string|null, full: string|null, editable: boolean, note: string|null}}
+ */
+export function teacherFinalCell(row) {
+  const grade = row?.finalGrade ?? null;
+  const pending = grade?.pendingChange ?? null;
+  const decided = pending?.resultKind
+    ? { resultKind: pending.resultKind, value: pending.value ?? null }
+    : grade ? { resultKind: grade.resultKind || 'NUMERIC', value: grade.value ?? null } : null;
+  const statusRow = isAttestationStatus(grade?.resultKind) || isAttestationStatus(decided?.resultKind);
+  const webOnly = statusRow || pending != null;
+  return {
+    label: finalShortLabel(decided),
+    full: finalFullLabel(decided),
+    editable: Boolean(row?.canEditResult) && !webOnly,
+    note: pending
+      ? 'Изменено после публикации — подтверждение в веб-журнале'
+      : statusRow && (row?.canEditResult || row?.canChangeAttestation)
+        ? 'ВНА и НА меняются в веб-журнале'
+        : null,
   };
 }
 

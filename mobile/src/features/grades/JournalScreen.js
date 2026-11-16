@@ -14,6 +14,7 @@ import {
   formatAverage,
   formatPercent,
   incompleteStudentIds,
+  teacherFinalCell,
 } from '@shared/api/gradesMap';
 import { GradesSkeleton, NoGradesState, NoPeriodDataState } from './GradeStates';
 import { FinalGradeSheet } from './FinalGradeSheet';
@@ -367,9 +368,10 @@ function JournalTab({ journal, nav, finals, className, subjectName }) {
                 studentProfileId: row.studentProfileId,
                 className,
                 subjectName,
-                finalGrade: (finals?.rows || []).find(
+                // Подпись, а не число: у итога бывает ВНА/НА или зачёт (ATTESTATION-001).
+                finalGrade: teacherFinalCell((finals?.rows || []).find(
                   (item) => item.studentProfileId === row.studentProfileId,
-                )?.finalGrade?.value ?? null,
+                )).label,
               })}
             style={({ pressed }) => ({
               flexDirection: 'row',
@@ -508,7 +510,9 @@ function FinalsTab({ finals, missing, error, context, onEdit, onPublish }) {
           overflow: 'hidden',
         }}
       >
-        {rows.map((row) => (
+        {rows.map((row) => {
+          const cell = teacherFinalCell(row);
+          return (
           <View
             key={row.studentProfileId}
             style={{
@@ -523,9 +527,16 @@ function FinalsTab({ finals, missing, error, context, onEdit, onPublish }) {
               backgroundColor: missing.includes(row.studentProfileId) ? c.redSoft : 'transparent',
             }}
           >
-            <Txt style={{ flex: 1, fontSize: 15, fontWeight: '500', color: c.ink }} numberOfLines={1}>
-              {row.studentName}
-            </Txt>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Txt style={{ fontSize: 15, fontWeight: '500', color: c.ink }} numberOfLines={1}>
+                {row.studentName}
+              </Txt>
+              {cell.note ? (
+                <Txt style={{ fontSize: 12, fontWeight: '500', color: c.amberInk }} numberOfLines={2}>
+                  {cell.note}
+                </Txt>
+              ) : null}
+            </View>
             {row.result ? (
               <Txt style={{ fontSize: 13, fontWeight: '600', color: c.ink2 }}>
                 {formatPercent(row.result.percent)}
@@ -540,14 +551,18 @@ function FinalsTab({ finals, missing, error, context, onEdit, onPublish }) {
                 <Icon name="lock" size={16} color={c.ink3} strokeWidth={2} />
               </View>
             ) : (
+              /* Выбор числа — по признаку сервера; ВНА/НА и подтверждение изменений ведутся
+                 в веб-журнале: там есть причина и история (ATTESTATION-001). */
               <FinalChip
-                value={row.finalGrade?.value ?? null}
+                label={cell.label}
+                fullLabel={cell.full}
                 disabled={finals.busy}
-                onPress={canManage ? () => onEdit(row) : undefined}
+                onPress={cell.editable ? () => onEdit(row) : undefined}
               />
             )}
           </View>
-        ))}
+          );
+        })}
       </View>
 
       {/* §10: годовая — отдельный экран и отдельное решение учителя. Здесь она

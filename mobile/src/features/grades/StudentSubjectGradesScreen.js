@@ -6,7 +6,7 @@ import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { StateView } from '@shared/components/ui';
-import { GradeChip } from '@shared/ui/grades';
+import { FinalResultValue, GradeChip } from '@shared/ui/grades';
 import { useMySubjectDetail } from '@shared/hooks/useGrades';
 import {
   COMPONENT_SHORT,
@@ -16,7 +16,9 @@ import {
   gradeValueLabel,
   resultStatusHint,
   longDate,
+  finalHint,
   myFinalsForSubject,
+  periodResultOf,
   subjectSubtitle,
 } from '@shared/api/gradesMap';
 import { GradesEmptyBody, GradesSkeleton } from './GradeStates';
@@ -66,6 +68,10 @@ function ValueCard({ title, hint, value }) {
  * <b>Черновиков здесь нет по построению.</b> Итоги приходят из `/api/final-grades/my`, а
  * эта выборка возвращает только опубликованное (контракт §7): фильтровать статусы на
  * клиенте не нужно и нельзя — иначе однажды покажем ученику то, что учитель ещё думает.
+ *
+ * <b>Итог — число либо статус</b> (ATTESTATION-001): «Временно не аттестован», «Не аттестован»,
+ * зачёт приходят видом результата (`periodResults`) и показываются вместо числа. Причин
+ * статуса и неподтверждённых изменений в этой выборке нет — их ученику не показывают.
  *
  * <b>Средний балл не считается здесь.</b> Он приходит вместе с лентой, тот же, что видит
  * учитель в журнале.
@@ -117,9 +123,8 @@ export function StudentSubjectGradesScreen({ nav, payload }) {
   );
 
   const otherPeriods = (payload?.periods || []).filter((item) => item.id !== periodId);
-  const currentFinal = subjectFinals.periodValues?.[String(periodId)]
-    ?? subjectFinals.periodValues?.[periodId]
-    ?? null;
+  // Опубликованный итог: число либо ВНА/НА, зачёт (ATTESTATION-001). Черновиков в выборке нет.
+  const currentFinal = periodResultOf(subjectFinals, periodId);
 
   const header = (
     <View style={{ paddingHorizontal: 16, paddingTop: 12, gap: 8 }}>
@@ -272,12 +277,8 @@ export function StudentSubjectGradesScreen({ nav, payload }) {
         <BlockTitle>Итог четверти</BlockTitle>
         <ValueCard
           title="Итоговая оценка"
-          hint={currentFinal == null ? 'Ещё не выставлена' : null}
-          value={
-            <Txt style={{ fontSize: 22, fontWeight: '700', color: currentFinal == null ? c.ink3 : c.ink }}>
-              {currentFinal ?? '—'}
-            </Txt>
-          }
+          hint={currentFinal == null ? 'Ещё не выставлена' : finalHint(currentFinal)}
+          value={<FinalResultValue result={currentFinal} />}
         />
       </View>
 
@@ -295,9 +296,7 @@ export function StudentSubjectGradesScreen({ nav, payload }) {
             }}
           >
             {otherPeriods.map((item) => {
-              const value = subjectFinals.periodValues?.[String(item.id)]
-                ?? subjectFinals.periodValues?.[item.id]
-                ?? null;
+              const final = periodResultOf(subjectFinals, item.id);
               return (
                 <Pressable
                   key={item.id}
@@ -323,7 +322,7 @@ export function StudentSubjectGradesScreen({ nav, payload }) {
                   <Txt style={{ flex: 1, fontSize: 15, fontWeight: '500', color: c.ink }}>
                     {item.name}
                   </Txt>
-                  <GradeChip value={value == null ? null : String(value)} size={28} />
+                  <FinalResultValue result={final} compact />
                   <Icon name="chevronRight" size={16} color={c.ink3} strokeWidth={2} />
                 </Pressable>
               );
@@ -340,48 +339,31 @@ export function StudentSubjectGradesScreen({ nav, payload }) {
              четвертей» обещает то, чего система не делает: годовую выставляет учитель, и
              четыре четверти для неё не обязательны. */
           hint={
-            subjectFinals.yearValue == null ? 'Годовая оценка ещё не опубликована' : null
+            subjectFinals.yearResult == null
+              ? 'Годовая оценка ещё не опубликована'
+              : finalHint(subjectFinals.yearResult)
           }
-          value={
-            <Txt
-              style={{
-                fontSize: 22,
-                fontWeight: '700',
-                color: subjectFinals.yearValue == null ? c.ink3 : c.ink,
-              }}
-            >
-              {subjectFinals.yearValue ?? '—'}
-            </Txt>
-          }
+          value={<FinalResultValue result={subjectFinals.yearResult} />}
         />
       </View>
 
       {/* GRADES-003: экзаменационная и итоговая есть только у предметов с экзаменом —
           пустых блоков «экзамена нет» ученику не показываем. */}
-      {subjectFinals.examValue != null || subjectFinals.finalValue != null ? (
+      {subjectFinals.examResult != null || subjectFinals.finalResult != null ? (
         <View style={{ paddingTop: 24, gap: 10 }}>
           <BlockTitle>Экзамен и итоговая</BlockTitle>
           <ValueCard
             title="Экзаменационная"
-            value={<BigValue value={subjectFinals.examValue} />}
+            value={<FinalResultValue result={subjectFinals.examResult} />}
           />
           <ValueCard
             title="Итоговая"
-            hint={subjectFinals.finalValue == null ? 'Ещё не опубликована' : null}
-            value={<BigValue value={subjectFinals.finalValue} />}
+            hint={subjectFinals.finalResult == null ? 'Ещё не опубликована' : finalHint(subjectFinals.finalResult)}
+            value={<FinalResultValue result={subjectFinals.finalResult} />}
           />
         </View>
       ) : null}
     </Screen>
-  );
-}
-
-function BigValue({ value }) {
-  const { c } = useTheme();
-  return (
-    <Txt style={{ fontSize: 22, fontWeight: '700', color: value == null ? c.ink3 : c.ink }}>
-      {value ?? '—'}
-    </Txt>
   );
 }
 
