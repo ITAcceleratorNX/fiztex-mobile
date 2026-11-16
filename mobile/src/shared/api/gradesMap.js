@@ -213,12 +213,12 @@ export const FINAL_RESULT_LABELS = {
   TEMP_UNATTESTED: {
     short: 'ВНА',
     full: 'Временно не аттестован',
-    hint: 'Итог отложен: обязательные работы ещё не сданы',
+    hint: 'Оценка появится после сдачи обязательных работ',
   },
   NOT_ATTESTED: {
     short: 'НА',
     full: 'Не аттестован',
-    hint: 'Решение школы: за четверть итога нет',
+    hint: 'Итог четверти опубликован',
   },
   PASS: { short: 'Зачёт', full: 'Зачёт', hint: null },
   FAIL: { short: 'Незачёт', full: 'Незачёт', hint: null },
@@ -244,6 +244,14 @@ export function finalFullLabel(result) {
   const kind = result.resultKind || 'NUMERIC';
   if (kind === 'NUMERIC') return result.value != null ? String(result.value) : null;
   return FINAL_RESULT_LABELS[kind]?.full ?? null;
+}
+
+/**
+ * Подпись карточки итога (макет У1, У2): у статуса — сам статус словами, у числа и прочих —
+ * «Итоговая оценка».
+ */
+export function finalCardTitle(result) {
+  return isAttestationStatus(result?.resultKind) ? finalFullLabel(result) : 'Итоговая оценка';
 }
 
 /** Пояснение под итогом — только у особых результатов. */
@@ -306,30 +314,23 @@ export function periodResultOf(subjectFinals, periodId) {
 /**
  * Клетка итога в журнале учителя: что показать и можно ли открыть выбор числа.
  *
- * Выбор открывается по признаку сервера `canEditResult`, кроме строк со статусом ВНА/НА и
- * изменением, ждущим подтверждения: всё это требует причины и повторного подтверждения, а
- * мобилка их не ведёт — это делается в веб-журнале. Иначе выбор числа отправил бы правку
- * без причины, и сервер ответил бы отказом.
+ * Выбор открывается по признаку сервера `canEditResult`, кроме строк со статусом ВНА/НА: их
+ * установка и снятие требуют причины, а мобилка этого не ведёт — это делается в веб-журнале.
+ * Иначе выбор числа отправил бы правку без причины, и сервер ответил бы отказом.
  *
  * @returns {{label: string|null, full: string|null, editable: boolean, note: string|null}}
  */
 export function teacherFinalCell(row) {
   const grade = row?.finalGrade ?? null;
-  const pending = grade?.pendingChange ?? null;
-  const decided = pending?.resultKind
-    ? { resultKind: pending.resultKind, value: pending.value ?? null }
-    : grade ? { resultKind: grade.resultKind || 'NUMERIC', value: grade.value ?? null } : null;
-  const statusRow = isAttestationStatus(grade?.resultKind) || isAttestationStatus(decided?.resultKind);
-  const webOnly = statusRow || pending != null;
+  const current = grade ? { resultKind: grade.resultKind || 'NUMERIC', value: grade.value ?? null } : null;
+  const statusRow = isAttestationStatus(current?.resultKind);
   return {
-    label: finalShortLabel(decided),
-    full: finalFullLabel(decided),
-    editable: Boolean(row?.canEditResult) && !webOnly,
-    note: pending
-      ? 'Изменено после публикации — подтверждение в веб-журнале'
-      : statusRow && (row?.canEditResult || row?.canChangeAttestation)
-        ? 'ВНА и НА меняются в веб-журнале'
-        : null,
+    label: finalShortLabel(current),
+    full: finalFullLabel(current),
+    editable: Boolean(row?.canEditResult) && !statusRow,
+    note: statusRow && (row?.canEditResult || row?.canChangeAttestation)
+      ? 'ВНА и НА меняются в веб-журнале'
+      : null,
   };
 }
 

@@ -16,6 +16,7 @@ import {
   gradeValueLabel,
   resultStatusHint,
   longDate,
+  finalCardTitle,
   finalHint,
   myFinalsForSubject,
   periodResultOf,
@@ -276,7 +277,7 @@ export function StudentSubjectGradesScreen({ nav, payload }) {
       <View style={{ paddingTop: 24, gap: 10 }}>
         <BlockTitle>Итог четверти</BlockTitle>
         <ValueCard
-          title="Итоговая оценка"
+          title={finalCardTitle(currentFinal)}
           hint={currentFinal == null ? 'Ещё не выставлена' : finalHint(currentFinal)}
           value={<FinalResultValue result={currentFinal} />}
         />
