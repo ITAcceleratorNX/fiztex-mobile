@@ -113,7 +113,8 @@ export function FinalChip({ value, label, fullLabel, onPress, disabled = false, 
 
 /**
  * Опубликованный итог у ученика и родителя (ATTESTATION-001, ТЗ-2 §7): число — как раньше,
- * «Временно не аттестован» и «Не аттестован» — плашкой своего цвета вместо числа, зачёт и
+ * «Временно не аттестован» и «Не аттестован» — плашкой своего цвета вместо числа (макет У1, У2
+ * 2209:6225/6288: «ВНА» оранжевым на кремовом, «НА» красным на розовом, скругление 10), зачёт и
  * «не изучался» — словом. Прочерк — только когда итога нет: это другое состояние, и
  * путать его со статусом нельзя.
  *
@@ -145,12 +146,12 @@ export function FinalResultValue({ result, compact = false }) {
       accessibilityLabel={finalFullLabel(result)}
       style={{
         backgroundColor: tone.bg,
-        borderRadius: 999,
+        borderRadius: compact ? 8 : 10,
         paddingHorizontal: compact ? 10 : 12,
-        paddingVertical: compact ? 4 : 6,
+        paddingVertical: compact ? 4 : 7,
       }}
     >
-      <Txt style={{ fontSize: compact ? 13 : 15, fontWeight: '700', color: tone.fg }}>{label}</Txt>
+      <Txt style={{ fontSize: compact ? 13 : 14, fontWeight: '700', color: tone.fg }}>{label}</Txt>
     </View>
   );
 }

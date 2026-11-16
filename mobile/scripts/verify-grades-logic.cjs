@@ -385,6 +385,14 @@ check('НА — своя подпись', m.finalShortLabel(m.periodResultOf(sta
 check('у статуса есть пояснение, у числа — нет',
   m.finalHint(m.periodResultOf(statusFinals, 7)) != null && m.finalHint(m.periodResultOf(statusFinals, 8)) === null);
 check('число по-прежнему число', m.finalShortLabel(m.periodResultOf(statusFinals, 8)) === '6');
+check('карточка итога (макет У1, У2): статус — заголовком, число — «Итоговая оценка»',
+  m.finalCardTitle(m.periodResultOf(statusFinals, 7)) === 'Временно не аттестован'
+  && m.finalCardTitle(m.periodResultOf(statusFinals, 9)) === 'Не аттестован'
+  && m.finalCardTitle(m.periodResultOf(statusFinals, 8)) === 'Итоговая оценка'
+  && m.finalCardTitle(null) === 'Итоговая оценка');
+check('пояснения статусов — словами макета',
+  m.finalHint(m.periodResultOf(statusFinals, 7)) === 'Оценка появится после сдачи обязательных работ'
+  && m.finalHint(m.periodResultOf(statusFinals, 9)) === 'Итог четверти опубликован');
 check('строка «Оценки»: опубликованный ВНА — в карточке предмета',
   m.subjectRowFinal({ finalResult: { resultKind: 'TEMP_UNATTESTED', value: null } })?.resultKind === 'TEMP_UNATTESTED');
 check('строка «Оценки»: число — число',
@@ -417,11 +425,10 @@ check('статус в мобилке не правится — без прич�
 const publishedNumber = m.teacherFinalCell({ canEditResult: false, canChangeAttestation: true,
   finalGrade: { status: 'PUBLISHED', resultKind: 'NUMERIC', value: 6 } });
 check('опубликованное число — по признаку сервера', publishedNumber.editable === false && publishedNumber.note === null);
-const pendingCell = m.teacherFinalCell({ canEditResult: false, canConfirmPublication: true,
-  finalGrade: { status: 'PUBLISHED', resultKind: 'TEMP_UNATTESTED', value: null,
-    pendingChange: { resultKind: 'NUMERIC', value: 7 } } });
-check('ожидающее изменение: показано решённое, подтверждение — в вебе',
-  pendingCell.label === '7' && pendingCell.editable === false && pendingCell.note.includes('веб-журнале'));
+const publishedTemporary = m.teacherFinalCell({ canEditResult: true, canChangeAttestation: false,
+  finalGrade: { status: 'PUBLISHED', resultKind: 'TEMP_UNATTESTED', value: null } });
+check('опубликованный ВНА снимается оценкой в вебе, с причиной (макет Т6)',
+  publishedTemporary.label === 'ВНА' && publishedTemporary.editable === false && publishedTemporary.note.includes('веб-журнале'));
 const empty = m.teacherFinalCell({ canEditResult: true, finalGrade: null });
 check('итога нет — выбор открывается, подписи нет', empty.editable === true && empty.label === null);
 
