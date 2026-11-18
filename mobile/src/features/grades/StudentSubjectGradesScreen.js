@@ -16,6 +16,8 @@ import {
   gradeValueLabel,
   resultStatusHint,
   longDate,
+  attestationSlot,
+  finalBlock,
   finalCardTitle,
   finalHint,
   myFinalsForSubject,
@@ -126,6 +128,9 @@ export function StudentSubjectGradesScreen({ nav, payload }) {
   const otherPeriods = (payload?.periods || []).filter((item) => item.id !== periodId);
   // Опубликованный итог: число либо ВНА/НА, зачёт (ATTESTATION-001). Черновиков в выборке нет.
   const currentFinal = periodResultOf(subjectFinals, periodId);
+  // «Итоговая аттестация по предметам»: полугодие подписано своим именем, а в 1-й и 3-й
+  // четвертях полугодового предмета итога нет — вместо пустой карточки пояснение.
+  const block = finalBlock(attestationSlot(finals, subjectId, periodId), payload?.periods);
 
   const header = (
     <View style={{ paddingHorizontal: 16, paddingTop: 12, gap: 8 }}>
@@ -275,17 +280,21 @@ export function StudentSubjectGradesScreen({ nav, payload }) {
       {result ? <ResultBlock result={result} breakdown={breakdown} /> : null}
 
       <View style={{ paddingTop: 24, gap: 10 }}>
-        <BlockTitle>Итог четверти</BlockTitle>
-        <ValueCard
-          title={finalCardTitle(currentFinal)}
-          hint={currentFinal == null ? 'Ещё не выставлена' : finalHint(currentFinal)}
-          value={<FinalResultValue result={currentFinal} />}
-        />
+        <BlockTitle>{block.title}</BlockTitle>
+        {block.final ? (
+          <ValueCard
+            title={finalCardTitle(currentFinal)}
+            hint={currentFinal == null ? block.empty : finalHint(currentFinal, block.periodWord)}
+            value={<FinalResultValue result={currentFinal} />}
+          />
+        ) : (
+          <ValueCard title="Итог за полугодие" hint={block.empty} />
+        )}
       </View>
 
       {otherPeriods.length > 0 ? (
         <View style={{ paddingTop: 24, gap: 10 }}>
-          <BlockTitle>Другие четверти</BlockTitle>
+          <BlockTitle>Другие периоды</BlockTitle>
           <View
             style={{
               marginHorizontal: 16,

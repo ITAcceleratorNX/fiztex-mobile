@@ -254,10 +254,60 @@ export function finalCardTitle(result) {
   return isAttestationStatus(result?.resultKind) ? finalFullLabel(result) : 'Итоговая оценка';
 }
 
-/** Пояснение под итогом — только у особых результатов. */
-export function finalHint(result) {
+/**
+ * Пояснение под итогом — только у особых результатов. `periodWord` — родительный падеж периода
+ * итога: у полугодового предмета НА опубликован за полугодие, а не за четверть.
+ */
+export function finalHint(result, periodWord = 'четверти') {
   const kind = result?.resultKind;
+  if (kind === 'NOT_ATTESTED') return `Итог ${periodWord} опубликован`;
   return kind && kind !== 'NUMERIC' ? FINAL_RESULT_LABELS[kind]?.hint ?? null : null;
+}
+
+/**
+ * «Итоговая аттестация по предметам»: как аттестуется предмет ученика в периоде — строка
+ * раскладки `attestation` из `/api/final-grades/my`. `null` — у предмета нет настройки, итог за
+ * каждую четверть, как раньше. Правил здесь нет: где полугодие и ставится ли итог, решил сервер.
+ */
+export function attestationSlot(myFinals, subjectId, periodId) {
+  const layout = (myFinals?.attestation || []).find((item) => item.subjectId === subjectId);
+  return (layout?.periods || []).find((slot) => String(slot.academicPeriodId) === String(periodId)) ?? null;
+}
+
+/** «2 четверть» вместо голого «2»: школа называет периоды как хочет. */
+export function periodDisplayName(period) {
+  const name = String(period?.name ?? '').trim();
+  return /^\d+$/.test(name) ? `${name} четверть` : name;
+}
+
+function genitive(name) {
+  return name.replace(/четверть$/, 'четверти').replace(/полугодие$/, 'полугодия');
+}
+
+/**
+ * Блок итога на экране предмета: заголовок и что писать, пока итога нет. В 1-й и 3-й четвертях
+ * полугодового предмета итога нет вовсе — вместо «Итог четверти: ещё не выставлена» пояснение,
+ * когда он появится (ТЗ: «не показывать отдельный итог четверти в 1-й или 3-й четверти»).
+ *
+ * @returns {{title: string, final: boolean, empty: string, periodWord: string}}
+ */
+export function finalBlock(slot, periods = []) {
+  if (slot?.periodicity !== 'HALF_YEAR') {
+    return { title: 'Итог четверти', final: true, empty: 'Ещё не выставлена', periodWord: 'четверти' };
+  }
+  const half = `${slot.halfYearNumber} полугодия`;
+  if (slot.finalAllowed) {
+    return { title: `Итог ${half}`, final: true, empty: 'Ещё не опубликован', periodWord: 'полугодия' };
+  }
+  const closing = (periods || []).find((period) => String(period.id) === String(slot.finalPeriodId));
+  return {
+    title: `Итог ${half}`,
+    final: false,
+    empty: closing
+      ? `Отдельного итога за эту четверть нет: итог ${half} выставляется в конце ${genitive(periodDisplayName(closing))}`
+      : 'Отдельного итога за эту четверть нет: итог выставляется по полугодию',
+    periodWord: 'полугодия',
+  };
 }
 
 /**
