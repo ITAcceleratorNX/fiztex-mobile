@@ -337,7 +337,7 @@ export function useMyDiaryGrades({
   const { token, role } = useAuth();
   const load = useCallback(async () => {
     const view = await gradebookApi.myDiary(token, { dateFrom, dateTo, childStudentProfileId });
-    return diaryGradesByLesson(view?.entries);
+    return diaryGradesByLesson(view?.entries, view?.works);
   }, [token, dateFrom, dateTo, childStudentProfileId]);
   const resource = useGradeResource(load, Boolean(
     token && enabled && dateFrom && dateTo && (role !== 'PARENT' || childStudentProfileId != null),

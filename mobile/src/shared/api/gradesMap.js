@@ -183,7 +183,7 @@ export function gradeTypeLabel(type) {
  *
  * Тот же приём, что у отметок посещаемости (`marksByLesson`).
  */
-export function diaryGradesByLesson(entries) {
+export function diaryGradesByLesson(entries, works = []) {
   const map = {};
   for (const entry of entries || []) {
     const lessonId = entry?.lessonId;
@@ -191,7 +191,23 @@ export function diaryGradesByLesson(entries) {
     if (!lessonId || !code) continue;
     (map[lessonId] = map[lessonId] || []).push(code);
   }
+  // Баллы проведённых СОР/СОЧ (`DiaryView.works`): с V142 это не оценки и в `entries` их нет, но на
+  // карточке урока ученик должен видеть их так же, как учитель видит колонку работы в журнале.
+  for (const work of works || []) {
+    const code = workResultLabel(work);
+    if (!work?.lessonId || !code) continue;
+    (map[work.lessonId] = map[work.lessonId] || []).push(code);
+  }
   return map;
+}
+
+/**
+ * Балл ученика за проведённую работу СОР/СОЧ — «0/20». Ноль — настоящий результат: его нельзя
+ * терять как «пусто». Подпись работы («СОР 2») приходит с сервера в `title`.
+ */
+export function workResultLabel(work) {
+  if (!work || work.score == null || work.maxScore == null) return null;
+  return `${work.score}/${work.maxScore}`;
 }
 
 /**

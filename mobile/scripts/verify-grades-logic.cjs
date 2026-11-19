@@ -348,6 +348,17 @@ check('оценки разных уроков не смешиваются', (dia
 check('оценка без урока в расписание не попадает',
   Object.keys(diary).length === 2);
 
+// СОР/СОЧ с V142 — работа, а не оценка: дневник отдаёт её отдельным списком `works`.
+const diaryWithWorks = m.diaryGradesByLesson(
+  [{ lessonId: 10, grade: { scaleCode: '5' } }],
+  [{ workId: 71, lessonId: 10, score: 0, maxScore: 20, title: 'СОР 2' },
+    { workId: 72, lessonId: 12, score: 31, maxScore: 40, title: 'СОЧ' }],
+);
+check('балл работы стоит на своём уроке рядом с оценкой', (diaryWithWorks[10] || []).join() === '5,0/20');
+check('ноль за работу — результат, а не пусто', m.workResultLabel({ score: 0, maxScore: 20 }) === '0/20');
+check('работа без балла не рисуется', m.workResultLabel({ score: null, maxScore: 20 }) === null);
+check('СОЧ на другом уроке не смешивается', (diaryWithWorks[12] || []).join() === '31/40');
+
 const myFinals = {
   subjects: [
     { subjectId: 3, subjectName: 'Русский язык', periodValues: { 7: 4, 8: 5 }, yearValue: null },

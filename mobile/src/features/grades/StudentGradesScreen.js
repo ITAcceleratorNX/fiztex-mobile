@@ -8,7 +8,7 @@ import Icon from '@shared/components/Icon';
 import { PickerSheet, StateView } from '@shared/components/ui';
 import { FinalResultValue, GradeChip } from '@shared/ui/grades';
 import { useMySubjectGrades } from '@shared/hooks/useGrades';
-import { formatAverage, gradeValueLabel, subjectRowFinal } from '@shared/api/gradesMap';
+import { formatAverage, gradeValueLabel, subjectRowFinal, workResultLabel } from '@shared/api/gradesMap';
 import { GradesSkeleton, NoGradesState, NoPeriodDataState } from './GradeStates';
 
 /**
@@ -206,6 +206,9 @@ export function StudentGradesScreen({
 function SubjectCard({ subject, onPress }) {
   const { c } = useTheme();
   const grades = subject.grades || [];
+  // Баллы проведённых СОР/СОЧ (V142): не оценки, но в строке предмета стоят рядом с ними — иначе
+  // процент «Итог» был бы посчитан с СОР, которой ученик не видит.
+  const works = subject.works || [];
   const final = subjectRowFinal(subject);
 
   return (
@@ -229,10 +232,13 @@ function SubjectCard({ subject, onPress }) {
         <Txt style={{ fontSize: 16, fontWeight: '700', color: c.ink }} numberOfLines={1}>
           {subject.subjectName}
         </Txt>
-        {grades.length > 0 && (
+        {(grades.length > 0 || works.length > 0) && (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
             {grades.map((grade) => (
               <GradeChip key={grade.id} value={gradeValueLabel(grade)} size={28} />
+            ))}
+            {works.map((work) => (
+              <GradeChip key={`work-${work.workId}`} value={workResultLabel(work)} size={28} />
             ))}
           </View>
         )}
