@@ -2,7 +2,7 @@
   "expo": {
     "name": "PhysTech",
     "slug": "fiztex",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "icon": "./assets/icon.png",
     "orientation": "portrait",
     "scheme": "fiztex",
@@ -76,7 +76,12 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#274185"
+          "backgroundColor": "#274185",
+          "android": {
+            "drawable": {
+              "icon": "./assets/android-splash-placeholder.xml"
+            }
+          }
         }
       ],
       "expo-status-bar"

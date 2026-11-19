@@ -393,6 +393,21 @@ check('карточка итога (макет У1, У2): статус — за�
 check('пояснения статусов — словами макета',
   m.finalHint(m.periodResultOf(statusFinals, 7)) === 'Оценка появится после сдачи обязательных работ'
   && m.finalHint(m.periodResultOf(statusFinals, 9)) === 'Итог четверти опубликован');
+// «Итоговая аттестация по предметам»: раскладка периодов ученика из /final-grades/my.
+const halfYearFinals = { attestation: [{ subjectId: 3, periods: [
+  { academicPeriodId: 7, periodicity: 'HALF_YEAR', halfYearNumber: 1, finalAllowed: false, finalPeriodId: 8 },
+  { academicPeriodId: 8, periodicity: 'HALF_YEAR', halfYearNumber: 1, finalAllowed: true, finalPeriodId: 8 },
+] }] };
+const halfPeriods = [{ id: 7, name: '1' }, { id: 8, name: '2' }];
+check('предмет без настройки — «Итог четверти», как раньше',
+  m.finalBlock(m.attestationSlot(halfYearFinals, 4, 7), halfPeriods).title === 'Итог четверти'
+  && m.finalBlock(null).final === true);
+check('в 1-й четверти полугодового предмета итога нет — пояснение, а не «ещё не выставлена»',
+  m.finalBlock(m.attestationSlot(halfYearFinals, 3, 7), halfPeriods).final === false
+  && m.finalBlock(m.attestationSlot(halfYearFinals, 3, 7), halfPeriods).empty.includes('в конце 2 четверти'));
+check('во 2-й — «Итог 1 полугодия», НА опубликован за полугодие',
+  m.finalBlock(m.attestationSlot(halfYearFinals, 3, '8'), halfPeriods).title === 'Итог 1 полугодия'
+  && m.finalHint({ resultKind: 'NOT_ATTESTED' }, 'полугодия') === 'Итог полугодия опубликован');
 check('строка «Оценки»: опубликованный ВНА — в карточке предмета',
   m.subjectRowFinal({ finalResult: { resultKind: 'TEMP_UNATTESTED', value: null } })?.resultKind === 'TEMP_UNATTESTED');
 check('строка «Оценки»: число — число',
