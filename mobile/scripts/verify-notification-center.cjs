@@ -111,6 +111,8 @@ section('Иконка и метка');
 {
   check('вид → иконка', map.iconFor('TEST_RESULT_READY').icon === 'award' && map.iconFor('ATTENDANCE_ABSENCE').icon === 'alertTriangle');
   check('незнакомый вид — колокольчик, а не пустое место', map.iconFor('SOMETHING_NEW').icon === 'bell');
+  check('исправление работы: истёк срок — красный, принято — оценка',
+    map.iconFor('GRADE_CORRECTION_OVERDUE').tone === 'red' && map.iconFor('GRADE_CORRECTION_COMPLETED').icon === 'award');
   check('у родителя метка — имя ребёнка', map.contextTag(row('p', at(13, 9, 0), { childName: 'Айжан' })) === 'Айжан');
   check('у ученика метки нет', map.contextTag(row('s', at(13, 9, 0))) === null);
 }
@@ -139,6 +141,17 @@ section('Переход — тем же словарём, что и пуш');
   check('родитель: пропуск → урок именно этого ребёнка',
     absence.childId === 604 && absence.screen === 'lesson' && same(absence.payload, { lessonInstanceId: 77120, childId: 604 }),
     JSON.stringify(absence));
+
+  // Исправление работы приходит обоим родителям, каждому — о своём ребёнке; ведёт в карточку урока этого ребёнка.
+  for (const kind of ['GRADE_CORRECTION_ASSIGNED', 'GRADE_CORRECTION_DUE_SOON', 'GRADE_CORRECTION_COMPLETED']) {
+    const correction = open('PARENT', row('c', at(13, 9, 0), {
+      kind, route: 'lesson', params: { lessonId: 9120 }, childProfileId: 604, childName: 'Айжан',
+    }));
+    check(`родитель: ${kind} → урок ребёнка с блоком исправления`,
+      correction.childId === 604 && correction.screen === 'lesson'
+        && same(correction.payload, { lessonInstanceId: 9120, childId: 604 }),
+      JSON.stringify(correction));
+  }
 
   const feedback = open('PARENT', row('f', at(13, 9, 0), {
     kind: 'MONTHLY_FEEDBACK', route: 'feedback', params: {}, childProfileId: 605, childName: 'Тимур',

@@ -105,6 +105,13 @@ const ICONS = {
   ASSESSMENT_WORK_RESCHEDULED: { icon: 'calendar', tone: 'blue' },
   ASSESSMENT_WORK_SOON: { icon: 'clock', tone: 'orange' },
   ASSESSMENT_WORK_CANCELLED: { icon: 'alertTriangle', tone: 'red' },
+  // Исправление работы — родителю (ТЗ «Уведомления Parent: исправление работ и сроки»). Переход — карточка урока
+  // (`lesson`): там блок «Требуется исправление», а после подтверждения — оценка в строке «Оценки».
+  GRADE_CORRECTION_ASSIGNED: { icon: 'pencil', tone: 'orange' },
+  GRADE_CORRECTION_DEADLINE_CHANGED: { icon: 'calendar', tone: 'blue' },
+  GRADE_CORRECTION_DUE_SOON: { icon: 'clock', tone: 'orange' },
+  GRADE_CORRECTION_OVERDUE: { icon: 'alertTriangle', tone: 'red' },
+  GRADE_CORRECTION_COMPLETED: { icon: 'award', tone: 'green' },
 };
 
 /** «Незавершённые действия» учителя: карточка не ведёт сама, а разворачивается списком действий. */
