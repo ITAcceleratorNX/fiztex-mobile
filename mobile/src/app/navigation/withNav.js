@@ -41,6 +41,16 @@ export function makeNav(navigation) {
    */
   nav.replace = (screen, payload) =>
     navigation.dispatch(StackActions.replace(screen, payload !== undefined ? { payload } : undefined));
+  /**
+   * Открыть тот же экран ещё раз — поверх текущего.
+   *
+   * `navigate` на маршрут, который сейчас и открыт, не кладёт второй экран, а меняет
+   * параметры текущего. Центр уведомлений открывает раздел подборки тем же маршрутом
+   * `notifications`: через `navigate` раздел подменял бы список подборок, и «назад» из
+   * раздела вело бы мимо списка — на вкладки.
+   */
+  nav.push = (screen, payload) =>
+    navigation.dispatch(StackActions.push(screen, payload !== undefined ? { payload } : undefined));
   return nav;
 }
 

@@ -138,5 +138,31 @@ check('nav сам по себе по-прежнему открывает экр�
 
 check('у nav нет мёртвого reset', typeof nav.reset === 'undefined');
 
+/**
+ * Раздел подборки — тот же маршрут `notifications`, что и список подборок. Он обязан лечь
+ * поверх списка, чтобы «назад» из раздела возвращало к подборкам, а не на вкладки.
+ */
+const pushSender = fakeNavigation();
+makeNav(pushSender).push('notifications', { collection: 'ATTENDANCE' });
+const [pushAction] = pushSender.sent;
+check('nav.push отправляет PUSH', pushAction?.type === 'PUSH');
+const afterPush = apply(opened, pushAction);
+check('раздел подборки ложится поверх списка подборок',
+  afterPush?.routes.map((r) => r.name).join(',') === 'Tabs,notifications,notifications');
+check('у списка подборок не появилось раздела в параметрах',
+  afterPush?.routes[1]?.params?.payload === undefined);
+check('раздел получил свою подборку',
+  afterPush?.routes[2]?.params?.payload?.collection === 'ATTENDANCE');
+check('«назад» из раздела возвращает к списку подборок', (() => {
+  const back = apply(afterPush, CommonActions.goBack());
+  return back?.routes.map((r) => r.name).join(',') === 'Tabs,notifications'
+    && back.routes[1].params?.payload === undefined;
+})());
+
+/** Закрепляет причину правки: `navigate` на открытый маршрут лишь сменил бы его параметры. */
+const afterSameNavigate = apply(opened, CommonActions.navigate('notifications', { payload: { collection: 'ATTENDANCE' } }));
+check('navigate вместо push подменил бы список подборок разделом',
+  afterSameNavigate?.routes.map((r) => r.name).join(',') === 'Tabs,notifications');
+
 console.log(failed ? `\n${failed} проверок не прошло` : '\nВсе проверки прошли');
 process.exit(failed ? 1 : 0);

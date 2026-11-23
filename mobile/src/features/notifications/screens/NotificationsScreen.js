@@ -68,7 +68,7 @@ function CollectionsScreen({ nav }) {
               row={row}
               role={role}
               first={index === 0}
-              onPress={row.latest ? () => nav('notifications', { collection: row.collection }) : undefined}
+              onPress={row.latest ? () => nav.push('notifications', { collection: row.collection }) : undefined}
             />
           ))}
         </View>
