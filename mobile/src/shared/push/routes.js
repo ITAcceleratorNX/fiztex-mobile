@@ -22,6 +22,7 @@
  * | `survey-take`   | `surveyId`   | прохождение опроса        | прохождение опроса               | —                           |
  * | `feedback`      | —            | —                         | вкладка «Главная» (блок отзывов) | —                           |
  * | `lesson-grades` | `lessonId`   | —                         | —                                | карточка урока              |
+ * | `absence-day`   | `date`       | —                         | календарь посещаемости и день    | — (в панели — «Мой класс»)  |
  *
  * `lesson-grades` — исправление работы ученика из ленты учителя: в вебе это лист оценок урока, в приложении
  * отдельного листа нет, и ведёт карточка урока.
@@ -58,6 +59,12 @@ const homeworkCard = (params, childId) => {
   const homeworkId = positiveId(params.homeworkId);
   if (!homeworkId) return null;
   return screen('homework-card', childId ? { homeworkId, childId } : { homeworkId });
+};
+
+/** День отсутствия ребёнка: календарь посещаемости открывается на этом месяце и сразу с его днём. */
+const absenceDay = (params) => {
+  const date = typeof params.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date : null;
+  return date ? screen('attendance', { absenceDate: date }) : null;
 };
 
 const surveyTake = (params) => {
@@ -97,6 +104,9 @@ const ROUTES = {
   'survey-take': { STUDENT: surveyTake, PARENT: surveyTake },
   feedback: { PARENT: () => tab('home') },
   'lesson-grades': { TEACHER: ignoringChild(lessonCard) },
+  // Причина отсутствия (ABSENCE-REASON-001): запрос, решение и уточнение — родителю. Учителю ответ
+  // родителя приходит лентой панели, в приложении такого экрана нет — «Главная», как у незнакомого.
+  'absence-day': { PARENT: withChild(absenceDay) },
   // Решение администратора и новая заявка ведут в одну teacher detail-карточку.
   'teacher-requests': { TEACHER: (params) => {
     const requestId = positiveId(params.requestId);

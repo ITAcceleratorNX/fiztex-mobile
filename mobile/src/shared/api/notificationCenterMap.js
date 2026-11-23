@@ -112,6 +112,12 @@ const ICONS = {
   GRADE_CORRECTION_DUE_SOON: { icon: 'clock', tone: 'orange' },
   GRADE_CORRECTION_OVERDUE: { icon: 'alertTriangle', tone: 'red' },
   GRADE_CORRECTION_COMPLETED: { icon: 'award', tone: 'green' },
+  // Причина отсутствия за день (ABSENCE-REASON-001, Р1а): запрос, подтверждение, замена и уточнение.
+  // Переход — день в календаре посещаемости (`absence-day`).
+  ABSENCE_REASON_REQUESTED: { icon: 'calendarCheck', tone: 'red' },
+  ABSENCE_REASON_CONFIRMED: { icon: 'check', tone: 'green' },
+  ABSENCE_REASON_CHANGED: { icon: 'calendarCheck', tone: 'blue' },
+  ABSENCE_REASON_CLARIFICATION: { icon: 'alertCircle', tone: 'red' },
 };
 
 /** «Незавершённые действия» учителя: карточка не ведёт сама, а разворачивается списком действий. */

@@ -239,6 +239,8 @@ export function useAttendanceEditor(lessonId, { enabled = true } = {}) {
         studentProfileId: entry.studentProfileId,
         fullName: entry.fullName,
         published: entry.published || null,
+        // Подтверждённая причина дня (ABSENCE-REASON-001): только у опубликованного «Отсутствовал».
+        dayReason: entry.dayReason || null,
         marking: local || saved,
         dirty: Boolean(local) && !sameMarking(local, saved),
       };

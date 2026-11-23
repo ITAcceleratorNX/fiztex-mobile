@@ -110,12 +110,22 @@ export function markToggleFor(status) {
  * «Болезнь». Пусто — строки нет вовсе, а не пустое место.
  */
 export function markingSummary(marking) {
-  const parts = [];
   const toggle = markToggleFor(marking?.status);
-  if (toggle && marking?.mark === toggle.value) parts.push(toggle.label);
-  const reason = REASON_OPTIONS.find((o) => o.value && o.value === marking?.reason);
-  if (reason) parts.push(reason.label);
-  return parts.join(' · ');
+  // Поурочную причину лист больше не показывает: причину дня ведёт классный руководитель, и
+  // строка рисует её отдельно (`dayReasonLabel`) — две причины рядом читались бы как спор.
+  return toggle && marking?.mark === toggle.value ? toggle.label : '';
+}
+
+/**
+ * Причина в строке листа (Figma `phyztex` П2): только подтверждённая причина дня и только у
+ * «Отсутствовал». Неподтверждённого варианта лист не показывает, выбирать её предметнику нечем.
+ *
+ * @returns {{ label: string, confirmed: boolean } | null}
+ */
+export function dayReasonLabel(marking, dayReason) {
+  if (marking?.status !== 'ABSENT') return null;
+  const reason = REASON_OPTIONS.find((o) => o.value && o.value === dayReason?.reason);
+  return reason ? { label: reason.label, confirmed: true } : { label: 'Причина не указана', confirmed: false };
 }
 
 /**

@@ -6,6 +6,7 @@ import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import {
+  Banner,
   ConfirmDialog,
   FilledButton,
   OutlineButton,
@@ -18,7 +19,7 @@ import { useLesson } from '@shared/hooks/useLesson';
 import { useAttendanceEditor, useAttendanceHistory } from '@shared/hooks/useAttendance';
 import { useAttendanceQr } from '@shared/hooks/useAttendanceQr';
 import { formatStamp } from '@shared/api/lessonMap';
-import { REASON_OPTIONS, STATUS_OPTIONS, historyLine, sheetBadge } from '@shared/api/attendanceMap';
+import { STATUS_OPTIONS, historyLine, sheetBadge } from '@shared/api/attendanceMap';
 import { AttendanceStudentRow } from './AttendanceStudentRow';
 import { QrPosterModal } from './QrPosterModal';
 import { AttendanceCancelled, AttendanceEmptyRoster, AttendanceSkeleton } from './AttendanceStates';
@@ -182,7 +183,7 @@ export function AttendanceScreen({ nav, payload }) {
     markedCount, totalCount, editing, startEditing, stopEditing,
     busy, conflict, unmarked, bulkConfirm, actionError,
     dismissBulkConfirm, dismissActionError,
-    setStatus, toggleMark, setReason, setComment,
+    setStatus, toggleMark, setComment,
     saveDraft, publish, markAllPresent, refresh, reload,
   } = attendance;
 
@@ -380,6 +381,12 @@ export function AttendanceScreen({ nav, payload }) {
           </View>
         ) : null}
 
+        {!cancelled && rows.length > 0 ? (
+          <Banner icon="info" tone="info">
+            Причину отсутствия указывает классный руководитель — здесь она только для просмотра.
+          </Banner>
+        ) : null}
+
         {actionError ? (
           <Pressable onPress={dismissActionError}>
             <View style={{ backgroundColor: c.redSoft, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10 }}>
@@ -403,7 +410,6 @@ export function AttendanceScreen({ nav, payload }) {
                 highlight={unmarked.includes(row.studentProfileId)}
                 onPickStatus={() => setPicker({ kind: 'status', id: row.studentProfileId })}
                 onToggleMark={() => toggleMark(row.studentProfileId)}
-                onPickReason={() => setPicker({ kind: 'reason', id: row.studentProfileId })}
                 onEditComment={() => setPicker({ kind: 'comment', id: row.studentProfileId })}
               />
             ))}
@@ -476,18 +482,6 @@ export function AttendanceScreen({ nav, payload }) {
         value={pickedRow?.marking?.status || 'NOT_MARKED'}
         onSelect={(value) => {
           setStatus(picker.id, value);
-          closePicker();
-        }}
-        onClose={closePicker}
-      />
-
-      <PickerSheet
-        visible={picker?.kind === 'reason'}
-        title="Причина отсутствия"
-        options={REASON_OPTIONS}
-        value={pickedRow?.marking?.reason ?? null}
-        onSelect={(value) => {
-          setReason(picker.id, value);
           closePicker();
         }}
         onClose={closePicker}
