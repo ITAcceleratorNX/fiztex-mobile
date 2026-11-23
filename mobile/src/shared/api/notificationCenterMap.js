@@ -120,6 +120,57 @@ const ICONS = {
   ABSENCE_REASON_CLARIFICATION: { icon: 'alertCircle', tone: 'red' },
 };
 
+/**
+ * Подборки колокольчика (Figma `phyztex` Р1): название, значок и тон раздела. Раздел строки решает сервер; одна и
+ * та же подборка `LESSONS` у учителя — «Уроки», у ученика и родителя — «Расписание».
+ */
+const COLLECTIONS = {
+  ATTENDANCE: { label: 'Посещаемость', icon: 'calendarCheck', tone: 'green' },
+  GRADES: { label: 'Оценки', icon: 'award', tone: 'blue' },
+  LESSONS: { label: 'Расписание', teacherLabel: 'Уроки', icon: 'calendar', tone: 'blue' },
+  HOMEWORK: { label: 'Задания', icon: 'fileText', tone: 'orange' },
+  FEEDBACK: { label: 'Отзывы', icon: 'chat', tone: 'blue' },
+  SCHEDULE: { label: 'Расписание школы', icon: 'calendar', tone: 'blue' },
+  REQUESTS: { label: 'Заявки', icon: 'wrench', tone: 'blue' },
+  SURVEYS: { label: 'Опросы', icon: 'clipboardCheck', tone: 'blue' },
+  ACTIONS: { label: 'Незавершённые действия', icon: 'alertTriangle', tone: 'orange' },
+};
+
+/** Подборки, которые роль видит всегда, даже пустыми (Р1: «Задания · Пока нет уведомлений»). */
+const ROLE_COLLECTIONS = {
+  PARENT: ['ATTENDANCE', 'GRADES', 'LESSONS', 'HOMEWORK'],
+  STUDENT: ['GRADES', 'LESSONS', 'HOMEWORK'],
+  TEACHER: ['ATTENDANCE', 'LESSONS', 'HOMEWORK'],
+};
+
+export function collectionMeta(collection, role) {
+  const meta = COLLECTIONS[collection] ?? { label: 'Уведомления', icon: 'bell', tone: 'blue' };
+  return { ...meta, label: role === 'TEACHER' && meta.teacherLabel ? meta.teacherLabel : meta.label };
+}
+
+/**
+ * Строки первого экрана: сначала подборки с уведомлениями, свежие сверху (порядок сервера), затем пустые
+ * подборки роли — серыми, чтобы человек знал, что раздел есть и в нём пока тихо.
+ */
+export function collectionRows(collections, role) {
+  const present = (collections ?? []).filter((item) => item.collection);
+  const known = new Set(present.map((item) => item.collection));
+  const empty = (ROLE_COLLECTIONS[role] ?? [])
+    .filter((collection) => !known.has(collection))
+    .map((collection) => ({ collection, unreadCount: 0, latest: null }));
+  return [...present, ...empty];
+}
+
+/** «12:40» сегодня, «Вчера», иначе «18 ноя.» — время справа от подборки (Р1). */
+export function collectionTime(value, now = new Date()) {
+  const date = parse(value);
+  if (!date) return '';
+  const key = dayKey(date);
+  if (key === dayKey(now)) return clock(date);
+  if (key === dayKey(shiftDays(now, -1))) return 'Вчера';
+  return `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]}`;
+}
+
 /** «Незавершённые действия» учителя: карточка не ведёт сама, а разворачивается списком действий. */
 export const PENDING_ACTIONS_KIND = 'TEACHER_PENDING_ACTIONS';
 

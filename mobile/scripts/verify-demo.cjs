@@ -110,6 +110,17 @@ test('attendance draft is private, publication is complete and parents see publi
   ({ token } = r.session.beginDemo('PARENT'));
   assert.equal((await api.myLessonMark(token, 201, 101)).attendance.reason, 'ILLNESS');
   assert.equal((await api.myLessonMark(token, 203, 102)).attendance, null);
+
+  // Причина отсутствия: опубликованный пропуск ждёт причину, ответ родителя уходит на проверку.
+  const absence = r.load('src/shared/api/absenceApi.js').absenceApi;
+  const date = (await api.myLessonMark(token, 201, 101)).lessonDate ?? null;
+  const days = await absence.days(token, { childId: 101, from: '2000-01-01', to: '2100-12-31' });
+  const day = days.items.find((item) => !date || item.date === date);
+  assert.ok(day?.needsReason, 'пропуск ждёт причину');
+  const answered = await absence.respond(token, { childId: 101, date: day.date, reason: 'ILLNESS', comment: 'Температура' });
+  assert.equal(answered.status, 'AWAITING_CONFIRMATION');
+  assert.equal(answered.canRespond, false);
+  await assert.rejects(absence.respond(token, { childId: 101, date: day.date, reason: 'ILLNESS' }), { code: 'ABSENCE_REASON_RESPONSE_PENDING' });
   assert.equal(r.calls.length, 0);
 });
 

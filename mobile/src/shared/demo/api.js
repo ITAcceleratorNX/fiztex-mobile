@@ -60,7 +60,7 @@ function data() {
   state = { sessionId: demoSessionId(), today, year, period, lessons, nextId: 1000,
     homework: [assignment(301, 201, 'Проценты: самостоятельная работа'), assignment(302, 202, 'Скорость и расстояние'),
       assignment(303, 203, 'Дроби: закрепление'), assignment(304, 204, 'Пропорции: проверенная работа', 'COMPLETED')],
-    submissions: {}, attendance: {}, grades: [], completed: {}, notifications: [], gradeHistory: {},
+    submissions: {}, attendance: {}, grades: [], completed: {}, notifications: [], gradeHistory: {}, absence: {},
     // Коды входа: Данияр уже входил по коду, Амина ещё нет, Тимуру код не выдавали — в демо видны
     // все состояния карточки кода. Самого кода нет нигде: сервер тоже хранит только хэш.
     codes: {
@@ -126,8 +126,33 @@ function issueCode(studentId, confirm) {
   code.codeIssuedAt = now();
   return { issuedCode: Array.from({ length: 8 }, () => CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]).join('') };
 }
-function notify(title, body, roles = ['STUDENT', 'PARENT']) {
-  data().notifications.unshift({ id: String(data().nextId++), title, body, roles, read: false, kind: 'DEMO', createdAt: now(), route: 'home', params: {} });
+// Подборка колокольчика у демо-строки — как у настоящего сценария того же события (`collection` ленты).
+function notify(title, body, roles = ['STUDENT', 'PARENT'], collection = 'HOMEWORK') {
+  data().notifications.unshift({ id: String(data().nextId++), title, body, roles, read: false, kind: 'DEMO', createdAt: now(), route: 'home', params: {}, collection });
+}
+// Причина отсутствия за день (ABSENCE-REASON-001): день — опубликованное «Отсутствовал» ребёнка на дате, ответ
+// родителя ждёт классного руководителя. Подтверждать в демо некому — классный руководитель в вебе.
+function absentLessons(d, student, date) {
+  return d.lessons.filter((lesson) => lesson.classId === student.classId && lesson.date === date)
+    .filter((lesson) => sheet(lesson).entries.find((entry) => entry.studentProfileId === student.studentProfileId)?.published?.status === 'ABSENT')
+    .map((lesson) => ({ lessonId: lesson.id, subjectName: lesson.subjectName, startTime: lesson.startTime, endTime: lesson.endTime, mark: sheet(lesson).entries.find((entry) => entry.studentProfileId === student.studentProfileId).published.mark }));
+}
+function absenceDay(d, student, date) {
+  const stored = d.absence[`${student.studentProfileId}:${date}`] || { status: 'NOT_SPECIFIED', responses: [] };
+  const pending = stored.responses.some((item) => item.status === 'PENDING');
+  const lessons = absentLessons(d, student, date);
+  return { studentProfileId: student.studentProfileId, date, status: stored.status, reason: null, absentLessons: lessons, openRequest: null,
+    myResponses: stored.responses, canRespond: lessons.length > 0 && !pending, respondBlockedReason: lessons.length ? (pending ? 'RESPONSE_PENDING' : null) : 'NO_ABSENCE' };
+}
+function notificationCollections(items) {
+  const groups = new Map();
+  for (const item of items) {
+    const key = item.collection || 'HOMEWORK';
+    const group = groups.get(key) || { collection: key, unreadCount: 0, latest: item };
+    if (!item.read) group.unreadCount += 1;
+    groups.set(key, group);
+  }
+  return [...groups.values()];
 }
 function multipartBody(form) {
   const parts = form?._parts || (typeof form?.entries === 'function' ? [...form.entries()] : []);
@@ -208,7 +233,7 @@ export async function demoRequest(path, { method = 'GET', body, token, multipart
           if (missing.length) fail('Отметьте всех учеников', 409, 'ATTENDANCE_INCOMPLETE', { unmarkedStudentProfileIds: missing.map((item) => item.studentProfileId) });
           current.entries.forEach((item) => { item.published = copy(item.draft); });
           current.publishedAt = now();
-          notify('Посещаемость опубликована', `${lesson.subjectName}: отметки доступны в расписании`);
+          notify('Посещаемость опубликована', `${lesson.subjectName}: отметки доступны в расписании`, ['STUDENT', 'PARENT'], 'ATTENDANCE');
         }
         current.version = (current.version || 0) + 1;
         current.state = action === 'attendance/publish' ? 'PUBLISHED' : 'DRAFT';
@@ -285,7 +310,7 @@ export async function demoRequest(path, { method = 'GET', body, token, multipart
     if (studentGrades(body.studentProfileId).filter((item) => item.sourceId === lesson.id && item.sourceType === 'LESSON').length >= 3) fail('Не больше трёх оценок за урок');
     if (![2, 3, 4, 5].includes(Number(body.scaleCode))) fail('Выберите оценку', 400);
     result = { ...body, id: d.nextId++, academicYearId: 1, academicPeriodId: 2, subjectId: lesson.subjectId, numericValue: Number(body.scaleCode), weight: 1, deleted: false, createdAt: now(), updatedAt: now(), publishedAt: now() };
-    d.grades.push(result); notify('Новая оценка', `${lesson.subjectName}: ${result.scaleCode}`);
+    d.grades.push(result); notify('Новая оценка', `${lesson.subjectName}: ${result.scaleCode}`, ['STUDENT', 'PARENT'], 'GRADES');
   }
   else if (/^\/api\/grades\/\d+(\/history)?$/.test(pathname)) {
     const id = Number(pathname.split('/')[3]);
@@ -317,9 +342,31 @@ export async function demoRequest(path, { method = 'GET', body, token, multipart
   }
   else if (pathname === '/api/attendance/teacher-journal/options' && get) result = { academicYear: d.year, scopes: [{ classId: 11, className: '7А' }, { classId: 12, className: '5Б' }] };
   else if (pathname === '/api/attendance/teacher-journal' && get) result = { month: params.get('month'), students: STUDENTS.filter((item) => item.classId === Number(params.get('classId'))), lessons: d.lessons.filter((item) => item.classId === Number(params.get('classId'))).map((item) => ({ ...item, lessonId: item.id, lessonDate: item.date, state: sheet(item).state, totalCount: sheet(item).totalCount, markedCount: sheet(item).markedCount, entries: sheet(item).entries.map((entry) => ({ studentProfileId: entry.studentProfileId, attendance: entry.published })) })) };
+  else if (pathname === '/api/absence-days/my' && get) {
+    const dates = [...new Set(d.lessons.filter((lesson) => lesson.classId === student.classId && lesson.date >= params.get('from') && lesson.date <= params.get('to')).map((lesson) => lesson.date))];
+    const items = dates.map((date) => absenceDay(d, student, date)).filter((day) => day.absentLessons.length).map((day) => ({
+      date: day.date, absentLessonCount: day.absentLessons.length, status: day.status, reason: null, comment: null, requested: false,
+      myResponsePending: day.respondBlockedReason === 'RESPONSE_PENDING', canRespond: day.canRespond,
+      needsReason: day.canRespond && day.status === 'NOT_SPECIFIED' }));
+    result = { studentProfileId: student.studentProfileId, from: params.get('from'), to: params.get('to'), items };
+  }
+  else if (/^\/api\/absence-days\/my\/\d{4}-\d{2}-\d{2}$/.test(pathname) && get) result = absenceDay(d, student, pathname.split('/').pop());
+  else if (/^\/api\/absence-days\/my\/\d{4}-\d{2}-\d{2}\/responses$/.test(pathname) && method === 'POST') {
+    const date = pathname.split('/')[4];
+    const day = absenceDay(d, student, date);
+    if (!day.absentLessons.length) fail('Пропусков в этот день нет', 409, 'ABSENCE_REASON_NO_ABSENCE');
+    if (!day.canRespond) fail('Ответ уже на рассмотрении', 409, 'ABSENCE_REASON_RESPONSE_PENDING');
+    const key = `${student.studentProfileId}:${date}`;
+    const stored = d.absence[key] || { status: 'NOT_SPECIFIED', responses: [] };
+    stored.responses = [...stored.responses, { responseId: d.nextId++, reason: body.reason, comment: body.comment || null, submittedAt: now(), status: 'PENDING', decidedAt: null, decisionComment: null }];
+    stored.status = 'AWAITING_CONFIRMATION';
+    d.absence[key] = stored;
+    result = absenceDay(d, student, date);
+  }
   else if (pathname === '/api/notifications/unread-count' && get) result = { count: d.notifications.filter((item) => item.roles.includes(role) && !item.read).length };
-  else if (pathname === '/api/notifications' && get) { const items = d.notifications.filter((item) => item.roles.includes(role)); result = { items, hasMore: false, unreadCount: items.filter((item) => !item.read).length }; }
-  else if (pathname === '/api/notifications/read-all' && method === 'POST') { d.notifications.filter((item) => item.roles.includes(role)).forEach((item) => { item.read = true; }); result = null; }
+  else if (pathname === '/api/notifications/collections' && get) { const items = d.notifications.filter((item) => item.roles.includes(role)); result = { collections: notificationCollections(items), unreadCount: items.filter((item) => !item.read).length }; }
+  else if (pathname === '/api/notifications' && get) { const items = d.notifications.filter((item) => item.roles.includes(role) && (!params.get('collection') || (item.collection || 'HOMEWORK') === params.get('collection'))); result = { items, hasMore: false, unreadCount: items.filter((item) => !item.read).length }; }
+  else if (pathname === '/api/notifications/read-all' && method === 'POST') { d.notifications.filter((item) => item.roles.includes(role) && (!params.get('collection') || (item.collection || 'HOMEWORK') === params.get('collection'))).forEach((item) => { item.read = true; }); result = null; }
   else if (/^\/api\/notifications\/[^/]+\/read$/.test(pathname) && method === 'POST') { const item = d.notifications.find((entry) => entry.id === pathname.split('/')[3] && entry.roles.includes(role)); if (item) item.read = true; result = null; }
   else if (get && ['/api/me/keys', '/api/me/equipment', '/api/grade-corrections/my', '/api/surveys/my', '/api/homework-groups'].includes(pathname)) result = [];
   else if (/^\/api\/monthly-feedback\/children\/\d+\/months$/.test(pathname) && get) result = [];
