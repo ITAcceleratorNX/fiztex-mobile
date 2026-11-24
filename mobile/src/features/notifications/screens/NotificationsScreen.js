@@ -6,15 +6,126 @@ import { BOTTOM_CHROME_HEIGHT, Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { useAuth } from '@features/auth/AuthContext';
-import { useNotificationFeed } from '@shared/hooks/useNotificationCenter';
+import { useNotificationCollections, useNotificationFeed } from '@shared/hooks/useNotificationCenter';
 import { requestChildSelection } from '@shared/state/SelectedChild';
 import { resolvePushTarget } from '@shared/push/routes';
 import {
-  PENDING_ACTIONS_KIND, contextTag, groupByDay, iconFor, pendingActionsOf, pendingTotalOf, pushDataFor, timeLabel,
+  PENDING_ACTIONS_KIND, collectionMeta, collectionRows, collectionTime, contextTag, groupByDay, iconFor,
+  pendingActionsOf, pendingTotalOf, pushDataFor, timeLabel,
 } from '@shared/api/notificationCenterMap';
 
 /**
- * Центр уведомлений (Figma phyztex «Уведомления», 1791:39738; ТЗ «Внутренние уведомления — Student / Parent» §8).
+ * Центр уведомлений по подборкам (Figma `phyztex` Р1, Р1а): без `payload.collection` — разделы колокольчика, с ним —
+ * строки одного раздела. Раздел строки решает сервер; экран его только называет.
+ */
+export function NotificationsScreen({ nav, payload }) {
+  const collection = typeof payload?.collection === 'string' ? payload.collection : null;
+  return collection
+    ? <CollectionFeedScreen nav={nav} collection={collection} />
+    : <CollectionsScreen nav={nav} />;
+}
+
+/**
+ * Разделы колокольчика (Р1): значок, название, последняя строка, время и число непрочитанного. Пустые разделы роли
+ * видны серыми — «Пока нет уведомлений», чтобы было понятно, что раздел есть.
+ */
+function CollectionsScreen({ nav }) {
+  const { c } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { role } = useAuth();
+  const feed = useNotificationCollections();
+  const [refreshing, setRefreshing] = useState(false);
+  const rows = useMemo(() => collectionRows(feed.collections, role), [feed.collections, role]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await feed.reload(true);
+    setRefreshing(false);
+  }, [feed]);
+
+  return (
+    <Screen
+      refreshing={refreshing}
+      onRefresh={feed.error || feed.loading ? undefined : onRefresh}
+      contentStyle={{ paddingBottom: insets.bottom + BOTTOM_CHROME_HEIGHT }}
+    >
+      <Header
+        title="Уведомления"
+        onBack={() => nav.back()}
+        onReadAll={feed.unreadCount > 0 ? feed.markAllRead : null}
+      />
+      {feed.loading && !feed.collections.length ? (
+        <FeedSkeleton />
+      ) : feed.error && !feed.collections.length ? (
+        <FeedError onRetry={() => feed.reload()} />
+      ) : rows.length === 0 ? (
+        <FeedEmpty />
+      ) : (
+        <View style={{ marginHorizontal: 16, marginTop: 12, borderRadius: 16, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface, overflow: 'hidden' }}>
+          {rows.map((row, index) => (
+            <CollectionRow
+              key={row.collection}
+              row={row}
+              role={role}
+              first={index === 0}
+              onPress={row.latest ? () => nav.push('notifications', { collection: row.collection }) : undefined}
+            />
+          ))}
+        </View>
+      )}
+    </Screen>
+  );
+}
+
+function CollectionRow({ row, role, first, onPress }) {
+  const { c } = useTheme();
+  const meta = collectionMeta(row.collection, role);
+  const empty = !row.latest;
+  const unread = row.unreadCount ?? 0;
+  const toneColor = { blue: c.ntToneBlue, orange: c.ntToneOrange, green: c.ntToneGreen, red: c.ntToneRed }[meta.tone] ?? c.ntToneBlue;
+  const tileColor = { blue: c.blueSoft, orange: c.greenSoft, green: c.markPresentSoft, red: c.redSoft }[meta.tone] ?? c.bg2;
+  return (
+    <Pressable
+      accessibilityRole={empty ? undefined : 'button'}
+      accessibilityLabel={`${meta.label}. ${empty ? 'Пока нет уведомлений' : row.latest.title}${unread ? `. Непрочитанных: ${unread}` : ''}`}
+      disabled={empty}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+        marginHorizontal: 14,
+        paddingVertical: 14,
+        borderTopWidth: first ? 0 : 1,
+        borderTopColor: c.border,
+        opacity: pressed ? 0.8 : 1,
+      })}
+    >
+      <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: tileColor }}>
+        <Icon name={meta.icon} size={20} color={toneColor} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+        <Txt style={{ fontSize: 15, fontWeight: '700', color: empty ? c.ink3 : c.ink }}>{meta.label}</Txt>
+        <Txt style={{ fontSize: 13, color: empty ? c.ink3 : c.ink2 }} numberOfLines={1}>
+          {empty ? 'Пока нет уведомлений' : row.latest.title}
+        </Txt>
+      </View>
+      {empty ? null : (
+        <View style={{ alignItems: 'flex-end', gap: 6 }}>
+          <Txt style={{ fontSize: 11, color: c.ink3 }}>{collectionTime(row.latest.createdAt)}</Txt>
+          {unread > 0 ? (
+            <View style={{ minWidth: 20, height: 20, paddingHorizontal: 6, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: c.green }}>
+              <Txt style={{ fontSize: 11, fontWeight: '700', color: c.surface }}>{unread}</Txt>
+            </View>
+          ) : <View style={{ height: 20 }} />}
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+/**
+ * Строки одной подборки (Figma phyztex «Уведомления», 1791:39738; Р1а; ТЗ «Внутренние уведомления — Student / Parent» §8).
  *
  * Лента своего аккаунта, новые сверху и по дням. Непрочитанная строка — голубая с оранжевой точкой; нажатие
  * отмечает её прочитанной и ведёт туда же, куда пуш о том же событии: переход строится словарём маршрутов пуша, а не
@@ -22,11 +133,11 @@ import {
  *
  * Что попадает в ленту, решает бэк — экран не фильтрует по роли и не знает видов уведомлений, кроме иконки.
  */
-export function NotificationsScreen({ nav }) {
+function CollectionFeedScreen({ nav, collection }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const { role, accountId } = useAuth();
-  const feed = useNotificationFeed();
+  const feed = useNotificationFeed({ collection });
   const [refreshing, setRefreshing] = useState(false);
   const sections = useMemo(() => groupByDay(feed.items), [feed.items]);
 
@@ -57,6 +168,7 @@ export function NotificationsScreen({ nav }) {
       contentStyle={{ paddingBottom: insets.bottom + BOTTOM_CHROME_HEIGHT }}
     >
       <Header
+        title={collectionMeta(collection, role).label}
         onBack={() => nav.back()}
         onReadAll={canReadAll ? feed.markAllRead : null}
       />
@@ -105,7 +217,7 @@ export function NotificationsScreen({ nav }) {
 }
 
 /** Шапка макета: квадратная «назад», крупный синий заголовок и текстовое «Прочитать все» справа. */
-function Header({ onBack, onReadAll }) {
+function Header({ title, onBack, onReadAll }) {
   const { c } = useTheme();
   return (
     <View style={{
@@ -122,7 +234,7 @@ function Header({ onBack, onReadAll }) {
         >
           <Icon name="chevronLeft" size={16} color={c.ntToneBlue} strokeWidth={2.4} />
         </Pressable>
-        <Txt style={{ fontSize: 24, fontWeight: '800', color: c.blue }} numberOfLines={1}>Уведомления</Txt>
+        <Txt style={{ fontSize: 24, fontWeight: '800', color: c.blue }} numberOfLines={1}>{title}</Txt>
       </View>
       {onReadAll ? (
         <Pressable accessibilityRole="button" onPress={onReadAll} hitSlop={8}>

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Txt } from '@shared/components/Txt';
 import { CALENDAR_LEGEND, MARK_TOKEN, calendarWeeks } from '@shared/api/attendanceJournalMap';
@@ -27,8 +27,19 @@ export function CancelledDash({ size = 14 }) {
   );
 }
 
-/** Легенда в две строки, как в обоих макетах календаря. */
-export function AttendanceLegend() {
+/** Квадратик «Нужна причина» в легенде — та же рамка, что у подсвеченного дня (Р2). */
+function AttentionSwatch() {
+  const { c } = useTheme();
+  return (
+    <View style={{ width: 9, height: 9, borderRadius: 2, borderWidth: 1, borderColor: c.green, backgroundColor: c.greenSoft }} />
+  );
+}
+
+/**
+ * Легенда в две строки, как в обоих макетах календаря. `attentionLabel` — пункт подсвеченного дня
+ * у родителя («Нужна причина», Р2): он дописывается во вторую строку.
+ */
+export function AttendanceLegend({ attentionLabel = null }) {
   const { c } = useTheme();
   return (
     <View style={{ alignItems: 'center', gap: 8 }}>
@@ -40,6 +51,12 @@ export function AttendanceLegend() {
               <Txt style={{ fontSize: 10, color: c.inkMuted }}>{item.label}</Txt>
             </View>
           ))}
+          {attentionLabel && index === CALENDAR_LEGEND.length - 1 ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+              <AttentionSwatch />
+              <Txt style={{ fontSize: 10, color: c.inkMuted }}>{attentionLabel}</Txt>
+            </View>
+          ) : null}
         </View>
       ))}
     </View>
@@ -50,15 +67,18 @@ export function AttendanceLegend() {
  * Клетка дня (Figma `day-N`): число и маркер под ним. Выходной — серая подложка; маркер
  * у него бывает, если в школе субботние уроки: прятать их значило бы терять отметки.
  */
-function DayCell({ cell, size, framed, marks, label }) {
+function DayCell({ cell, size, framed, marks, label, attention, onPress }) {
   const { c } = useTheme();
   const weekend = Boolean(cell?.weekend);
   // У ученика пустые клетки до 1-го и после конца месяца серые (2170:5298), у учителя — белые.
   const shaded = weekend || (framed && !cell);
+  const Box = onPress ? Pressable : View;
   return (
-    <View
+    <Box
       accessible={Boolean(cell)}
+      accessibilityRole={onPress ? 'button' : undefined}
       accessibilityLabel={cell ? label ?? String(cell.day) : undefined}
+      onPress={onPress}
       style={{
         width: size,
         height: size,
@@ -66,7 +86,10 @@ function DayCell({ cell, size, framed, marks, label }) {
         alignItems: 'center',
         justifyContent: 'center',
         gap: 2,
-        backgroundColor: shaded ? c.surface2 : c.surface,
+        // День, где ждут причину отсутствия (Р2): оранжевая рамка поверх обычной клетки.
+        borderWidth: attention ? 1.5 : 0,
+        borderColor: attention ? c.green : 'transparent',
+        backgroundColor: attention ? c.greenSoft : shaded ? c.surface2 : c.surface,
       }}
     >
       {cell ? (
@@ -75,7 +98,7 @@ function DayCell({ cell, size, framed, marks, label }) {
           {marks}
         </>
       ) : null}
-    </View>
+    </Box>
   );
 }
 
@@ -93,8 +116,14 @@ function DayCell({ cell, size, framed, marks, label }) {
  * @param {(cell) => string} [props.cellLabel] подпись клетки для скринридера
  * @param {boolean} [props.framed] макет ученика: карточка с рамкой, недели вплотную,
  *   пустые клетки серые, легенда внутри карточки
+ * @param {(cell) => boolean} [props.isAttention] подсветить день рамкой «Нужна причина» (Р2)
+ * @param {(cell) => (() => void) | null} [props.onPressCell] нажатие по дню — у родителя
+ *   открывает день отсутствия; у прочих дней `null`, и клетка остаётся не кнопкой
+ * @param {string} [props.attentionLabel] подпись подсветки в легенде
  */
-export function AttendanceCalendar({ month, renderMarks, cellLabel, framed = false }) {
+export function AttendanceCalendar({
+  month, renderMarks, cellLabel, framed = false, isAttention, onPressCell, attentionLabel = null,
+}) {
   const { c } = useTheme();
   const weeks = useMemo(() => calendarWeeks(month), [month]);
 
@@ -122,6 +151,8 @@ export function AttendanceCalendar({ month, renderMarks, cellLabel, framed = fal
               framed={framed}
               marks={cell ? renderMarks?.(cell) ?? null : null}
               label={cell ? cellLabel?.(cell) : undefined}
+              attention={cell ? Boolean(isAttention?.(cell)) : false}
+              onPress={cell ? onPressCell?.(cell) ?? undefined : undefined}
             />
           ))}
         </View>
@@ -135,7 +166,7 @@ export function AttendanceCalendar({ month, renderMarks, cellLabel, framed = fal
     return (
       <View onLayout={onLayout} style={{ gap: 16 }}>
         {grid}
-        <AttendanceLegend />
+        <AttendanceLegend attentionLabel={attentionLabel} />
       </View>
     );
   }
@@ -153,7 +184,7 @@ export function AttendanceCalendar({ month, renderMarks, cellLabel, framed = fal
       }}
     >
       {grid}
-      <AttendanceLegend />
+      <AttendanceLegend attentionLabel={attentionLabel} />
     </View>
   );
 }

@@ -168,11 +168,19 @@ check('ABSENT → тон danger', m.statusChip({ status: 'ABSENT' }).tone === 'd
 check('у «просто присутствовал» второй строки нет',
   m.markingSummary({ status: 'PRESENT' }) === '');
 check('опоздание названо', m.markingSummary({ status: 'PRESENT', mark: 'LATE' }) === 'Опоздал');
-check('освобождение с причиной',
-  m.markingSummary({ status: 'ABSENT', mark: 'EXCUSED', reason: 'ILLNESS' })
-    === 'Освобожден · Болезнь');
-check('причина без освобождения',
-  m.markingSummary({ status: 'ABSENT', reason: 'TRANSPORT' }) === 'Транспорт');
+// Поурочную причину лист больше не печатает (ABSENCE-REASON-001, П2): причина — за день, её ведёт
+// классный руководитель, и строка показывает только подтверждённую (`dayReasonLabel`).
+check('освобождение без поурочной причины',
+  m.markingSummary({ status: 'ABSENT', mark: 'EXCUSED', reason: 'ILLNESS' }) === 'Освобожден');
+check('поурочная причина в подпись не попадает',
+  m.markingSummary({ status: 'ABSENT', reason: 'TRANSPORT' }) === '');
+check('подтверждённая причина дня — полной подписью',
+  m.dayReasonLabel({ status: 'ABSENT' }, { reason: 'FAMILY' })?.label === 'Семейные обстоятельства'
+  && m.dayReasonLabel({ status: 'ABSENT' }, { reason: 'FAMILY' })?.confirmed === true);
+check('без подтверждённой — «Причина не указана», а не поурочная',
+  m.dayReasonLabel({ status: 'ABSENT', reason: 'ILLNESS' }, null)?.label === 'Причина не указана');
+check('у присутствия причины дня нет',
+  m.dayReasonLabel({ status: 'PRESENT' }, { reason: 'ILLNESS' }) === null);
 check('«не указана» не печатается',
   m.markingSummary({ status: 'ABSENT', reason: null }) === '');
 
@@ -192,9 +200,6 @@ check('короткая форма есть у каждой причины',
   m.REASON_OPTIONS.every((o) => Boolean(o.short)));
 check('длинная форма остаётся для списка выбора',
   m.REASON_OPTIONS.find((o) => o.value === 'FAMILY').label === 'Семейные обстоятельства');
-check('в подписи отметки причина полная',
-  m.markingSummary({ status: 'ABSENT', reason: 'FAMILY' }) === 'Семейные обстоятельства',
-  'там на неё есть целая строка');
 
 // ── Бейдж состояния листа ────────────────────────────────────────────────────
 section('Бейдж состояния листа');
@@ -261,30 +266,27 @@ const rowModule = load('src/features/attendance/AttendanceStudentRow.js', {
   'api/attendanceMap': m,
 });
 
-function renderRow(marking, editable = true) {
+function renderRow(marking, editable = true, dayReason = null) {
   return renderTree(createElement(rowModule.AttendanceStudentRow, {
-    row: { studentProfileId: 1, fullName: 'Александров Даниил Сергеевич', marking },
+    row: { studentProfileId: 1, fullName: 'Александров Даниил Сергеевич', marking, dayReason },
     editable,
     highlight: false,
     onPickStatus: () => {},
     onToggleMark: () => {},
-    onPickReason: () => {},
     onEditComment: () => {},
   }));
 }
 
 const absentRow = flatten(renderRow({
   status: 'ABSENT', mark: 'EXCUSED', reason: 'FAMILY', comment: null,
-}));
+}, true, { reason: 'ILLNESS' }));
 const pills = absentRow.filter((node) => node.type === 'SelectPill');
-const reasonPill = pills.find((node) => node.props.tone === 'neutral');
-const statusPill = pills.find((node) => node.props.tone !== 'neutral');
+const statusPill = pills[0];
 
-check('в строке отсутствия есть и статус, и причина', Boolean(reasonPill && statusPill));
-check('причина показана короткой подписью',
-  reasonPill?.props.label === 'Семейные', reasonPill?.props.label);
-check('ширина причины ограничена', styleOf(reasonPill).maxWidth === 132,
-  `maxWidth = ${styleOf(reasonPill).maxWidth}`);
+check('в правке причину не выбирают — пилюля в строке одна, статус', pills.length === 1);
+check('в строке отсутствия видна подтверждённая причина дня',
+  absentRow.some((node) => node.children?.[0] === 'Болезнь')
+  && absentRow.some((node) => node.children?.[0] === 'подтверждена'));
 check('статус не сжимается — уступает место ФИО, а не наоборот',
   styleOf(statusPill).flexShrink === 0);
 
@@ -316,9 +318,9 @@ check('у присутствия причины нет вовсе',
   presentRow.filter((node) => node.type === 'SelectPill' && node.props.tone === 'neutral').length === 0);
 
 const viewRow = flatten(renderRow({ status: 'ABSENT', mark: 'EXCUSED', reason: 'FAMILY' }, false));
-check('в просмотре причина не пилюлей, а полной подписью строки',
-  viewRow.every((node) => node.type !== 'SelectPill' || node.props.tone !== 'neutral')
-  && viewRow.some((node) => node.children?.[0] === 'Освобожден · Семейные обстоятельства'));
+check('в просмотре без подтверждённой причины — «Причина не указана», поурочная не видна',
+  viewRow.some((node) => node.children?.[0] === 'Причина не указана')
+  && viewRow.every((node) => node.children?.[0] !== 'Семейные обстоятельства'));
 
 // ── Живой лист ───────────────────────────────────────────────────────────────
 const livePath = process.argv[2];

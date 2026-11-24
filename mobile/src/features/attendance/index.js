@@ -3,3 +3,4 @@ export { QrScanScreen } from './QrScanScreen';
 export { AttendanceMonthScreen } from './AttendanceMonthScreen';
 export { AttendanceStudentScreen } from './AttendanceStudentScreen';
 export { StudentAttendanceScreen, ParentAttendanceScreen } from './LearnerAttendanceScreen';
+export { AbsenceReasonFormScreen } from './absence/AbsenceReasonFormScreen';

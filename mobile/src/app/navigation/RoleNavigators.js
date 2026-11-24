@@ -18,7 +18,7 @@ import {
 } from '@features/lesson';
 import {
   AttendanceScreen, QrScanScreen, AttendanceMonthScreen, AttendanceStudentScreen,
-  StudentAttendanceScreen, ParentAttendanceScreen,
+  StudentAttendanceScreen, ParentAttendanceScreen, AbsenceReasonFormScreen,
 } from '@features/attendance';
 import {
   JournalScreen, JournalStudentScreen, LessonGradesScreen,
@@ -234,6 +234,8 @@ export function ParentApp() {
           // Тот же календарь, что у ученика, по выбранному ребёнку (ATTENDANCE-LEARNER-001).
           // Раньше здесь был мок турникета, до которого навигация не доводила.
           { name: 'attendance', comp: ParentAttendanceScreen },
+          // Форма причины отсутствия за день (ABSENCE-REASON-001, Р5): ответ классному руководителю.
+          { name: 'absence-reason', comp: AbsenceReasonFormScreen },
           { name: 'service', comp: ParentService },
           { name: 'clubs', comp: StudentClubs },
           { name: 'club', comp: StudentClub },

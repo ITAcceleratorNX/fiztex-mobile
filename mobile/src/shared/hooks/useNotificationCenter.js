@@ -12,7 +12,7 @@ const PAGE_SIZE = 30;
  * «Прочитано» ставится сразу на экране и уходит на сервер следом: строку открывают ради перехода, и ждать ответа
  * перед ним незачем. Отказ сервера отметку не откатывает — следующее обновление ленты покажет правду.
  */
-export function useNotificationFeed() {
+export function useNotificationFeed({ collection = null } = {}) {
   const { token } = useAuth();
   const [state, setState] = useState({
     loading: true, error: null, items: [], hasMore: false, unreadCount: 0, loadingMore: false,
@@ -26,7 +26,7 @@ export function useNotificationFeed() {
     }
     if (!silent) setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      const page = await notificationCenterApi.page(token, { limit: PAGE_SIZE });
+      const page = await notificationCenterApi.page(token, { limit: PAGE_SIZE, collection });
       setState({
         loading: false,
         error: null,
@@ -41,7 +41,7 @@ export function useNotificationFeed() {
         ? { ...prev, loading: false }
         : { ...prev, loading: false, error: e?.message || 'load' }));
     }
-  }, [token]);
+  }, [token, collection]);
 
   useEffect(() => {
     load();
@@ -53,7 +53,7 @@ export function useNotificationFeed() {
     loadingMore.current = true;
     setState((prev) => ({ ...prev, loadingMore: true }));
     try {
-      const page = await notificationCenterApi.page(token, { before: last.id, limit: PAGE_SIZE });
+      const page = await notificationCenterApi.page(token, { before: last.id, limit: PAGE_SIZE, collection });
       setState((prev) => ({
         ...prev,
         items: [...prev.items, ...(page?.items ?? []).filter((item) => !prev.items.some((p) => p.id === item.id))],
@@ -66,7 +66,7 @@ export function useNotificationFeed() {
     } finally {
       loadingMore.current = false;
     }
-  }, [token, state.items, state.hasMore]);
+  }, [token, state.items, state.hasMore, collection]);
 
   const markRead = useCallback((item) => {
     if (!token || !item || item.read) return;
@@ -83,14 +83,64 @@ export function useNotificationFeed() {
     if (!token || !upTo) return;
     setState((prev) => ({ ...prev, items: markAllReadUpTo(prev.items, upTo), unreadCount: 0 }));
     try {
-      await notificationCenterApi.markAllRead(token, upTo);
+      await notificationCenterApi.markAllRead(token, upTo, collection);
     } finally {
       // Счётчик — по всей ленте, а не по показанной странице: его считает сервер.
       load(true);
     }
-  }, [token, state.items, load]);
+  }, [token, state.items, load, collection]);
 
   return { ...state, reload: load, loadMore, markRead, markAllRead };
+}
+
+/**
+ * Подборки колокольчика (Р1). Перечитываются при каждом возвращении на экран: вернулся из подборки, где прочитал
+ * строки, — её число должно погаснуть сразу.
+ */
+export function useNotificationCollections() {
+  const { token } = useAuth();
+  const [state, setState] = useState({ loading: true, error: null, collections: [], unreadCount: 0 });
+
+  const load = useCallback(async (silent = false) => {
+    if (!token) {
+      setState({ loading: false, error: null, collections: [], unreadCount: 0 });
+      return;
+    }
+    if (!silent) setState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      const data = await notificationCenterApi.collections(token);
+      setState({ loading: false, error: null, collections: data?.collections ?? [], unreadCount: data?.unreadCount ?? 0 });
+    } catch (e) {
+      setState((prev) => (silent && prev.collections.length
+        ? { ...prev, loading: false }
+        : { ...prev, loading: false, error: e?.message || 'load' }));
+    }
+  }, [token]);
+
+  useFocusEffect(useCallback(() => {
+    load(true);
+  }, [load]));
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const markAllRead = useCallback(async () => {
+    const upTo = state.collections.map((item) => item.latest?.createdAt ?? '').sort().pop();
+    if (!token || !upTo) return;
+    setState((prev) => ({
+      ...prev,
+      unreadCount: 0,
+      collections: prev.collections.map((item) => ({ ...item, unreadCount: 0 })),
+    }));
+    try {
+      await notificationCenterApi.markAllRead(token, upTo);
+    } finally {
+      load(true);
+    }
+  }, [token, state.collections, load]);
+
+  return { ...state, reload: load, markAllRead };
 }
 
 /**

@@ -1,12 +1,17 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Screen } from '@shared/components/Screen';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
 import { MonthStepper, StateView } from '@shared/components/ui';
-import { ChildPickerSheet, ChildSwitcherPill } from '@shared/ui/childSwitcher';
+import { ChildPickerSheet, ChildSwitcherPill, childShortLabel } from '@shared/ui/childSwitcher';
+import { BackLink } from '@shared/ui/BackLink';
+import { useAbsenceDays } from '@shared/hooks/useAbsence';
+import { absenceByDate, needsReasonDates, pendingReasonCard } from '@shared/api/absenceMap';
+import { AbsenceDaySheet } from './absence/AbsenceDaySheet';
 import { useAttendanceSummary } from '@shared/hooks/useAttendance';
 import { useParentChildren } from '@shared/hooks/useSchedule';
 import { useSelectedChild } from '@shared/state/SelectedChild';
@@ -48,27 +53,6 @@ function LearnerDayMarker({ marker }) {
   );
 }
 
-function BackLink({ onPress }) {
-  const { c } = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      hitSlop={8}
-      style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        alignSelf: 'flex-start',
-        opacity: pressed ? 0.6 : 1,
-      })}
-    >
-      <Icon name="chevronLeft" size={16} color={c.blue} strokeWidth={2.4} />
-      <Txt style={{ fontSize: 16, fontWeight: '500', color: c.blue }}>Назад</Txt>
-    </Pressable>
-  );
-}
-
 /**
  * Календарь месяца: шапка, стрелки и сетка с маркерами дней. Общий для ученика и
  * родителя — разница только в `childId` и пилюле ребёнка над месяцем.
@@ -76,11 +60,14 @@ function BackLink({ onPress }) {
  * `month: null` просит у бэка текущий месяц по часам школы; из первого ответа приходят
  * границы учебного года, и только тогда включаются стрелки.
  */
-function LearnerAttendanceView({ nav, childId = null, enabled = true, childSwitcher = null }) {
+function LearnerAttendanceView({
+  nav, childId = null, enabled = true, childSwitcher = null, childLabel = null, initialAbsenceDate = null,
+}) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
 
-  const [month, setMonth] = useState(null);
+  // Переход из уведомления «укажите причину» открывает месяц этой даты и её день.
+  const [month, setMonth] = useState(initialAbsenceDate ? initialAbsenceDate.slice(0, 7) : null);
   const { loading, error, summary, reload } = useAttendanceSummary({ month, childId, enabled });
 
   // Год держится отдельно от ответа: пока грузится соседний месяц, ответа нет, а стрелки
@@ -105,6 +92,24 @@ function LearnerAttendanceView({ nav, childId = null, enabled = true, childSwitc
   const newer = shiftMonth(months, shown, 1);
 
   const days = useMemo(() => learnerDays(summary), [summary]);
+
+  // Причины отсутствия (ABSENCE-REASON-001) — только у родителя: ребёнок известен по `childId`.
+  const absence = useAbsenceDays({ childId, month: shown, enabled: enabled && childId != null });
+  const attention = useMemo(() => needsReasonDates(absence.days), [absence.days]);
+  const absentDays = useMemo(() => absenceByDate(absence.days), [absence.days]);
+  const reasonCard = useMemo(() => pendingReasonCard(absence.days), [absence.days]);
+  const [openDate, setOpenDate] = useState(initialAbsenceDate);
+  // Шторка — системный `Modal` поверх навигатора: на форму уходим, закрыв её, а по возвращении
+  // открываем тот же день заново — уже с отправленным ответом.
+  const reopenDate = useRef(null);
+  const reloadAbsence = absence.reload;
+  useFocusEffect(useCallback(() => {
+    if (!reopenDate.current) return;
+    const date = reopenDate.current;
+    reopenDate.current = null;
+    reloadAbsence();
+    setOpenDate(date);
+  }, [reloadAbsence]));
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -138,8 +143,17 @@ function LearnerAttendanceView({ nav, childId = null, enabled = true, childSwitc
           framed
           month={shown}
           renderMarks={(cell) => <LearnerDayMarker marker={days[cell.date]} />}
-          cellLabel={(cell) => dayA11yLabel(cell.day, days[cell.date])}
+          cellLabel={(cell) => dayA11yLabel(cell.day, days[cell.date])
+            + (attention.has(cell.date) ? ', нужна причина отсутствия' : '')}
+          isAttention={childId != null ? (cell) => attention.has(cell.date) : undefined}
+          onPressCell={childId != null
+            ? (cell) => (absentDays[cell.date] ? () => setOpenDate(cell.date) : null)
+            : undefined}
+          attentionLabel={childId != null ? 'Нужна причина' : null}
         />
+        {reasonCard ? (
+          <ReasonNeededCard card={reasonCard} onPress={() => setOpenDate(reasonCard.date)} />
+        ) : null}
         {summary && !(summary.lessons ?? []).length ? (
           <Txt style={{ fontSize: 13, color: c.inkMuted, textAlign: 'center' }}>
             В этом месяце уроков не было
@@ -169,7 +183,59 @@ function LearnerAttendanceView({ nav, childId = null, enabled = true, childSwitc
         style={{ alignSelf: 'center' }}
       />
       {body}
+      {openDate && childId != null ? (
+        <AbsenceDaySheet
+          childId={childId}
+          date={openDate}
+          childLabel={childLabel}
+          onClose={() => {
+            setOpenDate(null);
+            reloadAbsence();
+          }}
+          onRespond={(day) => {
+            reopenDate.current = openDate;
+            setOpenDate(null);
+            nav('absence-reason', {
+              childId,
+              date: openDate,
+              childLabel,
+              lessonCount: day?.absentLessons?.length ?? 0,
+            });
+          }}
+        />
+      ) : null}
     </Screen>
+  );
+}
+
+/**
+ * Блок под календарём (Р2): самый свежий день, где ждут причину, и вход в него. Запрос классного
+ * руководителя называется прямо — родителю важно, что спрашивает школа, а не просто «нет причины».
+ */
+function ReasonNeededCard({ card, onPress }) {
+  const { c } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${card.title}. ${card.text}`}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        padding: 16,
+        gap: 6,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: c.green,
+        backgroundColor: c.greenSoft,
+        opacity: pressed ? 0.85 : 1,
+      })}
+    >
+      <Txt style={{ fontSize: 15, fontWeight: '700', color: c.ink }}>{card.title}</Txt>
+      <Txt style={{ fontSize: 14, lineHeight: 20, color: c.ink2 }}>{card.text}</Txt>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+        <Txt style={{ fontSize: 15, fontWeight: '700', color: c.blue }}>Указать причину</Txt>
+        <Icon name="chevronRight" size={16} color={c.blue} strokeWidth={2.4} />
+      </View>
+    </Pressable>
   );
 }
 
@@ -192,7 +258,7 @@ export function StudentAttendanceScreen({ nav }) {
  * здесь, родитель вернётся на главную к тому же ребёнку. Пилюля и шит — те же, что в
  * расписании, заданиях и оценках (`shared/ui/childSwitcher`).
  */
-export function ParentAttendanceScreen({ nav }) {
+export function ParentAttendanceScreen({ nav, payload }) {
   const { c } = useTheme();
   const { loading, error, children, reload } = useParentChildren();
   const { childId, setChildId } = useSelectedChild(children);
@@ -236,6 +302,8 @@ export function ParentAttendanceScreen({ nav }) {
         nav={nav}
         childId={childId}
         enabled={childId != null}
+        childLabel={child ? `${childShortLabel(child)}${child.className ? ` · ${child.className}` : ''}` : null}
+        initialAbsenceDate={/^\d{4}-\d{2}-\d{2}$/.test(payload?.absenceDate ?? '') ? payload.absenceDate : null}
         childSwitcher={
           <ChildSwitcherPill
             child={child}

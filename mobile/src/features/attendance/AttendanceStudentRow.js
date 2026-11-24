@@ -8,7 +8,7 @@ import { shadowSm } from '@shared/components/Screen';
 import {
   markToggleFor,
   markingSummary,
-  reasonChipLabel,
+  dayReasonLabel,
   statusChip,
 } from '@shared/api/attendanceMap';
 
@@ -61,7 +61,6 @@ export function AttendanceStudentRow({
   highlight = false,
   onPickStatus,
   onToggleMark,
-  onPickReason,
   onEditComment,
 }) {
   const { c } = useTheme();
@@ -70,10 +69,11 @@ export function AttendanceStudentRow({
   const toggle = markToggleFor(marking?.status);
   const hasComment = Boolean((marking?.comment || '').trim());
   const summary = markingSummary(marking);
+  const reason = dayReasonLabel(marking, row.dayReason);
 
   // В правке вторая строка есть всегда: даже у «не отмечено» там живёт комментарий,
   // и прыгающая высота карточек при смене статуса читалась бы как перерисовка списка.
-  const secondRow = editable || Boolean(summary) || hasComment;
+  const secondRow = editable || Boolean(summary) || Boolean(reason) || hasComment;
 
   return (
     <View
@@ -126,19 +126,25 @@ export function AttendanceStudentRow({
             ) : null}
           </View>
 
-          {/* Причина — только у отсутствия: у присутствия её нет в модели вовсе
-              (attendance-read-contract §2), и показывать пустой переключатель значило бы
-              обещать поле, которого бэк не примет.
-
-              Ширина ограничена: причина — не самое важное в строке, и разрастаться за
-              счёт галочки и кнопки комментария ей нечего. */}
-          {editable && marking?.status === 'ABSENT' ? (
-            <SelectPill
-              label={reasonChipLabel(marking?.reason)}
-              tone="neutral"
-              onPress={onPickReason}
-              style={{ maxWidth: 132 }}
-            />
+          {/* Причина — только для чтения (П2): её за день указывает классный руководитель.
+              «Отсутствовал» → «Присутствовал» убирает её у этого урока сразу, ещё до сохранения. */}
+          {reason ? (
+            <View style={{ maxWidth: 150, alignItems: 'flex-end' }}>
+              <Txt
+                style={{
+                  fontSize: 13,
+                  fontWeight: reason.confirmed ? '600' : '400',
+                  color: reason.confirmed ? c.ink : c.ink3,
+                  textAlign: 'right',
+                }}
+                numberOfLines={2}
+              >
+                {reason.label}
+              </Txt>
+              {reason.confirmed ? (
+                <Txt style={{ fontSize: 10, color: c.ink3 }}>подтверждена</Txt>
+              ) : null}
+            </View>
           ) : null}
 
           <View style={{ flexShrink: 0 }}>
