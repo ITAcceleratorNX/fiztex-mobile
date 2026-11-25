@@ -195,6 +195,10 @@ export async function demoRequest(path, { method = 'GET', body, token, multipart
       classId: student.classId, className: student.className, academicYearId: 1, academicPeriodId: 2, events: [], oneTimeEvents: [],
       lessons: lessons.map((item) => ({ ...item, lessonId: item.id, lessonInstanceId: item.id, weekday: WEEKDAYS[new Date(`${item.date}T12:00:00`).getDay()], teacherFullName: 'Марина Демо', teacherId: 31, cancelled: false, audienceType: 'CLASS' })) };
   }
+  // Профиль преподавателя ребёнка: в демо документов нет — экран показывает пустое состояние.
+  else if (/^\/api\/children\/\d+\/teachers\/\d+$/.test(pathname) && get) {
+    result = { teacherProfileId: Number(pathname.split('/').pop()), fullName: 'Марина Демо', subjects: [], achievements: [] };
+  }
   else if (pathname === '/api/lessons/current' && get) result = { status: 'ok', lesson: lessonView(d.lessons.find((item) => item.classId === student.classId), role, student) };
   else if (/^\/api\/lessons\/\d+/.test(pathname)) {
     const [, id, action = ''] = pathname.match(/^\/api\/lessons\/(\d+)(?:\/(.*))?$/) || [];

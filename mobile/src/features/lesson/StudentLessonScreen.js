@@ -465,7 +465,13 @@ export function StudentLessonScreen({ nav, payload }) {
           </Banner>
         ) : null}
 
-        <LessonHero lesson={lesson} variant={isParent ? 'parent' : 'student'} />
+        <LessonHero
+          lesson={lesson}
+          variant={isParent ? 'parent' : 'student'}
+          onTeacherPress={isParent && childId && lesson.teacherId
+            ? () => nav('teacher-profile', { childId, teacherId: lesson.teacherId, teacherName: lesson.teacherName })
+            : undefined}
+        />
 
         <TopicCard
           topic={lesson.topic}

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "node scripts/verify-request-lifecycle.cjs && node scripts/verify-demo.cjs && node scripts/verify-undefined-names.cjs && node scripts/verify-grade-points.cjs && node scripts/verify-grades-logic.cjs && node scripts/verify-uploads.cjs && node scripts/verify-sign-in.cjs && node scripts/verify-access-request.cjs && node scripts/verify-student-codes.cjs && node scripts/verify-launch.cjs && node scripts/verify-navigation.cjs && node scripts/verify-assessment.cjs && node scripts/verify-teacher-corrections.cjs",
+    "test": "node scripts/verify-request-lifecycle.cjs && node scripts/verify-demo.cjs && node scripts/verify-undefined-names.cjs && node scripts/verify-grade-points.cjs && node scripts/verify-grades-logic.cjs && node scripts/verify-uploads.cjs && node scripts/verify-sign-in.cjs && node scripts/verify-access-request.cjs && node scripts/verify-student-codes.cjs && node scripts/verify-launch.cjs && node scripts/verify-navigation.cjs && node scripts/verify-assessment.cjs && node scripts/verify-teacher-corrections.cjs && node scripts/verify-teacher-profile.cjs",
     "test:demo": "node scripts/verify-demo.cjs",
     "test:requests": "node scripts/verify-request-lifecycle.cjs",
     "test:sign-in": "node scripts/verify-sign-in.cjs",
@@ -17,7 +17,8 @@
     "web": "expo start --web",
     "android:local": "EXPO_PUBLIC_API_LOCAL=1 expo start --android",
     "ios:local": "EXPO_PUBLIC_API_LOCAL=1 expo start --ios",
-    "test:assessment": "node scripts/verify-assessment.cjs"
+    "test:assessment": "node scripts/verify-assessment.cjs",
+    "test:teacher-profile": "node scripts/verify-teacher-profile.cjs"
   },
   "dependencies": {
     "@expo-google-fonts/onest": "^0.4.1",

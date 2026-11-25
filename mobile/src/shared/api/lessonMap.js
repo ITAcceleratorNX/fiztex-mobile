@@ -127,6 +127,8 @@ export function mapLessonCard(lesson, { highlight = null } = {}) {
     subgroupName: lesson.subgroupName || null,
     room: formatRoom(lesson.room),
     teacherName: abbreviateTeacherName(lesson.teacher?.fullName) || null,
+    // Профиль учителя открывается у родителя по этому id (teacher profile id, не аккаунт).
+    teacherId: lesson.teacher?.id ?? null,
     substituteName: substitute ? abbreviateTeacherName(substitute.fullName) : null,
 
     status: lesson.status,

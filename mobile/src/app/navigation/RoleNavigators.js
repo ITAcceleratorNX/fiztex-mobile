@@ -16,6 +16,7 @@ import {
   StudentLessonScreen,
   AssessmentScoresScreen,
 } from '@features/lesson';
+import { TeacherAchievementViewerScreen, TeacherProfileScreen } from '@features/teacherProfile';
 import {
   AttendanceScreen, QrScanScreen, AttendanceMonthScreen, AttendanceStudentScreen,
   StudentAttendanceScreen, ParentAttendanceScreen, AbsenceReasonFormScreen,
@@ -247,6 +248,9 @@ export function ParentApp() {
           { name: 'grade-dynamics-subject', comp: ParentSubjectDynamicsScreen },
           { name: 'notifications', comp: NotificationsScreen },
           { name: 'child-code', comp: ChildCodeScreen },
+          // Профиль преподавателя из карточки урока и его открытые документы (ТЗ «Достижения»).
+          { name: 'teacher-profile', comp: TeacherProfileScreen },
+          { name: 'teacher-achievement', comp: TeacherAchievementViewerScreen },
         ])}
       </PStack.Navigator>
     </SelectedChildProvider>
