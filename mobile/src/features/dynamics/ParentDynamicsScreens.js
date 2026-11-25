@@ -274,12 +274,16 @@ export function GradeDynamicsHomeTile({ childId, onPress }) {
         <Txt style={{ fontSize: 13, color: c.ink2 }}>Динамика успеваемости · четверть</Txt>
         <Icon name="chevronRight" size={16} color={c.ink3} />
       </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      {/* Левая часть сжимается и переносит бейдж на строку ниже, а график не сжимается: иначе
+          длинный бейдж («Нет данных для сравнения») выталкивал график за край карточки. */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 4 }}>
           <Txt style={{ fontSize: 30, fontWeight: '800', color: c.blueInk }}>{loading && !data ? '…' : value ?? '—'}</Txt>
           {value != null ? <ChangeBadge metric={data.overall} /> : null}
         </View>
-        <Sparkline values={(data?.series || []).map((p) => Number(p.value))} />
+        <View style={{ flexShrink: 0 }}>
+          <Sparkline values={(data?.series || []).map((p) => Number(p.value))} />
+        </View>
       </View>
       {!loading && value == null ? <Txt style={{ fontSize: 13, color: c.ink2 }}>За четверть оценок пока нет</Txt> : null}
     </Card>

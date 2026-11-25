@@ -93,8 +93,10 @@ export function Sparkline({ values = [], width = 104, height = 28 }) {
   if (values.length < 2) return null;
   const min = Math.min(...values);
   const max = Math.max(...values);
-  const range = max - min || 1;
-  const points = values.map((v, i) => `${(i / (values.length - 1)) * (width - 4) + 2},${height - 2 - ((v - min) / range) * (height - 4)}`).join(' ');
+  const range = max - min;
+  // Ровный ряд — линия посередине, а не прижатая к низу плитки.
+  const y = (v) => (range === 0 ? height / 2 : height - 2 - ((v - min) / range) * (height - 4));
+  const points = values.map((v, i) => `${(i / (values.length - 1)) * (width - 4) + 2},${y(v)}`).join(' ');
   return (
     <Svg width={width} height={height} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       <Polyline points={points} fill="none" stroke={c.blueInk} strokeWidth={2} strokeLinejoin="round" />
