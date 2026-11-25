@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useTheme } from '@shared/theme/ThemeContext';
 import { Txt } from '@shared/components/Txt';
 import Icon from '@shared/components/Icon';
@@ -109,7 +109,11 @@ function HeroNotice({ children, tone }) {
  *   полный экран») подложка оранжевая, а класс уже назван в подзаголовке экрана,
  *   поэтому в шапке он не повторяется и учитель с кабинетом идут одной строкой.
  */
-export function LessonHero({ lesson, variant = 'student' }) {
+/**
+ * @param onTeacherPress у родителя имя учителя ведёт в его профиль (ТЗ «Достижения и
+ *   сертификаты учителя» §5); без обработчика строка остаётся текстом.
+ */
+export function LessonHero({ lesson, variant = 'student', onTeacherPress }) {
   const { c } = useTheme();
   const tone = (TONES[variant] || TONES.student)(c);
   const compactMeta = variant === 'parent';
@@ -146,7 +150,20 @@ export function LessonHero({ lesson, variant = 'student' }) {
           полоска ниже, а не эта строка — иначе из карточки исчезло бы, чей это урок. */}
       {compactMeta ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-          <HeroMeta icon="userCheck">{lesson.teacherName}</HeroMeta>
+          {onTeacherPress && lesson.teacherName ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Профиль преподавателя: ${lesson.teacherName}`}
+              hitSlop={8}
+              onPress={onTeacherPress}
+              style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 4, opacity: pressed ? 0.6 : 1 })}
+            >
+              <HeroMeta icon="userCheck">{lesson.teacherName}</HeroMeta>
+              <Icon name="chevronRight" size={14} color={c.heroInk} strokeWidth={2.4} />
+            </Pressable>
+          ) : (
+            <HeroMeta icon="userCheck">{lesson.teacherName}</HeroMeta>
+          )}
           <HeroMeta icon="mapPin">{lesson.room}</HeroMeta>
         </View>
       ) : (
