@@ -182,3 +182,60 @@ export function learnerWorkView(work) {
           : null,
   };
 }
+
+// ─── Главная ученика и родителя: ближайшая работа ─────────────────────────────
+
+const WEEKDAYS_SHORT = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function dayIndex(dateStr) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr ?? '');
+  return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) / DAY_MS : null;
+}
+
+/**
+ * Ближайший запланированный СОР/СОЧ в строках расписания: от сегодня до `days` дней вперёд.
+ * На главной видны только сегодняшние уроки, и СОЧ послезавтра без этого не видно (26.11.2026).
+ * Отменённый урок и отменённая или проведённая работа не в счёт.
+ *
+ * @returns {{ lesson: object, work: object } | null}
+ */
+export function upcomingAssessment(lessons, today, days = 7) {
+  const from = dayIndex(today);
+  if (from == null) return null;
+  let best = null;
+  for (const lesson of lessons ?? []) {
+    const at = dayIndex(lesson?.date);
+    if (at == null || at < from || at > from + days || lesson.cancelled) continue;
+    for (const work of lesson.assessmentWorks ?? []) {
+      if (work.status !== 'PLANNED') continue;
+      const key = `${lesson.date} ${lesson.startTime ?? lesson.raw?.startTime ?? ''}`;
+      if (!best || key < best.key) best = { key, lesson, work };
+    }
+  }
+  return best ? { lesson: best.lesson, work: best.work } : null;
+}
+
+/** «СОЧ · Физика · завтра», «СОР 2 · Алгебра · пт 29.11». */
+export function upcomingAssessmentLine(item, today) {
+  if (!item) return null;
+  const from = dayIndex(today);
+  const at = dayIndex(item.lesson.date);
+  let when;
+  if (at === from) when = 'сегодня';
+  else if (at === from + 1) when = 'завтра';
+  else {
+    const d = new Date(at * DAY_MS);
+    const pad = (value) => String(value).padStart(2, '0');
+    when = `${WEEKDAYS_SHORT[d.getUTCDay()]} ${pad(d.getUTCDate())}.${pad(d.getUTCMonth() + 1)}`;
+  }
+  return [item.work.title || workTitle(item.work), item.lesson.subject, when].filter(Boolean).join(' · ');
+}
+
+/** Сегодня или завтра — строка плитки становится предупреждением. */
+export function upcomingAssessmentIsSoon(item, today) {
+  if (!item) return false;
+  const from = dayIndex(today);
+  const at = dayIndex(item.lesson.date);
+  return at != null && from != null && at - from <= 1;
+}

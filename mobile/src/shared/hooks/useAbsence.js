@@ -68,3 +68,46 @@ export function useAbsenceDay({ childId, date }) {
 
   return { ...state, reload };
 }
+
+/** Сколько дней назад искать дни, где ждут причину: около четверти — столько же видит календарь посещаемости. */
+const PENDING_LOOKBACK_DAYS = 90;
+
+function isoDay(date) {
+  const pad = (value) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/**
+ * Дни ребёнка за последние недели — для строки «Нужна причина» на главной родителя. Не по месяцу
+ * календаря: 1-го числа запрос за 30-е иначе пропал бы с главной. Сбой молчит — строки просто нет.
+ */
+export function usePendingAbsenceDays({ childId, enabled = true }) {
+  const { token } = useAuth();
+  const ready = Boolean(token && enabled && childId);
+  const [days, setDays] = useState(null);
+  const lastRequest = useRef(0);
+
+  const reload = useCallback(async () => {
+    const requestId = lastRequest.current + 1;
+    lastRequest.current = requestId;
+    if (!ready) {
+      setDays(null);
+      return;
+    }
+    const to = new Date();
+    const from = new Date(to);
+    from.setDate(from.getDate() - PENDING_LOOKBACK_DAYS);
+    try {
+      const data = await absenceApi.days(token, { childId, from: isoDay(from), to: isoDay(to) });
+      if (requestId === lastRequest.current) setDays(data);
+    } catch {
+      if (requestId === lastRequest.current) setDays(null);
+    }
+  }, [ready, token, childId]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  return { days, reload };
+}

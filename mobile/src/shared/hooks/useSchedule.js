@@ -224,3 +224,52 @@ export function lessonsForDate(weekView, dateStr) {
   if (!weekView?.lessons) return [];
   return weekView.lessons.filter((l) => l.date === dateStr || l.raw?.date === dateStr);
 }
+
+function isoDate(date) {
+  const pad = (value) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/**
+ * Уроки этой и следующей недели — для строки «ближайший СОР/СОЧ» на главной (26.11.2026).
+ * Ученику — своё расписание, родителю — выбранного ребёнка (`childId`). Две недели, а не одна:
+ * в пятницу СОЧ в понедельник иначе не виден. Сбой молчит — плитки просто нет.
+ *
+ * @returns {{ lessons: object[], today: string, reload: Function }}
+ */
+export function useUpcomingLessons({ childId = null, parent = false, enabled = true } = {}) {
+  const { token } = useAuth();
+  const ready = Boolean(token && enabled && (!parent || childId));
+  const [lessons, setLessons] = useState([]);
+  const [today, setToday] = useState(() => isoDate(new Date()));
+  const lastRequest = useRef(0);
+
+  const reload = useCallback(async () => {
+    const requestId = lastRequest.current + 1;
+    lastRequest.current = requestId;
+    if (!ready) {
+      setLessons([]);
+      return;
+    }
+    const now = new Date();
+    const next = new Date(now);
+    next.setDate(next.getDate() + 7);
+    const weeks = [isoDate(now), isoDate(next)];
+    try {
+      const views = await Promise.all(weeks.map((date) => (parent
+        ? scheduleApi.childWeek(token, childId, date)
+        : scheduleApi.meWeek(token, date))));
+      if (requestId !== lastRequest.current) return;
+      setToday(weeks[0]);
+      setLessons(views.flatMap((view) => mapScheduleView(view).lessons ?? []));
+    } catch {
+      if (requestId === lastRequest.current) setLessons([]);
+    }
+  }, [ready, token, childId, parent]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  return { lessons, today, reload };
+}

@@ -188,3 +188,23 @@ test('перенос — только запланированной без ба
   assert.equal(map.canCancel({ status: 'CONDUCTED', hasResults: true }), false);
   assert.equal(map.canCancel({ status: 'CANCELLED' }), false);
 });
+
+test('главная: ближайшая запланированная работа на неделю', () => {
+  const row = (date, startTime, works, extra = {}) => ({ date, startTime, subject: 'Физика', assessmentWorks: works, ...extra });
+  const lessons = [
+    row('2026-11-25', '09:00', [{ workId: 1, kind: 'SOR', number: 1, status: 'PLANNED', title: 'СОР 1' }]),
+    row('2026-11-27', '10:00', [{ workId: 2, kind: 'SOR', number: 2, status: 'CANCELLED', title: 'СОР 2' }]),
+    row('2026-11-27', '11:00', [{ workId: 3, kind: 'SOCH', status: 'PLANNED', title: 'СОЧ' }], { cancelled: true }),
+    row('2026-11-28', '12:00', [{ workId: 4, kind: 'SOCH', status: 'PLANNED', title: 'СОЧ' }]),
+    row('2026-11-27', '08:00', [{ workId: 5, kind: 'SOR', number: 3, status: 'CONDUCTED', title: 'СОР 3' }]),
+    row('2026-12-10', '08:00', [{ workId: 6, kind: 'SOR', number: 4, status: 'PLANNED', title: 'СОР 4' }]),
+  ];
+  const item = map.upcomingAssessment(lessons, '2026-11-26');
+  assert.equal(item.work.workId, 4);
+  assert.equal(map.upcomingAssessmentLine(item, '2026-11-26'), 'СОЧ · Физика · сб 28.11');
+  assert.equal(map.upcomingAssessmentIsSoon(item, '2026-11-26'), false);
+  assert.equal(map.upcomingAssessmentLine(item, '2026-11-27'), 'СОЧ · Физика · завтра');
+  assert.equal(map.upcomingAssessmentIsSoon(item, '2026-11-27'), true);
+  assert.equal(map.upcomingAssessmentLine(item, '2026-11-28'), 'СОЧ · Физика · сегодня');
+  assert.equal(map.upcomingAssessment(lessons, '2026-12-11'), null);
+});

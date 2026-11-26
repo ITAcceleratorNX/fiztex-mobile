@@ -117,6 +117,24 @@ export function pendingReasonCard(days) {
   };
 }
 
+/**
+ * Строка-предупреждение на плитке «Посещаемость» главной родителя: от него ждут причину, а в
+ * календаре это видно только тому, кто туда зашёл. Дата — та же, что у блока под календарём
+ * (запрос классного руководителя впереди), нажатие открывает этот день.
+ */
+export function homeAbsenceAlert(days) {
+  const card = pendingReasonCard(days);
+  if (!card) return null;
+  const items = (days?.items ?? []).filter((item) => item.needsReason);
+  const top = items.find((item) => item.date === card.date);
+  const more = items.length - 1;
+  return {
+    date: card.date,
+    text: `${top?.requested ? 'Укажите причину' : 'Нужна причина'} · ${dayMonth(card.date)}`
+      + (more > 0 ? ` и ещё ${more}` : ''),
+  };
+}
+
 /** Последний свой ответ — его показывает шторка (Р7, Р8). */
 export function lastOwnResponse(day) {
   const responses = day?.myResponses ?? [];

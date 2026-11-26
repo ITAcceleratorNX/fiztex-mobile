@@ -1,10 +1,10 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BOTTOM_CHROME_HEIGHT, Screen } from '@shared/components/Screen';
 import { StateView } from '@shared/components/ui';
-import { useMySchedule } from '@shared/hooks/useSchedule';
+import { useMySchedule, useUpcomingLessons } from '@shared/hooks/useSchedule';
 import { useUnreadNotifications } from '@shared/hooks/useNotificationCenter';
 import { useMyProfile } from '@shared/hooks/useProfile';
 import { useMyDiaryGrades, useMySubjectGrades } from '@shared/hooks/useGrades';
@@ -12,6 +12,7 @@ import { useMySurveys } from '@shared/hooks/useSurveys';
 import { useAttendanceSummary } from '@shared/hooks/useAttendance';
 import { useMyGradeCorrections } from '@shared/hooks/useGradeCorrections';
 import { homeCorrectionLine } from '@shared/api/gradeCorrectionMap';
+import { upcomingAssessment, upcomingAssessmentIsSoon, upcomingAssessmentLine } from '@shared/api/assessmentMap';
 import { summaryTileLine } from '@shared/api/learnerAttendanceMap';
 import {
   ActivePsychTestsBlock, ActiveSurveysBlock, HomeHeader, HomeSectionTitle, NotificationBell, LearnerLessonsCard, LearnerHomeTile,
@@ -50,6 +51,13 @@ export function StudentHomeScreen({ nav }) {
   // остаётся обычной.
   const corrections = useMyGradeCorrections();
   const reloadCorrections = corrections.reload;
+  // Ближайший СОР/СОЧ на неделе (26.11.2026): на главной видны только сегодняшние уроки.
+  const upcoming = useUpcomingLessons();
+  const reloadUpcoming = upcoming.reload;
+  const upcomingWork = useMemo(
+    () => upcomingAssessment(upcoming.lessons, upcoming.today),
+    [upcoming.lessons, upcoming.today],
+  );
 
   // Пройденный опрос или тест должен уйти с главной сразу по возвращении, а не после ручного
   // обновления: вкладка остаётся смонтированной, и без этого баннер и плитка вели бы в «Ответы
@@ -75,17 +83,28 @@ export function StudentHomeScreen({ nav }) {
     try {
       await Promise.all([
         reload(true), reloadGrades(), reloadSubjects({ silent: true }), reloadSurveys(true),
-        reloadAttendance(true), reloadCorrections(),
+        reloadAttendance(true), reloadCorrections(), reloadUpcoming(),
       ]);
     } finally {
       setRefreshing(false);
     }
-  }, [reload, reloadGrades, reloadSubjects, reloadSurveys, reloadAttendance, reloadCorrections]);
+  }, [reload, reloadGrades, reloadSubjects, reloadSurveys, reloadAttendance, reloadCorrections, reloadUpcoming]);
 
   const openLesson = useCallback(
     (lesson) => nav?.('lesson', { ...lesson, childId: null, childName: null }),
     [nav],
   );
+
+  // Плитка с открытым исправлением ведёт туда же, куда уведомление: в карточку урока с блоком
+  // «Требуется исправление». Сервер отдаёт ближайший срок первым; без исправлений — дневник.
+  const nearestCorrection = corrections.corrections[0] ?? null;
+  const openGrades = useCallback(() => {
+    if (nearestCorrection) {
+      openLesson({ lessonInstanceId: nearestCorrection.lessonId });
+      return;
+    }
+    nav?.('diary');
+  }, [nav, nearestCorrection, openLesson]);
 
   // `origin` едет вместе с названием: экран прохождения называет тест тестом ещё до того, как
   // загрузил его сам.
@@ -147,12 +166,22 @@ export function StudentHomeScreen({ nav }) {
       </View>
 
       {/* Разделы — плитками подряд, без заголовка секции (Figma 2170:5003). */}
+      {upcomingWork ? (
+        <LearnerHomeTile
+          icon="clipboardCheck"
+          title="СОР и СОЧ"
+          subtitle={upcomingAssessmentLine(upcomingWork, upcoming.today)}
+          alert={upcomingAssessmentIsSoon(upcomingWork, upcoming.today)
+            ? upcomingAssessmentLine(upcomingWork, upcoming.today) : null}
+          onPress={() => openLesson(upcomingWork.lesson)}
+        />
+      ) : null}
       <LearnerHomeTile
         icon="award"
         title="Оценки по предметам"
         subtitle={gradeLine || 'Оценок за четверть пока нет'}
         alert={homeCorrectionLine(corrections.corrections)}
-        onPress={() => nav?.('diary')}
+        onPress={openGrades}
       />
       <LearnerHomeTile
         icon="calendarCheck"
