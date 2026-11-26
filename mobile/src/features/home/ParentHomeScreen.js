@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BOTTOM_CHROME_HEIGHT, Screen } from '@shared/components/Screen';
 import { PickerSheet, StateView } from '@shared/components/ui';
-import { useChildSchedule, useParentChildren } from '@shared/hooks/useSchedule';
+import { useChildSchedule, useParentChildren, useUpcomingLessons } from '@shared/hooks/useSchedule';
 import { useSelectedChild } from '@shared/state/SelectedChild';
 import { useUnreadNotifications } from '@shared/hooks/useNotificationCenter';
 import { useMyProfile } from '@shared/hooks/useProfile';
@@ -12,6 +12,11 @@ import { useMySurveys } from '@shared/hooks/useSurveys';
 import { useChildMonthlyFeedback } from '@shared/hooks/useMonthlyFeedback';
 import { useChildParentComments } from '@shared/hooks/useParentComments';
 import { useAttendanceSummary } from '@shared/hooks/useAttendance';
+import { useMyGradeCorrections } from '@shared/hooks/useGradeCorrections';
+import { homeCorrectionLine } from '@shared/api/gradeCorrectionMap';
+import { usePendingAbsenceDays } from '@shared/hooks/useAbsence';
+import { homeAbsenceAlert } from '@shared/api/absenceMap';
+import { upcomingAssessment, upcomingAssessmentIsSoon, upcomingAssessmentLine } from '@shared/api/assessmentMap';
 import { summaryTileLine } from '@shared/api/learnerAttendanceMap';
 import {
   ActiveSurveysBlock, ChildSwitcherPill, HomeHeader, HomeSectionTitle, NotificationBell, LearnerHomeTile,
@@ -64,6 +69,25 @@ export function ParentHomeScreen({ nav }) {
   // Посещаемость выбранного ребёнка за текущий месяц — подпись плитки.
   const attendance = useAttendanceSummary({ childId, enabled: childId != null });
   const reloadAttendance = attendance.reload;
+  // Открытые исправления выбранного ребёнка — та же строка-предупреждение на плитке «Оценки»,
+  // что у ученика: в одной карточке урока родитель исправление легко пропускает.
+  const corrections = useMyGradeCorrections({ childId, enabled: childId != null });
+  const reloadCorrections = corrections.reload;
+  // Ближайший СОР/СОЧ на неделе (26.11.2026): на главной видны только сегодняшние уроки.
+  const upcoming = useUpcomingLessons({ childId, parent: true, enabled: childId != null });
+  const reloadUpcoming = upcoming.reload;
+  const upcomingWork = useMemo(
+    () => (child ? upcomingAssessment(upcoming.lessons, upcoming.today) : null),
+    [child, upcoming.lessons, upcoming.today],
+  );
+  // Дни, где ждут причину отсутствия: строка на плитке «Посещаемость», нажатие — сразу этот день
+  // со шторкой ответа, как из уведомления «укажите причину».
+  const pendingAbsence = usePendingAbsenceDays({ childId, enabled: childId != null });
+  const reloadPendingAbsence = pendingAbsence.reload;
+  const absenceAlert = useMemo(
+    () => (child ? homeAbsenceAlert(pendingAbsence.days) : null),
+    [child, pendingAbsence.days],
+  );
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -77,11 +101,14 @@ export function ParentHomeScreen({ nav }) {
         reloadFeedback(),
         reloadTeacherComments(true),
         reloadAttendance(true),
+        reloadCorrections(),
+        reloadPendingAbsence(),
+        reloadUpcoming(),
       ]);
     } finally {
       setRefreshing(false);
     }
-  }, [reload, reloadGrades, reloadSubjects, reloadSurveys, reloadFeedback, reloadAttendance, reloadTeacherComments]);
+  }, [reload, reloadGrades, reloadSubjects, reloadSurveys, reloadFeedback, reloadAttendance, reloadTeacherComments, reloadCorrections, reloadPendingAbsence, reloadUpcoming]);
 
   const openSurvey = useCallback(
     (survey) => nav?.('survey-take', { surveyId: survey.surveyId, title: survey.title }),
@@ -97,6 +124,17 @@ export function ParentHomeScreen({ nav }) {
     }),
     [nav, childId, child],
   );
+
+  // Плитка с открытым исправлением ведёт туда же, куда уведомление «работу нужно исправить»:
+  // в карточку урока, где блок «Требуется исправление». Сервер отдаёт ближайший срок первым.
+  const nearestCorrection = child ? corrections.corrections[0] ?? null : null;
+  const openGrades = useCallback(() => {
+    if (nearestCorrection) {
+      openLesson({ lessonInstanceId: nearestCorrection.lessonId });
+      return;
+    }
+    nav?.('grades');
+  }, [nav, nearestCorrection, openLesson]);
 
   if (!childrenLoading && children.length === 0) {
     return (
@@ -154,12 +192,23 @@ export function ParentHomeScreen({ nav }) {
         />
       </View>
 
+      {upcomingWork ? (
+        <LearnerHomeTile
+          icon="clipboardCheck"
+          title="СОР и СОЧ"
+          subtitle={upcomingAssessmentLine(upcomingWork, upcoming.today)}
+          alert={upcomingAssessmentIsSoon(upcomingWork, upcoming.today)
+            ? upcomingAssessmentLine(upcomingWork, upcoming.today) : null}
+          onPress={() => openLesson(upcomingWork.lesson)}
+        />
+      ) : null}
       {/* Разделы — плитками подряд, без заголовка секции (Figma 2170:5561). */}
       <LearnerHomeTile
         icon="award"
         title="Оценки по предметам"
         subtitle={gradeLine || 'Оценок за четверть пока нет'}
-        onPress={() => nav?.('grades')}
+        alert={child ? homeCorrectionLine(corrections.corrections) : null}
+        onPress={openGrades}
       />
       {/* Под «Оценками по предметам», как в макете (Figma 2201:52702). */}
       {child ? <GradeDynamicsHomeTile childId={childId} onPress={() => nav?.('grade-dynamics')} /> : null}
@@ -169,7 +218,8 @@ export function ParentHomeScreen({ nav }) {
         iconSize={20}
         title="Посещаемость"
         subtitle={summaryTileLine(attendance.summary) || 'Календарь за месяц'}
-        onPress={() => nav?.('attendance')}
+        alert={absenceAlert?.text ?? null}
+        onPress={() => nav?.('attendance', absenceAlert ? { absenceDate: absenceAlert.date } : undefined)}
       />
 
       {child ? <LearnerHomeTile icon="message" title="Комментарии учителей"

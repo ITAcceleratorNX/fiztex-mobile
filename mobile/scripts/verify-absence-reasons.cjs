@@ -85,6 +85,12 @@ check('в тексте — дата, число уроков и просьба',
   card.text.startsWith('17 ноября · 3 урока. Классный руководитель просит'), card.text);
 check('остальные дни посчитаны', card.text.endsWith('ещё 1 день'), card.text);
 check('нечего указывать — блока нет', m.pendingReasonCard({ items: [days.items[2]] }) === null);
+const homeAlert = m.homeAbsenceAlert(days);
+check('главная родителя: просьба классного руководителя и число остальных',
+  homeAlert.date === '2026-11-17' && homeAlert.text === 'Укажите причину · 17 ноября и ещё 1', JSON.stringify(homeAlert));
+check('главная родителя: самостоятельный день — «Нужна причина»',
+  m.homeAbsenceAlert({ items: [days.items[0]] }).text === 'Нужна причина · 20 ноября');
+check('главная родителя: ждать нечего — строки нет', m.homeAbsenceAlert({ items: [days.items[2]] }) === null);
 
 section('Даты и подписи');
 check('заголовок дня — без сдвига через UTC', m.dayTitle('2026-11-17') === 'Вторник, 17 ноября', m.dayTitle('2026-11-17'));
