@@ -118,6 +118,8 @@ const ICONS = {
   ABSENCE_REASON_CONFIRMED: { icon: 'check', tone: 'green' },
   ABSENCE_REASON_CHANGED: { icon: 'calendarCheck', tone: 'blue' },
   ABSENCE_REASON_CLARIFICATION: { icon: 'alertCircle', tone: 'red' },
+  // Сводка об учёбе опубликована (ТЗ «AI-отчётность» §8). Переход — сама сводка (`ai-report`).
+  AI_REPORT_PUBLISHED: { icon: 'fileText', tone: 'blue' },
 };
 
 /**

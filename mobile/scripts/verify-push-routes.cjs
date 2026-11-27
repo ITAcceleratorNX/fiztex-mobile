@@ -107,10 +107,24 @@ section('Родитель и ребёнок');
     noChild.tab === 'home' && noChild.reason === 'incomplete-params', JSON.stringify(noChild));
 
   const feedback = open('PARENT', push('feedback', {}, { childProfileId: 604 }));
-  check('отзывы → «Главная» с выбранным ребёнком (там блок отзывов)', feedback.tab === 'home' && feedback.childId === 604);
+  check('отзывы → экран отзывов за месяц с выбранным ребёнком (блок ушёл с главной в «От учителей»)',
+    feedback.screen === 'monthly-feedback' && feedback.childId === 604 && same(feedback.payload, { childId: 604 }), JSON.stringify(feedback));
+  const feedbackMonth = open('PARENT', push('feedback', { month: '2026-10' }, { childProfileId: 604 }));
+  check('отзывы с месяцем — сразу этот месяц', same(feedbackMonth.payload, { childId: 604, month: '2026-10' }), JSON.stringify(feedbackMonth));
+  check('кривой месяц не передаётся', same(open('PARENT', push('feedback', { month: 'октябрь' }, { childProfileId: 604 })).payload, { childId: 604 }));
+  check('отзывы без ребёнка — «Главная»', open('PARENT', push('feedback', {})).tab === 'home');
 
   const studentWithChild = open('STUDENT', push('lesson', { lessonId: 1 }, { childProfileId: 604 }));
   check('ученику ребёнок из данных не подставляется', studentWithChild.childId === null && !studentWithChild.payload.childId);
+
+  const aiReport = open('PARENT', push('ai-report', { childId: 604, reportId: 12 }, { kind: 'AI_REPORT_PUBLISHED', childProfileId: 604 }));
+  check('сводка об учёбе → нужный ребёнок и сама сводка',
+    aiReport.childId === 604 && aiReport.screen === 'ai-report' && same(aiReport.payload, { reportId: 12, childId: 604 }),
+    JSON.stringify(aiReport));
+  check('сводка без ребёнка в данных — на «Главную»',
+    open('PARENT', push('ai-report', { reportId: 12 })).tab === 'home');
+  check('ученику сводка об учёбе не адресована — «Главная»',
+    open('STUDENT', push('ai-report', { reportId: 12 }, { childProfileId: 604 })).tab === 'home');
 
   const teacherRequest = open('TEACHER', push('my-teacher-requests', { requestId: 58 }));
   check('решение по заявке учителя открывает её карточку',
