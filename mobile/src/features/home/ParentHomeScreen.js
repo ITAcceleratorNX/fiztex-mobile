@@ -9,8 +9,6 @@ import { useUnreadNotifications } from '@shared/hooks/useNotificationCenter';
 import { useMyProfile } from '@shared/hooks/useProfile';
 import { useMyDiaryGrades, useMySubjectGrades } from '@shared/hooks/useGrades';
 import { useMySurveys } from '@shared/hooks/useSurveys';
-import { useChildMonthlyFeedback } from '@shared/hooks/useMonthlyFeedback';
-import { useChildParentComments } from '@shared/hooks/useParentComments';
 import { useAttendanceSummary } from '@shared/hooks/useAttendance';
 import { useMyGradeCorrections } from '@shared/hooks/useGradeCorrections';
 import { homeCorrectionLine } from '@shared/api/gradeCorrectionMap';
@@ -24,7 +22,7 @@ import {
 } from './HomeParts';
 import { childPillLabel, formatHomeDate, parentName, todayKey } from './homeDate';
 import { latestGradeLine } from './latestGrade';
-import { MonthlyFeedbackBlock } from './MonthlyFeedbackBlock';
+import { TeacherFeedHomeCard } from '@features/teacherFeed/TeacherFeedScreens';
 import { GradeDynamicsHomeTile } from '@features/dynamics/ParentDynamicsScreens';
 
 /**
@@ -61,11 +59,6 @@ export function ParentHomeScreen({ nav }) {
   // какой ребёнок выбран пилюлей ниже (см. правило в контракте опросов) — переключение
   // ребёнка этот блок не трогает.
   const { surveys, reload: reloadSurveys } = useMySurveys();
-  // Отзывы учителей за месяц — по выбранному ребёнку, как расписание и оценки выше.
-  const feedback = useChildMonthlyFeedback(childId);
-  const reloadFeedback = feedback.reload;
-  const teacherComments = useChildParentComments(childId);
-  const reloadTeacherComments = teacherComments.reload;
   // Посещаемость выбранного ребёнка за текущий месяц — подпись плитки.
   const attendance = useAttendanceSummary({ childId, enabled: childId != null });
   const reloadAttendance = attendance.reload;
@@ -98,8 +91,6 @@ export function ParentHomeScreen({ nav }) {
         reloadGrades(),
         reloadSubjects({ silent: true }),
         reloadSurveys(true),
-        reloadFeedback(),
-        reloadTeacherComments(true),
         reloadAttendance(true),
         reloadCorrections(),
         reloadPendingAbsence(),
@@ -108,7 +99,7 @@ export function ParentHomeScreen({ nav }) {
     } finally {
       setRefreshing(false);
     }
-  }, [reload, reloadGrades, reloadSubjects, reloadSurveys, reloadFeedback, reloadAttendance, reloadTeacherComments, reloadCorrections, reloadPendingAbsence, reloadUpcoming]);
+  }, [reload, reloadGrades, reloadSubjects, reloadSurveys, reloadAttendance, reloadCorrections, reloadPendingAbsence, reloadUpcoming]);
 
   const openSurvey = useCallback(
     (survey) => nav?.('survey-take', { surveyId: survey.surveyId, title: survey.title }),
@@ -222,12 +213,9 @@ export function ParentHomeScreen({ nav }) {
         onPress={() => nav?.('attendance', absenceAlert ? { absenceDate: absenceAlert.date } : undefined)}
       />
 
-      {child ? <LearnerHomeTile icon="message" title="Комментарии учителей"
-        subtitle={teacherComments.loading ? 'Загрузка…' : teacherComments.error || teacherComments.data?.comments?.[0]?.subjectName || 'Комментариев пока нет'}
-        alert={teacherComments.data?.unreadCount > 0 ? `Непрочитанные: ${teacherComments.data.unreadCount}` : null}
-        onPress={() => nav?.('teacher-comments')} /> : null}
-
-      {child ? <MonthlyFeedbackBlock feedback={feedback} /> : null}
+      {/* «От учителей» — сводки об учёбе, отзывы за месяц и комментарии к урокам одной лентой: для
+          родителя это одно и то же, а три соседних блока читались как три разных раздела. */}
+      {child ? <TeacherFeedHomeCard key={childId} childId={childId} nav={nav} /> : null}
 
       <PickerSheet
         visible={pickerOpen}

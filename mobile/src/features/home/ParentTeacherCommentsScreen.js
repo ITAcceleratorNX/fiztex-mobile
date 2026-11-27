@@ -16,7 +16,7 @@ function dateLabel(date) {
   return new Date(`${date}T12:00:00`).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 }
 
-export function ParentTeacherCommentsScreen({ nav }) {
+export function ParentTeacherCommentsScreen({ nav, payload }) {
   const { token } = useAuth();
   const { children, loading, error, reload } = useParentChildren();
   const { childId, setChildId } = useSelectedChild(children);
@@ -24,7 +24,7 @@ export function ParentTeacherCommentsScreen({ nav }) {
   const child = children.find(item => item.id === childId);
   const switcher = child ? <ChildSwitcherPill child={child} index={children.indexOf(child)} canSwitch={children.length > 1} onPress={() => setPicker(true)} /> : null;
   return <>
-    {childId ? <CommentList key={`${token}:${childId}`} childId={childId} nav={nav} switcher={switcher} /> :
+    {childId ? <CommentList key={`${token}:${childId}`} childId={childId} nav={nav} switcher={switcher} focusId={payload?.commentId ?? null} /> :
       <Screen><ScreenHeader title="Комментарии учителей" back={() => nav?.back?.()} />
         <StateView title={loading ? 'Загрузка…' : error || 'Дети не привязаны'} actionLabel={error ? 'Повторить' : undefined} onAction={reload} />
       </Screen>}
@@ -32,7 +32,7 @@ export function ParentTeacherCommentsScreen({ nav }) {
   </>;
 }
 
-function CommentList({ childId, nav, switcher }) {
+function CommentList({ childId, nav, switcher, focusId }) {
   const { c } = useTheme();
   const [subjectId, setSubjectId] = useState(null);
   const [page, setPage] = useState(0);
@@ -53,6 +53,13 @@ function CommentList({ childId, nav, switcher }) {
       return [...merged.values()];
     });
   }, [data, page]);
+  // Из ленты «От учителей» — сразу нажатый комментарий, как будто его открыли в списке.
+  const focused = useRef(false);
+  useEffect(() => {
+    if (focused.current || focusId == null) return;
+    const target = all.find(item => item.id === focusId);
+    if (target) { focused.current = true; void open(target); }
+  }, [all, focusId]); // eslint-disable-line react-hooks/exhaustive-deps
   function filter(id) { setAll([]); setSelected(null); setSubjectId(id); setPage(0); }
   async function open(comment) {
     const sequence = ++openSequence.current;

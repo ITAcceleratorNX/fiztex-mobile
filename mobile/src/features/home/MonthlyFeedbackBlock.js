@@ -20,7 +20,7 @@ const TITLE = 'Обратная связь за месяц';
  * <p>Всё содержимое принадлежит выбранному ребёнку и месяцу; данные и их загрузка —
  * `useChildMonthlyFeedback`, здесь только раскладка.
  */
-export function MonthlyFeedbackBlock({ feedback }) {
+export function MonthlyFeedbackBlock({ feedback, showTitle = true }) {
   const { c } = useTheme();
   const { month, loading, error, view, older, newer, goOlder, goNewer, retry } = feedback;
   const [subjectId, setSubjectId] = useState(null);
@@ -50,7 +50,7 @@ export function MonthlyFeedbackBlock({ feedback }) {
     return (
       // Белая карточка неопубликованного месяца (Figma 2162:4100) — как плитки главной.
       <SurfaceCard style={{ gap: 8 }}>
-        <Txt style={{ fontSize: 16, fontWeight: '700', color: c.ink }}>{TITLE}</Txt>
+        {showTitle ? <Txt style={{ fontSize: 16, fontWeight: '700', color: c.ink }}>{TITLE}</Txt> : null}
         {month ? stepper(false) : null}
         {loading ? (
           <ActivityIndicator color={c.inkMuted} style={{ alignSelf: 'flex-start', marginTop: 4 }} />
@@ -72,7 +72,7 @@ export function MonthlyFeedbackBlock({ feedback }) {
   return (
     <GradCard colors={GRAD.blueBright} withPattern={false} padding={16} radius={20} contentStyle={{ gap: 12 }}>
       <View style={{ gap: 8 }}>
-        <Txt style={{ fontSize: 16, fontWeight: '700' }}>{TITLE}</Txt>
+        {showTitle ? <Txt style={{ fontSize: 16, fontWeight: '700' }}>{TITLE}</Txt> : null}
         {stepper(true)}
       </View>
 

@@ -156,7 +156,7 @@ section('Переход — тем же словарём, что и пуш');
   const feedback = open('PARENT', row('f', at(13, 9, 0), {
     kind: 'MONTHLY_FEEDBACK', route: 'feedback', params: {}, childProfileId: 605, childName: 'Тимур',
   }));
-  check('родитель: отзывы → «Главная» с выбранным ребёнком', feedback.tab === 'home' && feedback.childId === 605);
+  check('родитель: отзывы → экран отзывов за месяц с выбранным ребёнком', feedback.screen === 'monthly-feedback' && feedback.childId === 605);
 
   const unknown = open('STUDENT', row('u', at(13, 9, 0), { route: 'rocket-launch' }));
   check('незнакомый маршрут — «Главная», а не тупик', unknown.tab === 'home');

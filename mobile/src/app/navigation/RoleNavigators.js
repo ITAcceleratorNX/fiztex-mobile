@@ -1,5 +1,7 @@
 import React from 'react';
 import { ParentTeacherCommentsScreen } from '@features/home/ParentTeacherCommentsScreen';
+import { ParentAiReportScreen, ParentAiReportsScreen } from '@features/aiReports/ParentAiReportScreens';
+import { ParentMonthlyFeedbackScreen, ParentTeacherFeedScreen } from '@features/teacherFeed/TeacherFeedScreens';
 import { ParentGradeDynamicsScreen, ParentSubjectDynamicsScreen } from '@features/dynamics/ParentDynamicsScreens';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -243,6 +245,10 @@ export function ParentApp() {
           { name: 'events', comp: StudentEvents },
           { name: 'feedback', comp: ParentFeedback },
           { name: 'teacher-comments', comp: ParentTeacherCommentsScreen },
+          { name: 'ai-reports', comp: ParentAiReportsScreen },
+          { name: 'ai-report', comp: ParentAiReportScreen },
+          { name: 'teacher-feed', comp: ParentTeacherFeedScreen },
+          { name: 'monthly-feedback', comp: ParentMonthlyFeedbackScreen },
           // Динамика успеваемости ребёнка (FRONTEND Student Grade Dynamics §5): общий экран и предмет.
           { name: 'grade-dynamics', comp: ParentGradeDynamicsScreen },
           { name: 'grade-dynamics-subject', comp: ParentSubjectDynamicsScreen },

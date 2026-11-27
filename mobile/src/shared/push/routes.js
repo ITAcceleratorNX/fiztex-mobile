@@ -20,9 +20,10 @@
  * | `homework-card` | `homeworkId` | карточка задания          | карточка задания                 | карточка задания            |
  * | `homework-test` | `homeworkId` | карточка задания          | карточка задания                 | —                           |
  * | `survey-take`   | `surveyId`   | прохождение опроса        | прохождение опроса               | —                           |
- * | `feedback`      | —            | —                         | вкладка «Главная» (блок отзывов) | —                           |
+ * | `feedback`      | `month`?     | —                         | отзывы за месяц ребёнка          | —                           |
  * | `lesson-grades` | `lessonId`   | —                         | —                                | карточка урока              |
  * | `absence-day`   | `date`       | —                         | календарь посещаемости и день    | — (в панели — «Мой класс»)  |
+ * | `ai-report`     | `reportId`   | —                         | сводка об учёбе ребёнка          | —                           |
  *
  * `lesson-grades` — исправление работы ученика из ленты учителя: в вебе это лист оценок урока, в приложении
  * отдельного листа нет, и ведёт карточка урока.
@@ -67,6 +68,18 @@ const absenceDay = (params) => {
   return date ? screen('attendance', { absenceDate: date }) : null;
 };
 
+/** Сводка об учёбе (AI_REPORT_PUBLISHED): доступ проверяется при открытии, снятая — «недоступна». */
+const aiReport = (params, childId) => {
+  const reportId = positiveId(params.reportId);
+  return reportId ? screen('ai-report', { reportId, childId }) : null;
+};
+
+/** Отзывы за месяц (MONTHLY_FEEDBACK): месяц из уведомления, если он есть, иначе экран выберет сам. */
+const monthlyFeedback = (params, childId) => {
+  const month = typeof params.month === 'string' && /^\d{4}-\d{2}$/.test(params.month) ? params.month : undefined;
+  return screen('monthly-feedback', month ? { childId, month } : { childId });
+};
+
 const surveyTake = (params) => {
   const surveyId = positiveId(params.surveyId);
   return surveyId ? screen('survey-take', { surveyId }) : null;
@@ -102,11 +115,13 @@ const ROUTES = {
   },
   'homework-test': { STUDENT: ignoringChild(homeworkCard), PARENT: withChild(homeworkCard) },
   'survey-take': { STUDENT: surveyTake, PARENT: surveyTake },
-  feedback: { PARENT: () => tab('home') },
+  // Блок отзывов ушёл с главной в ленту «От учителей» — уведомление ведёт прямо в экран месяца.
+  feedback: { PARENT: withChild(monthlyFeedback) },
   'lesson-grades': { TEACHER: ignoringChild(lessonCard) },
   // Причина отсутствия (ABSENCE-REASON-001): запрос, решение и уточнение — родителю. Учителю ответ
   // родителя приходит лентой панели, в приложении такого экрана нет — «Главная», как у незнакомого.
   'absence-day': { PARENT: withChild(absenceDay) },
+  'ai-report': { PARENT: withChild(aiReport) },
   // Решение администратора и новая заявка ведут в одну teacher detail-карточку.
   'teacher-requests': { TEACHER: (params) => {
     const requestId = positiveId(params.requestId);

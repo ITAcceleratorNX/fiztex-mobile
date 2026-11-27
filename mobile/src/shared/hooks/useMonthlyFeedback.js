@@ -27,12 +27,13 @@ const LOAD_ERROR = 'Не удалось загрузить обратную св
  * <p>Опрос — не дольше трёх минут (контракт P3). Если анализ идёт дольше, экран не зависает
  * в опросе навсегда: обновление главной спросит состояние заново.
  */
-export function useChildMonthlyFeedback(childId) {
+export function useChildMonthlyFeedback(childId, initialMonth = null) {
   const { token } = useAuth();
   const current = monthKey();
 
   const [monthsState, setMonthsState] = useState({ loading: true, rows: null });
-  const [picked, setPicked] = useState(null);
+  // Из ленты «От учителей» экран открывается на нажатом месяце, а не на месяце по умолчанию.
+  const [picked, setPicked] = useState(initialMonth);
   const [monthState, setMonthState] = useState({ loading: false, error: null, view: null });
   const [analysis, setAnalysis] = useState(null);
   const [analysisError, setAnalysisError] = useState(null);
@@ -50,9 +51,9 @@ export function useChildMonthlyFeedback(childId) {
   }, []);
 
   useEffect(() => {
-    setPicked(null);
+    setPicked(initialMonth);
     idempotencyKey.current = null;
-  }, [childId]);
+  }, [childId, initialMonth]);
 
   useEffect(
     () => () => {

@@ -375,6 +375,7 @@ export async function demoRequest(path, { method = 'GET', body, token, multipart
   else if (get && ['/api/me/keys', '/api/me/equipment', '/api/grade-corrections/my', '/api/surveys/my', '/api/homework-groups'].includes(pathname)) result = [];
   else if (/^\/api\/monthly-feedback\/children\/\d+\/months$/.test(pathname) && get) result = [];
   else if (/^\/api\/monthly-feedback\/children\/\d+\/months\/\d{4}-\d{2}$/.test(pathname) && get) result = { childId: student.studentProfileId, month: pathname.split('/').pop(), subjects: [], coverage: { expectedSubjects: 2, publishedSubjects: 0, partial: true, pendingSubjectNames: SUBJECTS.map((item) => item.name) }, analysis: null };
+  else if (/^\/api\/ai-reports\/children\/\d+$/.test(pathname) && get) result = { items: [] };
   else if (/^\/api\/parent-comments\/children\/\d+$/.test(pathname) && get) result = { comments: [], subjects: [], hasMore: false, unreadCount: 0, page: 0 };
   // Коды входа (AUTH-FE-001): «Мой класс» Марины Демо, разрешения на код и выпуск у учителя и родителя.
   else if (pathname === '/api/my-class/context' && get) {
